@@ -1,0 +1,198 @@
+class CodeBuilder:
+    """
+    CodeBuilder writes the data that will be passed to generate binary to send to the code generation native layer.
+    It mimics the LLVM IRBuilder API but with some extra type abstractions.
+    """
+
+    def __init__(self, func):
+        self.__current_block = None
+        self.__func = func
+        self.__writer = None
+
+    def to_bytes(self):
+        return self.__writer.to_bytes()
+
+    def create_block(self):
+        return self.__gen_block()
+
+    def set_insert_block(self, block):
+        self.__writer = block.get_writer()
+        self.__current_block = block
+
+    def get_current_block(self):
+        return self.__current_block
+
+    def add(self, v1, v2):
+        self.__writer.add_int32(1)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
+        return self.__gen_value()
+
+    def sub(self, v1, v2):
+        self.__writer.add_int32(2)
+        self.__writer.add_int32(v1, v2)
+        return self.__gen_value()
+
+    def mul(self, v1, v2):
+        self.__writer.add_int32(3)
+        self.__writer.add_int32(v1, v2)
+        return self.__gen_value()
+
+    def div(self, v1, v2):
+        self.__writer.add_int32(4)
+        self.__writer.add_int32(v1, v2)
+        return self.__gen_value()
+
+    def eq(self, v1, v2):
+        self.__writer.add_int32(5)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
+        return self.__gen_value()
+
+    def neg(self, v1, v2):
+        self.__writer.add_int32(6)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
+        return self.__gen_value()
+
+    def lt(self, v1, v2):
+        self.__writer.add_int32(7)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
+        return self.__gen_value()
+
+    def lte(self, v1, v2):
+        self.__writer.add_int32(8)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
+        return self.__gen_value()
+
+    def gt(self, v1, v2):
+        self.__writer.add_int32(9)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
+        return self.__gen_value()
+
+    def gte(self, v1, v2):
+        self.__writer.add_int32(10)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
+        return self.__gen_value()
+
+    def store(self, value, store):
+        self.__writer.add_int32(100)
+        self.__writer.add_int32(value)
+        self.__writer.add_int32(store)
+        return self.__gen_value()
+
+    def load(self, value):
+        self.__writer.add_int32(101)
+        self.__writer.add_int32(value)
+        return self.__gen_value()
+
+    def br(self, block):
+        self.__writer.add_int32(150)
+        self.__writer.add_int32(block.get_id())
+        self.__current_block.add_br_block(block)
+
+    def cond_br(self, value, block_true, block_false):
+        self.__writer.add_int32(151)
+        self.__writer.add_int32(value)
+        self.__writer.add_int32(block_true.get_id())
+        self.__writer.add_int32(block_false.get_id())
+        self.__current_block.add_br_block(block_true)
+        self.__current_block.add_br_block(block_false)
+
+    def gep(self, value, indice):
+        self.__writer.add_int32(152)
+        self.__writer.add_int32(value)
+        self.__writer.add_int32(indice)
+        return self.__gen_value()
+
+    def call(self, func, args):
+        self.__writer.add_int32(153)
+        self.__writer.add_int32(func.get_id())
+        self.__writer.add_int32(len(args))
+        for e in args:
+            self.__writer.add_int32(e)
+        return self.__gen_value()
+
+    def const_int64(self, value):
+        self.__writer.add_int32(1000)
+        self.__writer.add_int64(value)
+        return self.__gen_value()
+
+    def const_int32(self, value):
+        self.__writer.add_int32(1001)
+        self.__writer.add_int32(value)
+        return self.__gen_value()
+
+    def const_int16(self, value):
+        self.__writer.add_int32(1002)
+        self.__writer.add_int32(value)
+        return self.__gen_value()
+
+    def const_int8(self, value):
+        self.__writer.add_int32(1003)
+        self.__writer.add_int32(value)
+        return self.__gen_value()
+
+    def const_float64(self, value):
+        self.__writer.add_int32(1004)
+        self.__writer.add_float64(value)
+        return self.__gen_value()
+
+    def const_float32(self, value):
+        self.__writer.add_float32(1005)
+        self.__writer.add_float32(value)
+        return self.__gen_value()
+
+    def const_null(self, type):
+        self.__writer.add_int32(1006)
+        type.write_to_code(self.__writer)
+        return self.__gen_value()
+
+    def ptr_cast(self, value, type):
+        self.__writer.add_int32(1010)
+        self.__writer.add_int32(value)
+        type.write_to_code(self.__writer)
+        return self.__gen_value()
+
+    def int_cast(self, value, type):
+        self.__writer.add_int32(1011)
+        self.__writer.add_int32(value)
+        type.write_to_code(self.__writer)
+        return self.__gen_value()
+
+    def alloca(self, type):
+        self.__writer.add_int32(1050)
+        type.write_to_code(self.__writer)
+        return self.__gen_value()
+
+    def ret(self, value):
+        self.__writer.add_int32(2000)
+        self.__writer.add_int32(value)
+        self.__current_block.set_has_return(True)
+        return self.__gen_value()
+
+    def ret_void(self):
+        self.__writer.add_int32(2001)
+        self.__current_block.set_has_return(True)
+        return self.__gen_value()
+
+    def print_value_type(self, value):
+        self.__writer.add_int32(10000)
+        self.__writer.add_int32(value)
+
+    def get_total_value(self):
+        return self.__current_id
+
+    def get_total_block(self):
+        return self.__current_block
+
+    def __gen_value(self):
+        return self.__func.increment_value()
+
+    def __gen_block(self):
+        result = self.__func.add_block()
+        return result

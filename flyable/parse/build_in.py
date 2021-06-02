@@ -1,0 +1,52 @@
+"""
+Module managing all functions
+"""
+
+import flyable.code_gen.runtime as runtime
+import flyable.code_gen.code_type as code_type
+
+
+class BuildInFunc:
+
+    def __init__(self):
+        self.__arg_types = []
+
+    def parse(self, node, args, parser):
+        pass
+
+    def codegen(self, args, codegen, builder):
+        pass
+
+
+class BuildInPrint(BuildInFunc):
+
+    def __init__(self):
+        super().__init__()
+
+    def parse(self, node, args, parser):
+        self.__arg_types = args
+        if len(args) != 1:
+            parser.throw_error("print() expect one argument", node.line_no, node.col_no)
+
+    def codegen(self, args, codegen, builder):
+        arg_type = self.__arg_types[0]
+        obj_to_send = None
+        if arg_type.is_int() or arg_type.is_dec():
+            obj_to_send = runtime.value_to_pyobj(codegen, builder, args[0], arg_type)
+        elif arg_type.is_obj():
+            obj_to_send = builder.ptr_cast(args[0], code_type.get_int8_ptr())
+        else:
+            obj_to_send = args[0]
+
+        runtime.py_runtime_object_print(codegen, builder, obj_to_send)
+
+
+def get_build_in(name):
+    name = str(name)
+    build_in_funcs = {
+        "print": BuildInPrint,
+    }
+
+    if name in build_in_funcs:
+        return build_in_funcs[name]()  # Create an instance of the build-in class
+    return None
