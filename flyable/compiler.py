@@ -11,13 +11,17 @@ class Compiler(ErrorThrower):
     def __init__(self):
         self.__data = comp_data.CompData()
         self.__parser = par.Parser()
+        self.set_output_path("flyable_output.o")
 
     def add_file(self, path):
         new_file = lang_file.LangFile()
         new_file.read_from_path(path)
         self.__data.add_file(new_file)
 
-    def compile(self, ):
+    def set_output_path(self, path):
+        self.__data.set_config("output",path)
+
+    def compile(self):
         self.__pre_parse()
 
         if self.has_error() == False:

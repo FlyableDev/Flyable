@@ -1,9 +1,10 @@
 from flyable.code_gen.code_type import CodeType
 from flyable.code_gen.code_gen import CodeFunc
 import flyable.code_gen.code_type as code_type
+from flyable.code_gen.code_gen import *
 
 """
-Module to call runtimes fonctions
+Module to call runtimes functions
 """
 
 
@@ -28,26 +29,23 @@ def malloc_call(code_gen, builder, value_size):
     return builder.call(malloc_func, [value_size])
 
 
-def is_true(value):
+def py_runtime_get_true(code_gen, builder):
     pass
 
 
-def is_false(value):
+def py_runtime_get_false(code_gen, builder):
     pass
 
 
 def py_runtime_init(code_gen, builder):
-    init_func = code_gen.get_or_create_func("Py_Initialize", code_type.get_void(), [], CodeFunc.Linkage.EXTERNAL)
+    init_func = code_gen.get_or_create_func("Py_Initialize", code_type.get_void(), [], Linkage.EXTERNAL)
     return builder.call(init_func, [])
 
 
 def py_runtime_object_print(code_gen, builder, obj):
-    print_func = code_gen.get_or_create_func("PyObject_Print", code_type.get_int32(),
-                                             [code_type.get_int8_ptr(), code_type.get_int8_ptr(),
-                                              code_type.get_int32()], CodeFunc.Linkage.EXTERNAL)
-    flag = builder.const_int32(1)  # Print Flag only support Py_PRINT_RAW that is defined as 1
-
-    return builder.call(print_func, [obj, builder.const_null(code_type.get_int8_ptr()), flag])
+    print_func = code_gen.get_or_create_func("__flyable__print", code_type.get_int32(),
+                                             [code_type.get_int8_ptr()], Linkage.EXTERNAL)
+    return builder.call(print_func, [obj])
 
 
 def py_runtime_ImportModule(code_gen, builder, name):
@@ -61,7 +59,7 @@ def py_runtime_ImportModule(code_gen, builder, name):
 def value_to_pyobj(code_gen, builder, value, lang_type):
     if lang_type.is_int():
         py_func = code_gen.get_or_create_func("PyLong_FromLongLong", code_type.get_int8_ptr(),
-                                              [CodeType(CodeType.CodePrimitive.INT64)], CodeFunc.Linkage.EXTERNAL)
+                                              [CodeType(CodeType.CodePrimitive.INT64)], Linkage.EXTERNAL)
         return builder.call(py_func, [value])
     elif lang_type.is_dec():
         py_func = code_gen.get_or_create_func("PyFloat_FromDouble",

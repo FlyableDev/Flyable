@@ -77,8 +77,8 @@ class CodeGenVisitor(NodeVisitor):
         all = [node.left] + node.comparators
         last = None
         for e in range(len(node.ops)):
-            first = self.__parse_node(all[e - 1])
-            second = self.__parse_node(all[e])
+            first = self.__parse_node(all[e])
+            second = self.__parse_node(all[e + 1])
             current_op = node.ops[e]
             if isinstance(current_op, ast.And):
                 last = self.__builder.op_and(first, second)
@@ -147,6 +147,7 @@ class CodeGenVisitor(NodeVisitor):
             if self.__builder.get_current_block().needs_end():
                 self.__builder.br(self.__out_blocks[-1])
         elif node.orelse is not None:  # Else statement here
+            self.__parse_node(node.orelse)
             if self.__builder.get_current_block().needs_end():
                 self.__builder.br(self.__out_blocks[-1])
 
@@ -165,7 +166,7 @@ class CodeGenVisitor(NodeVisitor):
 
         self.__builder.set_insert_block(block_while_in)
         self.__parse_node(node.body)
-        self.__builder.br(block_continue)
+        self.__builder.br(block_cond)
 
         self.__builder.set_insert_block(block_continue)
 

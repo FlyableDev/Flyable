@@ -15,6 +15,7 @@ def adapt_func(func, args, comp_data, parser):
                 adapted_impl.add_arg(args[i])
             func.add_impl(adapted_impl)
             parser.parse_impl(comp_data, adapted_impl)
+
         return adapted_impl
 
     return None

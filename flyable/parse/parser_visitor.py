@@ -179,8 +179,13 @@ class ParserVisitor(NodeVisitor):
                     # Func call
                     func_impl_to_call = adapter.adapt_func(content, args_types, self.__data, self.__parser)
                     if func_impl_to_call is not None:
-                        self.__last_type = func_impl_to_call.get_return_type()
-                        self.__current_func.set_node_info(node, NodeInfoCallProc(func_impl_to_call))
+                        if func_impl_to_call.is_unknown() == False:
+                            self.__last_type = func_impl_to_call.get_return_type()
+                            self.__current_func.set_node_info(node, NodeInfoCallProc(func_impl_to_call))
+                        else:
+                            self.__parser.throw_error("Impossible to resolve function" +
+                                                      func_impl_to_call.get_parent_func().get_name(),node.lineno,
+                                                      node.col_offset)
                     else:
                         self.__parser.throw_error("Function " + node.func.id + " not found", node.lineno,
                                                   node.end_col_offset)

@@ -10,6 +10,7 @@ class CompData:
         self.__files = collections.OrderedDict()
         self.__funcs = []
         self.__classes = []
+        self.__configs = {}
 
     def add_file(self, file):
         self.__files[file.get_path()] = file
@@ -55,3 +56,9 @@ class CompData:
                 if e.get_args_count() == 0:
                     return e
         return None
+
+    def set_config(self, name, data):
+        self.__configs[name] = data
+
+    def get_config(self, name):
+        return self.__configs[name]

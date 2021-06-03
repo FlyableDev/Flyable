@@ -11,6 +11,11 @@ from collections import OrderedDict
 import enum
 
 
+class Linkage(enum.IntEnum):
+    INTERNAL = 1,
+    EXTERNAL = 2
+
+
 class StructType:
     '''
     Represent a low-level structure defined by multiple CodeType
@@ -51,10 +56,18 @@ class GlobalVar:
     Represent a low-level const address variable
     '''
 
-    def __init__(self, name, type):
+    def __init__(self, name, type, linkage = Linkage.INTERNAL):
+        self.__id = -1
         self.__name = name
         self.__type = type
         self.__initializer = None
+        self.__linking = linkage
+
+    def set_id(self, id):
+        self.__id = id
+
+    def get_id(self):
+        return self.__id
 
     def get_name(self):
         return self.__name
@@ -67,13 +80,11 @@ class GlobalVar:
 
     def write_to_code(self, writer):
         writer.add_str(self.__name)
-        self.__type.write_to_code(self.__type)
+        self.__type.write_to_code(writer)
+        writer.add_int32(self.__linking)
 
 
 class CodeFunc:
-    class Linkage(enum.IntEnum):
-        INTERNAL = 1,
-        EXTERNAL = 2
 
     class CodeBlock:
 
@@ -125,7 +136,7 @@ class CodeFunc:
     def __init__(self, name):
         self.__id = -1
         self.__value_id = 0
-        self.__linkage = CodeFunc.Linkage.INTERNAL
+        self.__linkage = Linkage.INTERNAL
         self.__name = name
         self.__args = []
         self.__return_type = CodeType()
@@ -206,6 +217,9 @@ class CodeGen:
         self.__data = None
         self.__strings = {}
 
+        self.__true_var = self.add_global_var(GlobalVar("Py_True",code_type.get_int8_ptr(),Linkage.EXTERNAL))
+        self.__false_var = self.add_global_var(GlobalVar("Py_False",code_type.get_int8_ptr(),Linkage.EXTERNAL))
+
     def generate(self, comp_data):
         self.__data = comp_data
         self.__gen_structs(comp_data)
@@ -231,7 +245,19 @@ class CodeGen:
         self.__global_vars.append(new_str)
         self.__strings[str] = new_str
 
-    def get_or_create_func(self, name, return_type, args_type, link=CodeFunc.Linkage.INTERNAL):
+    def get_true(self):
+        """
+        Return the global variable containing the True python object
+        """
+        return self.__true_var
+
+    def get_false(self):
+        """
+        Return the global variable containing the False python object
+        """
+        return self.__false_var
+
+    def get_or_create_func(self, name, return_type, args_type, link= Linkage.INTERNAL):
         # Get case
         if name in self.__funcs:
             return self.__funcs[name]
@@ -246,6 +272,11 @@ class CodeGen:
         self.__funcs[name] = new_func
 
         return new_func
+
+    def add_global_var(self, var):
+        var.set_id(len(self.__global_vars))
+        self.__global_vars.append(var)
+        return var
 
     def __code_gen_func(self, comp_data):
         for func in comp_data.funcs_iter():
@@ -334,14 +365,14 @@ class CodeGen:
         # Add global var
         writer.add_int32(len(self.__global_vars))
         for e in self.__global_vars:
-            e.get_type().write_to_code(writer)
+            e.write_to_code(writer)
 
         # Add funcs
         writer.add_int32(len(self.__funcs))
         for e in self.__funcs.values():
             e.write_to_code(writer)
 
-        loader.call_code_generation_layer(writer)
+        loader.call_code_generation_layer(writer, comp_data.get_config("output"))
 
     def __generate_runtime(self):
         pass
@@ -355,7 +386,7 @@ class CodeGen:
         main_impl = self.__data.find_main().get_impl(1)
 
         # On Windows, an executable starts on the WinMain symbol
-        main_func = self.get_or_create_func("WinMain", code_type.get_int32(), [], CodeFunc.Linkage.EXTERNAL)
+        main_func = self.get_or_create_func("WinMain", code_type.get_int32(), [], Linkage.EXTERNAL)
         builder = CodeBuilder(main_func)
         entry_block = builder.create_block()
         builder.set_insert_block(entry_block)

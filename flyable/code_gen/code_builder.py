@@ -180,6 +180,11 @@ class CodeBuilder:
         self.__current_block.set_has_return(True)
         return self.__gen_value()
 
+    def global_var(self, var):
+        self.__writer.add_int32(3000)
+        self.__writer.add_int32(var.get_id())
+        return self.__gen_value()
+
     def print_value_type(self, value):
         self.__writer.add_int32(10000)
         self.__writer.add_int32(value)
