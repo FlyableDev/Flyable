@@ -62,7 +62,7 @@ class LangType:
         self.__type = type
         self.__id = id
         self.__dims = []
-        self.__opt = []
+        self.__details = [] # Details are extra data that allows the compiler to perform more severe optimization
 
     def is_unknown(self):
         return self.__type == LangType.Type.UNKNOWN

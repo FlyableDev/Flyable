@@ -17,9 +17,9 @@ class Linkage(enum.IntEnum):
 
 
 class StructType:
-    '''
+    """
     Represent a low-level structure defined by multiple CodeType
-    '''
+    """
 
     def __init__(self, name):
         self.__name = name
@@ -52,9 +52,9 @@ class StructType:
 
 
 class GlobalVar:
-    '''
+    """
     Represent a low-level const address variable
-    '''
+    """
 
     def __init__(self, name, type, linkage = Linkage.INTERNAL):
         self.__id = -1
@@ -309,6 +309,8 @@ class CodeGen:
     def __fill_structs(self, comp_data):
         # Fill all the structures
         for current_class in comp_data.classes_iter():
+            current_class.get_struct().add_type(code_type.get_int32())  # Ref counter
+            current_class.get_struct().add_type(code_type.get_int32())  # class id
             for j in current_class.attributs_iter():
                 attr = current_class.get_attribut(j)
                 current_class.get_struct().add_type(attr.get_type().to_code_type())

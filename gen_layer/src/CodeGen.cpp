@@ -64,11 +64,14 @@ void CodeGen::output(std::string output)
         }
     }
 
+    /*
     {
+        //Uncomment to output the IR in a textual format
         std::ofstream outputFile("outputIR.txt");
         llvm::raw_os_ostream ir(outputFile);
         mModule->print(ir,nullptr);
     }
+    */
 
     if(!hasError)
     {

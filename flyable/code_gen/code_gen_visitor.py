@@ -169,12 +169,14 @@ class CodeGenVisitor(NodeVisitor):
         if node.orelse is None:
             self.__builder.cond_br(loop_value, block_while_in, block_continue)
         else:
-            self.__builder.cond_br(loop_value,block_while_in,block_else)
+            self.__builder.cond_br(loop_value, block_while_in, block_else)
 
+        # Setup the while loop content
         self.__builder.set_insert_block(block_while_in)
+        self.__out_blocks.append(block_continue)  # In case of a break we want to jump after the while loop
         self.__parse_node(node.body)
+        self.__out_blocks.pop()
         self.__builder.br(block_cond)
-
 
         if node.orelse is not None:
             self.__builder.set_insert_block(block_else)
@@ -185,6 +187,9 @@ class CodeGenVisitor(NodeVisitor):
 
     def visit_With(self, node: With) -> Any:
         pass
+
+    def visit_Break(self, node: Break) -> Any:
+        self.__builder.br(self.__out_blocks[-1])
 
     def visit_Return(self, node: Return) -> Any:
         if node.value is None:

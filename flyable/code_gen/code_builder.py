@@ -97,6 +97,7 @@ class CodeBuilder:
         self.__writer.add_int32(150)
         self.__writer.add_int32(block.get_id())
         self.__current_block.add_br_block(block)
+        self.__writer.lock()
 
     def cond_br(self, value, block_true, block_false):
         self.__writer.add_int32(151)
@@ -105,6 +106,7 @@ class CodeBuilder:
         self.__writer.add_int32(block_false.get_id())
         self.__current_block.add_br_block(block_true)
         self.__current_block.add_br_block(block_false)
+        self.__writer.lock()
 
     def gep(self, value, indice):
         self.__writer.add_int32(152)
@@ -176,10 +178,12 @@ class CodeBuilder:
         self.__writer.add_int32(2000)
         self.__writer.add_int32(value)
         self.__current_block.set_has_return(True)
+        self.__writer.lock()
 
     def ret_void(self):
         self.__writer.add_int32(2001)
         self.__current_block.set_has_return(True)
+        self.__writer.lock()
 
     def global_var(self, var):
         self.__writer.add_int32(3000)
