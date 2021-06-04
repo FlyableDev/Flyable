@@ -53,7 +53,8 @@ class CodeGenVisitor(NodeVisitor):
 
     def visit_Call(self, node: Call) -> Any:
         args = []
-        for e in node.args: args.append(self.__parse_node(e))
+        for e in node.args:
+            args.append(self.__parse_node(e))
         info = self.__func.get_node_info(node)
         if isinstance(info, NodeInfoCallProc):
             self.__last_value = self.__builder.call(info.get_func().get_code_func(), args)
@@ -157,16 +158,28 @@ class CodeGenVisitor(NodeVisitor):
     def visit_While(self, node: While) -> Any:
         block_cond = self.__builder.create_block()
         block_while_in = self.__builder.create_block()
+        block_else = self.__builder.create_block() if node.orelse is not None else None
         block_continue = self.__builder.create_block()
+
         self.__builder.br(block_cond)
         self.__builder.set_insert_block(block_cond)
 
         loop_value = self.__parse_node(node.test)
-        self.__builder.cond_br(loop_value, block_while_in, block_continue)
+
+        if node.orelse is None:
+            self.__builder.cond_br(loop_value, block_while_in, block_continue)
+        else:
+            self.__builder.cond_br(loop_value,block_while_in,block_else)
 
         self.__builder.set_insert_block(block_while_in)
         self.__parse_node(node.body)
         self.__builder.br(block_cond)
+
+
+        if node.orelse is not None:
+            self.__builder.set_insert_block(block_else)
+            self.__parse_node(node.orelse)
+            self.__builder.br(block_continue)
 
         self.__builder.set_insert_block(block_continue)
 

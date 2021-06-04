@@ -112,6 +112,7 @@ class CodeFunc:
             return self.__has_return
 
         def write_to_code(self, writer):
+            writer.add_str(self.get_name())
             self.__code_writer.write_to_code(writer)
 
         def add_br_block(self, block):
@@ -128,6 +129,9 @@ class CodeFunc:
 
         def __len__(self):
             return len(self.__code_writer.get_data())
+
+        def get_name(self):
+            return "Block@" + str(self.__id)
 
     '''
     Represent a low level function with instructions
@@ -338,13 +342,13 @@ class CodeGen:
         the code so they can return nullified value
         """
         for block in func.blocks_iter():
-            if block.has_br_block() is False and block.has_return() is False:
+            if not block.has_br_block() and not block.has_return():
                 func.get_builder().set_insert_block(block)
                 func_return_type = func.get_return_type()
                 if func_return_type == CodeType():
                     func.get_builder().ret_void()
                 else:
-                    func.get_buuilder().ret(func.get_builder.const_null(func_return_type))
+                    func.get_builder().ret(func.get_builder.const_null(func_return_type))
 
     def __gen_vars(self, comp_data):
         pass

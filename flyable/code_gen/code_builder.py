@@ -30,17 +30,20 @@ class CodeBuilder:
 
     def sub(self, v1, v2):
         self.__writer.add_int32(2)
-        self.__writer.add_int32(v1, v2)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
         return self.__gen_value()
 
     def mul(self, v1, v2):
         self.__writer.add_int32(3)
-        self.__writer.add_int32(v1, v2)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
         return self.__gen_value()
 
     def div(self, v1, v2):
         self.__writer.add_int32(4)
-        self.__writer.add_int32(v1, v2)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
         return self.__gen_value()
 
     def eq(self, v1, v2):
@@ -173,12 +176,10 @@ class CodeBuilder:
         self.__writer.add_int32(2000)
         self.__writer.add_int32(value)
         self.__current_block.set_has_return(True)
-        return self.__gen_value()
 
     def ret_void(self):
         self.__writer.add_int32(2001)
         self.__current_block.set_has_return(True)
-        return self.__gen_value()
 
     def global_var(self, var):
         self.__writer.add_int32(3000)

@@ -57,7 +57,7 @@ private:
     void readStructs(FormatReader& reader);
     void readGlobalVars(FormatReader& reader);
     void readFuncs(FormatReader& reader);
-    void readBody(llvm::Function* func,std::vector<FormatReader> &readers);
+    void readBody(llvm::Function* func,std::vector<FormatReader> &readers,std::vector<std::string>& blockNames);
 
     void printType(llvm::Type* type);
     bool isDecimalType(llvm::Value* value);

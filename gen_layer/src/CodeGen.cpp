@@ -1,4 +1,6 @@
 #include "CodeGen.hpp"
+#include <iostream>
+#include <fstream>
 
 void flyable_codegen_run(char* data,int size,char* path)
 {
@@ -60,6 +62,12 @@ void CodeGen::output(std::string output)
             std::cout<<std::endl;
             hasError = true;
         }
+    }
+
+    {
+        std::ofstream outputFile("outputIR.txt");
+        llvm::raw_os_ostream ir(outputFile);
+        mModule->print(ir,nullptr);
     }
 
     if(!hasError)
@@ -137,9 +145,11 @@ void CodeGen::readFuncs(FormatReader& reader)
     size_t funcsCount = reader.readInt32();
     mFuncs.resize(funcsCount);
     std::vector<std::vector<FormatReader>> blocks;
+    std::vector<std::vector<std::string>> blockNames;
     for(size_t i = 0;i < funcsCount;++i)
     {
         blocks.push_back(std::vector<FormatReader>());
+        blockNames.push_back(std::vector<std::string>());
         std::string name = reader.readString();
 
         auto link = readLinkage(reader);
@@ -157,21 +167,24 @@ void CodeGen::readFuncs(FormatReader& reader)
 
         size_t blocksCount = reader.readInt32();
         for(size_t j = 0;j < blocksCount;++j)
+        {
+            blockNames[i].push_back(reader.readString());
             blocks[i].push_back(reader.sub(reader.readInt32()));
+        }
     }
 
     for(size_t i = 0;i < mFuncs.size();++i)
     {
-        readBody(mFuncs[i],blocks[i]);
+        readBody(mFuncs[i],blocks[i],blockNames[i]);
     }
 }
 
-void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers)
+void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,std::vector<std::string>& blockNames)
 {
     std::vector<llvm::BasicBlock*> blocks(readers.size());
     std::vector<llvm::Value*> values;
     for(size_t i = 0;i < readers.size();++i)
-        blocks[i] = llvm::BasicBlock::Create(mContext,"Block",func);
+        blocks[i] = llvm::BasicBlock::Create(mContext,blockNames[i],func);
 
     for(auto it = func->arg_begin();it != func->arg_end();it++)
         values.push_back(it);
@@ -331,7 +344,10 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers)
                     llvm::Function* funcToCall = mFuncs[current->readInt32()];
                     std::vector<llvm::Value*> args(current->readInt32());
                     for(size_t i = 0;i < args.size();++i)
-                        args[i] = values[current->readInt32()];
+                    {
+                        int id = current->readInt32();
+                        args[i] = values[id];
+                    }
                     values.push_back(mBuilder.CreateCall(funcToCall,llvm::ArrayRef<llvm::Value*>(args)));
                 }
                 break;
@@ -409,11 +425,11 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers)
                 break;
 
                 case 2000:
-                    values.push_back(mBuilder.CreateRet(values[current->readInt32()]));
+                    mBuilder.CreateRet(values[current->readInt32()]);
                 break;
 
                 case 2001:
-                    values.push_back(mBuilder.CreateRetVoid());
+                    mBuilder.CreateRetVoid();
                 break;
 
                 case 3000:
@@ -430,6 +446,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers)
 
             }
         }
+
     }
 
 }
