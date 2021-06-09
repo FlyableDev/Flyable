@@ -1,7 +1,9 @@
-import os
+import platform
 
 def get_platform_folder():
-    if os.uname()[0] == "Windows":
+    if platform.system() == "Windows":
         return "win64"
-    elif os.uname()[0] == "Linux":
+    elif platform.system() == "Linux":
         return "linux64"
+    else:
+        raise NotImplemented(platform.system() + platform.system())

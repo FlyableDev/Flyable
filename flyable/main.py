@@ -12,6 +12,7 @@ import flyable.compiler as com
 import flyable.tool.platform as plat
 from subprocess import Popen, PIPE
 from pathlib import Path
+import platform
 
 
 def main():
@@ -27,15 +28,16 @@ def main():
     print("Linking.....")
 
     # Now link the code
-    linker_args = ["gcc", "output.o", "libFlyableRuntime.a", "python3.9.a","-no-pie"]
-    p = Popen(linker_args, cwd="../build/" + plat.get_platform_folder())
+    python_lib = "python39.lib" if platform.system() == "Windows" else "python3.9.a"
+    linker_args = ["gcc", "output.o", "libFlyableRuntime.a", python_lib]
+    p = Popen(linker_args, cwd="..\\build\\" + plat.get_platform_folder())
     p.wait()
     if p.returncode != 0: raise Exception("Linking error")
 
     # Now run the code
     print("running...")
-    p = Popen(["../" + plat.get_platform_folder() +
-               "/build/a.exe"], cwd="../build/" + plat.get_platform_folder(), stdin=PIPE, stdout=PIPE)
+    p = Popen(["../build/" + plat.get_platform_folder() +
+               "/a.exe"], cwd="..\\build\\" + plat.get_platform_folder(), stdin=PIPE, stdout=PIPE)
     output, err = p.communicate()
 
     print("-------------------")
