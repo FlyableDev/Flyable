@@ -23,7 +23,11 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Target/TargetMachine.h"
 
-#define EXPORT_FUNC __declspec(dllexport) _cdecl
+#ifdef _WIN32
+    #define EXPORT_FUNC __declspec(dllexport) _cdecl
+#else
+    #define EXPORT_FUNC __attribute__((visibility("default")))
+#endif // _WIN32
 
 
 extern "C"

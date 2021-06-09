@@ -9,7 +9,9 @@ Running : Run the generated program. Generated exe file will try to find an exis
 """
 
 import flyable.compiler as com
+import flyable.tool.platform as plat
 from subprocess import Popen, PIPE
+from pathlib import Path
 
 
 def main():
@@ -17,20 +19,23 @@ def main():
 
     compiler = com.Compiler()
     compiler.add_file("test.py")
-    compiler.set_output_path("build/output.o")
+    compiler.set_output_path("../build/" + plat.get_platform_folder() + "/output.o")
+    Path("build").mkdir(parents=True, exist_ok=True)  # Make sur the folder exist
     compiler.compile()
 
     # Link the object file
     print("Linking.....")
 
     # Now link the code
-    p = Popen(["gcc", "output.o", "libFlyableRuntime.a", "python39.lib"], cwd="build")
+    linker_args = ["gcc", "output.o", "libFlyableRuntime.a", "python3.9.a","-no-pie"]
+    p = Popen(linker_args, cwd="../build/" + plat.get_platform_folder())
     p.wait()
     if p.returncode != 0: raise Exception("Linking error")
 
     # Now run the code
     print("running...")
-    p = Popen(["build/a.exe"], cwd="build", stdin=PIPE, stdout=PIPE)
+    p = Popen(["../" + plat.get_platform_folder() +
+               "/build/a.exe"], cwd="../build/" + plat.get_platform_folder(), stdin=PIPE, stdout=PIPE)
     output, err = p.communicate()
 
     print("-------------------")

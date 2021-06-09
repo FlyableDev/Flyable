@@ -1,3 +1,5 @@
+import platform
+
 import flyable.code_gen.code_writer as _writer
 from flyable.code_gen.code_gen_visitor import CodeGenVisitor
 from flyable.code_gen.code_writer import CodeWriter
@@ -392,7 +394,14 @@ class CodeGen:
         main_impl = self.__data.find_main().get_impl(1)
 
         # On Windows, an executable starts on the WinMain symbol
-        main_func = self.get_or_create_func("WinMain", code_type.get_int32(), [], Linkage.EXTERNAL)
+        if platform.uname()[0] == "Windows":
+            main_name = "WinMain"
+        elif platform.uname()[0] == "Linux":
+            main_name = "main"
+        else:
+            raise NotImplemented(platform.uname()[0] + " not supported")
+
+        main_func = self.get_or_create_func(main_name, code_type.get_int32(), [], Linkage.EXTERNAL)
         builder = CodeBuilder(main_func)
         entry_block = builder.create_block()
         builder.set_insert_block(entry_block)
