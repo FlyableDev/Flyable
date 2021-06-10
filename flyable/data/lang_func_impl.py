@@ -17,6 +17,7 @@ class LangFuncImpl:
     """
 
     def __init__(self):
+        self.__id = -1
         self.__unknown = False
         self.__code_func = None
         self.__args = []
@@ -31,6 +32,12 @@ class LangFuncImpl:
         self.__context = context.Context()
 
         self.__can_raise = False
+
+    def set_id(self, _id):
+        self.__id = _id
+
+    def get_id(self):
+        return self.__id
 
     def add_arg(self, arg):
         self.__args.append(arg)
@@ -97,3 +104,9 @@ class LangFuncImpl:
         Return if the implementation can potentially raise an exception during his execution
         """
         return self.__can_raise
+
+    def __str__(self):
+        result = str(self.__return_type) + " : "
+        for e in self.__args:
+            result += " " + str(e)
+        return result

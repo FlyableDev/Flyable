@@ -19,6 +19,7 @@ class LangClass:
 
     def add_func(self, func):
         func.set_class(self)
+        func.set_id(len(self.__funcs))
         self.__funcs.append(func)
 
     def get_func(self, index):

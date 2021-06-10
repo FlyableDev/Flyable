@@ -26,10 +26,10 @@ def get_int8_ptr():
 
 
 class CodeType:
-    '''
+    """
     CodeType represents a type that can be describe in low-level machine code.
     It can also refer to a native data structure.
-    '''
+    """
 
     class CodePrimitive(enum.IntEnum):
         INT1 = 0,
@@ -67,7 +67,7 @@ class CodeType:
                 return builder
 
     def write_to_code(self, writer):
-        writer.add_int32(self.__type)
+        writer.add_int32(int(self.__type))
         writer.add_int32(int(self.__ptr_level))
         writer.add_int32(int(self.__struct_id))
 
@@ -75,3 +75,22 @@ class CodeType:
         return self.__type == other.__type \
                and self.__struct_id == other.__struct_id \
                and self.__ptr_level == other.__ptr_level
+
+    def __str__(self):
+        str_types = {
+            CodeType.CodePrimitive.VOID: "void",
+            CodeType.CodePrimitive.INT64: "int64",
+            CodeType.CodePrimitive.INT8: "int8",
+            CodeType.CodePrimitive.INT16: "int16",
+            CodeType.CodePrimitive.INT32: "int32",
+            CodeType.CodePrimitive.FLOAT: "float",
+            CodeType.CodePrimitive.DOUBLE: "double",
+            CodeType.CodePrimitive.STRUCT: "struct"
+        }
+
+        result = str_types[self.__type]
+        for e in range(self.__ptr_level):
+            result += "*"
+
+        return result
+

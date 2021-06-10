@@ -43,6 +43,8 @@ def main():
     print("-------------------")
     print(output.decode())  # Print what the program outputted
 
+    print("Application ended with code " + str(p.returncode))
+
 
 if __name__ == '__main__':
     main()

@@ -7,6 +7,7 @@ from flyable.parse.node_info import *
 import flyable.code_gen.runtime as runtime
 import flyable.code_gen.caller as caller
 import  flyable.code_gen.code_type as code_type
+import  flyable.data.lang_type as lang_type
 
 
 class CodeGenVisitor(NodeVisitor):
@@ -268,14 +269,14 @@ class CodeGenVisitor(NodeVisitor):
                 value = self.__parse_node(with_item.context_expr)
                 if all_vars[i] is not None:  # Assign the 'as'
                     self.__builder.store(value, all_vars[i].get_code_gen_value())
-                    caller.call_obj(self.__code_gen, self.__builder, "__enter__", value, types[i], [value], [types[i]])
+                caller.call_obj(self.__code_gen, self.__builder, "__enter__", value, types[i], [value], [types[i]])
         self.__parse_node(node.body)
 
         for i, with_item in enumerate(items):
             value = self.__parse_node(with_item.context_expr)
             exit_values = [value] + ([self.__builder.const_null(code_type.get_int8_ptr())] * 3)
-            exit_args = [types[i]] + ([code_type.get_int8_ptr()] * 3)
-            caller.call_obj(self.__code_gen, self.__builder, "__exit__", value, types[i], [value], [types[i]])
+            exit_args = [types[i]] + ([lang_type.get_python_obj_type()] * 3)
+            caller.call_obj(self.__code_gen, self.__builder, "__exit__", value, types[i], exit_values, exit_args)
 
     def visit_Import(self, node: Import) -> Any:
         pass

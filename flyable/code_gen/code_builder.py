@@ -190,6 +190,11 @@ class CodeBuilder:
         self.__writer.add_int32(var.get_id())
         return self.__gen_value()
 
+    def global_str(self, value):
+        self.__writer.add_int32(3001)
+        self.__writer.add_str(value)
+        return self.__gen_value()
+
     def print_value_type(self, value):
         self.__writer.add_int32(10000)
         self.__writer.add_int32(value)

@@ -237,7 +237,10 @@ class ParserVisitor(NodeVisitor):
             with_types.append(type)
             if type.is_obj() or type.is_python_obj():
                 if with_item.optional_vars is not None:
-                    all_vars_with.append(self.__current_func.get_context().add_var(str(with_item.optional_vars.id), type))
+                    all_vars_with.append(
+                        self.__current_func.get_context().add_var(str(with_item.optional_vars.id), type))
+                else:
+                    all_vars_with.append(None)
 
                 if adapter.adapt_call("__enter__", type, [type], self.__data, self.__parser) is None:
                     self.__parser.throw_error("__enter__ implementation expected", node.lineno, node.end_col_offset)
@@ -249,13 +252,14 @@ class ParserVisitor(NodeVisitor):
                     self.__parser.throw_error("__exit__ implementation expected", node.lineno, node.end_col_offset)
             else:
                 self.__parser.throw_error("Type " + type.to_str(self.__data) +
-                                          " can't be used in a with statement",node.lineno,node.end_col_offset)
+                                          " can't be used in a with statement", node.lineno, node.end_col_offset)
         self.__visit_node(node.body)
 
         # After the with the var can't be accessed anymore
         for var in all_vars_with:
-            var.set_use(False)
-        self.__current_func.set_node_info(node, NodeInfoWith(with_types,all_vars_with))
+            if var is not None:
+                var.set_use(False)
+        self.__current_func.set_node_info(node, NodeInfoWith(with_types, all_vars_with))
 
     def visit_Import(self, node: Import) -> Any:
         for e in node.names:

@@ -155,8 +155,8 @@ class CodeFunc:
     def get_linkage(self):
         return self.__linkage
 
-    def set_id(self, id):
-        self.__id = id
+    def set_id(self, _id):
+        self.__id = _id
 
     def get_id(self):
         return self.__id
@@ -324,7 +324,8 @@ class CodeGen:
         for func in comp_data.funcs_iter():
             for i, impl in enumerate(func.impls_iter()):
                 if impl.is_unknown() == False:
-                    func_name = "@flyable@__" + func.get_name() + "@" + str(i) + "@" + str(func.get_id())
+                    func_name = "@flyable@__" + func.get_name() + "@" + str(i) + "@" \
+                                + str(func.get_id()) + "@" + str(impl.get_id())
                     return_type = impl.get_return_type().to_code_type(comp_data)
                     func_args = lang_type.to_code_type(self.__data, list(impl.args_iter()))
                     new_func = self.get_or_create_func(func_name, return_type, func_args)
@@ -334,7 +335,8 @@ class CodeGen:
             for func in _class.funcs_iter():
                 for i, impl in enumerate(func.impls_iter()):
                     if impl.is_unknown() == False:
-                        func_name = "@flyable@class@" + _class.get_name() + "@" + str(i) + "@" + str(func.get_id())
+                        func_name = "@flyable@__" + func.get_name() + "@" + str(i) + "@" \
+                                + str(func.get_id()) + "@" + str(impl.get_id())
                         return_type = impl.get_return_type().to_code_type(comp_data)
                         func_args = lang_type.to_code_type(self.__data, list(impl.args_iter()))
                         new_func = self.get_or_create_func(func_name, return_type, func_args)
@@ -368,7 +370,7 @@ class CodeGen:
             writer.add_str("FlyableStruct")  # Name of the attr
             writer.add_int32(_struct.get_types_count())
             for attr in range(_struct.get_types_count()):
-                attr.get_type(attr).write_to_code(writer)
+                _struct.get_type(attr).write_to_code(writer)
 
         # Add global var
         writer.add_int32(len(self.__global_vars))

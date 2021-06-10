@@ -1,5 +1,6 @@
 from enum import Enum
 from flyable.code_gen.code_type import CodeType
+import  flyable.code_gen.code_type as code_type
 
 
 def to_code_type(comp_data, type):
@@ -88,19 +89,23 @@ class LangType:
     def is_python_obj(self):
         return len(self.__dims) == 0 and self.__type == LangType.Type.PYTHON
 
+    def get_id(self):
+        return self.__id
+
     def to_code_type(self, comp_data):
         result = CodeType()
         if self.is_int() or self.is_module():
-            result = CodeType(CodeType.CodePrimitive.INT64)
+            result = code_type.get_int64()
         elif self.is_dec():
             result = CodeType(CodeType.CodePrimitive.DOUBLE)
         elif self.is_bool():
             result = CodeType(CodeType.CodePrimitive.INT1)
         elif self.is_python_obj():
-            result = CodeType(CodeType.CodePrimitive.STRUCT)
+            result = code_type.get_int8_ptr()
         elif self.is_obj():
             result = comp_data.get_class(self.__id).get_struct().to_code_type().get_ptr_to()
-
+        elif self.is_unknown():
+            result = code_type.get_void()
         return result
 
     def __eq__(self, other):
@@ -124,6 +129,7 @@ class LangType:
             LangType.Type.BOOLEAN: "Bool",
             LangType.Type.OBJECT: "object",
             LangType.Type.MODULE: "module",
+            LangType.Type.PYTHON: "python",
 
         }
 

@@ -43,6 +43,7 @@ class LangFunc:
 
     def add_impl(self, func):
         func.set_parent_func(self)
+        func.set_id(len(self.__impls))
         self.__impls.append(func)
 
     def get_impl(self, index):

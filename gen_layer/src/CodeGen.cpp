@@ -122,10 +122,8 @@ void CodeGen::readStructs(FormatReader& reader)
         std::vector<llvm::Type*> attr;
         size_t attrCount = reader.readInt32();
         for(size_t i = 0;i < attrCount;++i)
-        {
             attr.push_back(readType(reader));
-            current->setBody(llvm::ArrayRef<llvm::Type*>(attr));
-        }
+        current->setBody(llvm::ArrayRef<llvm::Type*>(attr));
     }
 }
 
@@ -139,7 +137,8 @@ void CodeGen::readGlobalVars(FormatReader& reader)
         std::string name = reader.readString();
         llvm::Type* type = readType(reader);
         auto link = readLinkage(reader);
-        mGlobalVars[i] = new llvm::GlobalVariable(*mModule,type,false,link,0,name);
+        llvm::GlobalVariable* globalVar = new llvm::GlobalVariable(*mModule,type,false,link,0,name);
+        mGlobalVars[i] = globalVar;
     }
 }
 
@@ -154,7 +153,6 @@ void CodeGen::readFuncs(FormatReader& reader)
         blocks.push_back(std::vector<FormatReader>());
         blockNames.push_back(std::vector<std::string>());
         std::string name = reader.readString();
-
         auto link = readLinkage(reader);
 
         llvm::Type* returnType = readType(reader);
@@ -437,6 +435,13 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
 
                 case 3000:
                     values.push_back(mGlobalVars[current->readInt32()]);
+                break;
+
+                case 3001:
+                {
+                    std::string txt = current->readString();
+                    values.push_back(mBuilder.CreateGlobalString(llvm::StringRef(txt)));
+                }
                 break;
 
                 case 10000:

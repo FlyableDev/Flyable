@@ -6,7 +6,7 @@ Module containing all the different initializer for global variable
 class ConstInitializer:
 
     def write_to_code(self, writer):
-        pass
+        writer.add_int32(0)
 
 class StringConstInitializer(ConstInitializer):
 
