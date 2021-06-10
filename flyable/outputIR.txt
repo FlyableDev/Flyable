@@ -1,0 +1,36 @@
+; ModuleID = 'Flyable'
+source_filename = "Flyable"
+target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-windows-c"
+
+@Py_True = external global i8*
+@Py_False = external global i8*
+
+define internal void @"@flyable@__main@1@0"() {
+"Block@0":
+  %0 = alloca i64, align 8
+  %1 = alloca i64, align 8
+  br label %"Block@1"
+
+"Block@1":                                        ; preds = %"Block@0"
+  store i64 10, i64* %0, align 8
+  %2 = load i64, i64* %0, align 8
+  store i64 %2, i64* %1, align 8
+  %3 = load i64, i64* %1, align 8
+  %4 = call i8* @PyLong_FromLongLong(i64 %3)
+  %5 = call i32 @__flyable__print(i8* %4)
+  ret void
+}
+
+declare i8* @PyLong_FromLongLong(i64)
+
+declare i32 @__flyable__print(i8*)
+
+define i32 @WinMain() {
+"Block@0":
+  call void @Py_Initialize()
+  call void @"@flyable@__main@1@0"()
+  ret i32 0
+}
+
+declare void @Py_Initialize()

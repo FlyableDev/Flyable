@@ -263,7 +263,7 @@ class CodeGen:
         """
         return self.__false_var
 
-    def get_or_create_func(self, name, return_type, args_type, link= Linkage.INTERNAL):
+    def get_or_create_func(self, name, return_type, args_type = [], link= Linkage.INTERNAL):
         # Get case
         if name in self.__funcs:
             return self.__funcs[name]

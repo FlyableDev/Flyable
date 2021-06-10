@@ -2,6 +2,7 @@ import ast
 from ast import *
 from typing import Any
 from flyable.data.lang_type import *
+import flyable.data.lang_type as lang_type
 import flyable.data.lang_func_impl as func
 from flyable.parse.node_info import *
 import flyable.parse.op as op
@@ -34,7 +35,7 @@ class ParserVisitor(NodeVisitor):
             super().visit(node)
 
     def __visit_node(self, node):
-        super().visit(node)
+        self.visit(node)
         return self.__last_type
 
     def visit_Assign(self, node: Assign) -> Any:
@@ -184,7 +185,7 @@ class ParserVisitor(NodeVisitor):
                             self.__current_func.set_node_info(node, NodeInfoCallProc(func_impl_to_call))
                         else:
                             self.__parser.throw_error("Impossible to resolve function" +
-                                                      func_impl_to_call.get_parent_func().get_name(),node.lineno,
+                                                      func_impl_to_call.get_parent_func().get_name(), node.lineno,
                                                       node.col_offset)
                     else:
                         self.__parser.throw_error("Function " + node.func.id + " not found", node.lineno,
@@ -226,6 +227,35 @@ class ParserVisitor(NodeVisitor):
         self.visit(node.body)
         if node.orelse is not None:
             self.visit(node.orelse)
+
+    def visit_With(self, node: With) -> Any:
+        items = node.items
+        all_vars_with = []
+        with_types = []
+        for with_item in items:
+            type = self.__visit_node(with_item.context_expr)
+            with_types.append(type)
+            if type.is_obj() or type.is_python_obj():
+                if with_item.optional_vars is not None:
+                    all_vars_with.append(self.__current_func.get_context().add_var(str(with_item.optional_vars.id), type))
+
+                if adapter.adapt_call("__enter__", type, [type], self.__data, self.__parser) is None:
+                    self.__parser.throw_error("__enter__ implementation expected", node.lineno, node.end_col_offset)
+
+                # def __exit__(self, exc_type, exc_value, traceback)
+                exit_args_type = [type] + ([lang_type.get_python_obj_type()] * 3)
+
+                if adapter.adapt_call("__exit__", type, exit_args_type, self.__data, self.__parser) is None:
+                    self.__parser.throw_error("__exit__ implementation expected", node.lineno, node.end_col_offset)
+            else:
+                self.__parser.throw_error("Type " + type.to_str(self.__data) +
+                                          " can't be used in a with statement",node.lineno,node.end_col_offset)
+        self.__visit_node(node.body)
+
+        # After the with the var can't be accessed anymore
+        for var in all_vars_with:
+            var.set_use(False)
+        self.__current_func.set_node_info(node, NodeInfoWith(with_types,all_vars_with))
 
     def visit_Import(self, node: Import) -> Any:
         for e in node.names:
