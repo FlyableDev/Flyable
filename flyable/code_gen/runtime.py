@@ -21,19 +21,16 @@ def malloc_call(code_gen, builder, value_size):
     """
     Generate an external call to the Python runtime memory allocator
     """
-
-    from flyable.code_gen.code_gen import CodeFunc
-
     malloc_func = code_gen.get_or_create_func("PyMem_Malloc", CodeType(CodeType.CodePrimitive.INT8).get_ptr_to(),
                                               [CodeType(CodeType.CodePrimitive.INT64)], Linkage.EXTERNAL)
     return builder.call(malloc_func, [value_size])
 
 
 def py_runtime_get_string(code_gen, builder, value):
+    str_ptr = builder.ptr_cast(builder.global_str(value),code_type.get_int8_ptr())
     args_type = [code_type.get_int8_ptr(), code_type.get_int64()]
-    new_str_func = code_gen.get_or_create_func("PyUnicode_FromStringAndSize", code_type.get_int8_ptr(), args_type)
-    return builder.call(new_str_func, [builder.global_str(value), builder.const_int64(len(value))])
-
+    new_str_func = code_gen.get_or_create_func("PyUnicode_FromStringAndSize", code_type.get_int8_ptr(), args_type, Linkage.EXTERNAL)
+    return builder.call(new_str_func, [str_ptr, builder.const_int64(len(value))])
 
 def py_runtime_init(code_gen, builder):
     init_func = code_gen.get_or_create_func("Py_Initialize", code_type.get_void(), [], Linkage.EXTERNAL)

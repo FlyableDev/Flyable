@@ -24,26 +24,28 @@ def main():
     Path("build").mkdir(parents=True, exist_ok=True)  # Make sur the folder exist
     compiler.compile()
 
-    # Link the object file
-    print("Linking.....")
+    if not compiler.has_error():
 
-    # Now link the code
-    python_lib = "python39.lib" if platform.system() == "Windows" else "python3.9.a"
-    linker_args = ["gcc", "output.o", "libFlyableRuntime.a", python_lib]
-    p = Popen(linker_args, cwd="..\\build\\" + plat.get_platform_folder())
-    p.wait()
-    if p.returncode != 0: raise Exception("Linking error")
+        # Link the object file
+        print("Linking.....")
 
-    # Now run the code
-    print("running...")
-    p = Popen(["../build/" + plat.get_platform_folder() +
-               "/a.exe"], cwd="..\\build\\" + plat.get_platform_folder(), stdin=PIPE, stdout=PIPE)
-    output, err = p.communicate()
+        # Now link the code
+        python_lib = "python39.lib" if platform.system() == "Windows" else "python3.9.a"
+        linker_args = ["gcc", "output.o", "libFlyableRuntime.a", python_lib]
+        p = Popen(linker_args, cwd="..\\build\\" + plat.get_platform_folder())
+        p.wait()
+        if p.returncode != 0: raise Exception("Linking error")
 
-    print("-------------------")
-    print(output.decode())  # Print what the program outputted
+        # Now run the code
+        print("running...")
+        p = Popen(["../build/" + plat.get_platform_folder() +
+                   "/a.exe"], cwd="..\\build\\" + plat.get_platform_folder(), stdin=PIPE, stdout=PIPE)
+        output, err = p.communicate()
 
-    print("Application ended with code " + str(p.returncode))
+        print("-------------------")
+        print(output.decode())  # Print what the program outputted
+
+        print("Application ended with code " + str(p.returncode))
 
 
 if __name__ == '__main__':

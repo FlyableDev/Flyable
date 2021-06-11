@@ -6,8 +6,8 @@ from flyable.data.lang_func_impl import LangFuncImpl
 from flyable.parse.node_info import *
 import flyable.code_gen.runtime as runtime
 import flyable.code_gen.caller as caller
-import  flyable.code_gen.code_type as code_type
-import  flyable.data.lang_type as lang_type
+import flyable.code_gen.code_type as code_type
+import flyable.data.lang_type as lang_type
 
 
 class CodeGenVisitor(NodeVisitor):
@@ -51,10 +51,16 @@ class CodeGenVisitor(NodeVisitor):
             self.__last_value = self.__builder.const_int64(node.value)
         elif isinstance(node.value, float):
             self.__last_value = self.__builder.const_double(node.value)
+        elif isinstance(node.value, str):
+            self.__last_value = runtime.py_runtime_get_string(self.__code_gen, self.__builder, node.value)
         else:
             raise ValueError("Unsupported const node")
 
     def visit_Call(self, node: Call) -> Any:
+
+        if isinstance(node.func, ast.Attribute):
+            self.__last_value = self.__parse_node(node.func)
+
         args = []
         for e in node.args:
             args.append(self.__parse_node(e))
@@ -74,6 +80,11 @@ class CodeGenVisitor(NodeVisitor):
                                     [self.__last_value] + args)  # Add the 'self' arg !
         elif isinstance(info, NodeInfoCallBuildIn):
             info.get_func().codegen(args, self.__code_gen, self.__builder)
+        elif isinstance(info, NodeInfoPyCall):
+            name = info.get_name()
+            args_types = [code_type.get_int8_ptr()] * len(args)
+            caller.call_obj(self.__code_gen, self.__builder, name, self.__last_value, lang_type.get_python_obj_type(),
+                            args, args_types)
         else:
             raise NotImplementedError(str(info) + " Node info not implemented")
 

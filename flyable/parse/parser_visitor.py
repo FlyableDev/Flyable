@@ -39,6 +39,7 @@ class ParserVisitor(NodeVisitor):
         return self.__last_type
 
     def visit_Assign(self, node: Assign) -> Any:
+        self.__last_type = None
         self.__assign_type = self.__visit_node(node.value)
         self.__last_type = None
         for target in node.targets:
@@ -114,16 +115,16 @@ class ParserVisitor(NodeVisitor):
 
         if self.__last_type is None:  # Variable call
             # Is it a declared variable ?
-            if self.__current_func.get_context().find_active_var(node.value) is not None:
-                found_var = self.__current_func.get_context().find_active_var(node.value)
+            if self.__current_func.get_context().find_active_var(node.value.id) is not None:
+                found_var = self.__current_func.get_context().find_active_var(node.value.id)
                 self.__last_type = found_var.get_type()
                 self.__current_func.set_node_info(node, NodeInfoNameLocalVarCall(found_var))
             elif isinstance(node.ctx, Store):  # Declaring a variable
-                found_var = self.__current_func.get_context().add_var(node.value, self.__assign_type)
+                found_var = self.__current_func.get_context().add_var(node.value.id, self.__assign_type)
                 self.__current_func.set_node_info(node, NodeInfoNameLocalVarCall(found_var))
                 self.__last_type = found_var.get_type()
             else:
-                self.__parser.throw_error("Undefined '" + node.value + "'", node.lineno, node.col_offset)
+                self.__parser.throw_error("Undefined attribut '" + node.value.id + "'", node.lineno, node.col_offset)
         elif self.__last_type.is_python_obj():
             self.__last_type = type.get_python_obj_type()
         elif self.__last_type.is_obj():
@@ -148,6 +149,7 @@ class ParserVisitor(NodeVisitor):
             self.__parser.throw_error("Attribut access unrecognized")
 
     def visit_Call(self, node: Call) -> Any:
+
         type_buffer = self.__last_type
         args_types = []
         for e in node.args:
@@ -155,8 +157,17 @@ class ParserVisitor(NodeVisitor):
             self.__last_type = None
         self.__last_type = type_buffer
 
+        name_call = ""
+        if isinstance(node.func, ast.Attribute):
+            self.__last_type = self.__visit_node(node.func)
+            name_call = node.func.attr
+        elif isinstance(node.func, ast.Name):
+            name_call = node.func.id
+        else:
+            NotImplementedError("Call func node not supported")
+
         if self.__last_type is None or self.__last_type.is_module():  # A call from an existing variable, current module or build-in
-            build_in_func = build.get_build_in(node.func.id)
+            build_in_func = build.get_build_in(name_call)
             if build_in_func is not None and self.__last_type is None:  # Build-in func call
                 build_in_func.parse(node, args_types, self.__parser)
                 self.__current_func.set_node_info(node, NodeInfoCallBuildIn(build_in_func))
@@ -166,7 +177,7 @@ class ParserVisitor(NodeVisitor):
                 else:
                     file = self.__data.get_file(self.__last_type.get_id())
 
-                content = file.find_content(node.func.id)
+                content = file.find_content(name_call)
                 if isinstance(content, lang_class.LangClass):
                     # New instance class call
                     self.__last_type = type.get_obj_type(content.get_id())
@@ -191,9 +202,9 @@ class ParserVisitor(NodeVisitor):
                         self.__parser.throw_error("Function " + node.func.id + " not found", node.lineno,
                                                   node.end_col_offset)
                 else:
-                    self.__parser.throw_error("'" + node.func.id + "' unrecognized", node.lineno, node.end_col_offset)
+                    self.__parser.throw_error("'" + name_call + "' unrecognized", node.lineno, node.end_col_offset)
         elif self.__last_type.is_python_obj():  # Python call object
-            self.__current_func.set_node_info(NodeInfoPyCall(node.func.name))
+            self.__current_func.set_node_info(node, NodeInfoPyCall(name_call))
             self.__last_type = type.get_python_obj_type()
         else:
             self.__parser.throw_error("Call unrecognized", node.lineno, node.end_col_offset)
@@ -215,6 +226,8 @@ class ParserVisitor(NodeVisitor):
             self.__last_type = get_dec_type()
         elif isinstance(node.value, bool):
             self.__last_type = get_bool_type()
+        elif isinstance(node.value, str):
+            self.__last_type = get_python_obj_type()
         else:
             self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
 
