@@ -24,7 +24,7 @@ class PreParser(ast.NodeVisitor, ErrorThrower):
             file = comp_data.get_file(i)
             self.__current_file = file
             # Generate the ast using the CPython ast module
-            ast_tree = ast.parse(file.get_text(), filename='test.py', mode='exec', type_comments=False,
+            ast_tree = ast.parse(file.get_text(), filename=file.get_path(), mode='exec', type_comments=False,
                                  feature_version=sys.version_info[0:2])
             # ReprVisitor().visit(ast_tree)
             file.set_ast(ast_tree)
