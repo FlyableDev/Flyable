@@ -274,6 +274,23 @@ class ParserVisitor(NodeVisitor):
                 var.set_use(False)
         self.__current_func.set_node_info(node, NodeInfoWith(with_types, all_vars_with))
 
+    def visit_List(self, node: List) -> Any:
+        values = []
+        for e in node.elts:
+            values.append(self.__visit_node(e))
+        self.__last_type = lang_type.get_python_obj_type()
+        self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
+
+    def visit_Dict(self, node: Dict) -> Any:
+        values = []
+        keys = []
+        for e in node.values:
+            values.append(self.__visit_node(e))
+        for e in node.keys:
+            keys.append(self.__visit_node(e))
+        self.__last_type = lang_type.get_python_obj_type()
+        self.__last_type.add_dim(lang_type.LangType.Dimension.DICT)
+
     def visit_Import(self, node: Import) -> Any:
         for e in node.names:
             file = self.__data.get_file(e.name)

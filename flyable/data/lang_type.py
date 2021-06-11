@@ -47,6 +47,7 @@ def get_unknown_type():
 
 
 class LangType:
+
     class Type(Enum):
         UNKNOWN = 0,  # Type information may exist but unsure yet
         INTEGER = 1,  # Standard integer
@@ -56,6 +57,10 @@ class LangType:
         SUPER = 5,  # 'super()' call return a specific type of the object
         PYTHON = 6,  # Pure python object
         BOOLEAN = 7  # Boolean value
+
+    class Dimension(Enum):
+        LIST = 0,
+        DICT = 1
 
     def __init__(self, type=Type.UNKNOWN, id=0):
         if not isinstance(id, int): raise TypeError("Integer expected for id")
@@ -67,6 +72,9 @@ class LangType:
 
     def is_unknown(self):
         return self.__type == LangType.Type.UNKNOWN
+
+    def is_list(self):
+        return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.LIST
 
     def is_int(self):
         return len(self.__dims) == 0 and self.__type == LangType.Type.INTEGER
@@ -94,7 +102,9 @@ class LangType:
 
     def to_code_type(self, comp_data):
         result = CodeType()
-        if self.is_int() or self.is_module():
+        if self.is_list():
+            result = code_type.get_int8_ptr()
+        elif self.is_int() or self.is_module():
             result = code_type.get_int64()
         elif self.is_dec():
             result = CodeType(CodeType.CodePrimitive.DOUBLE)
@@ -107,6 +117,12 @@ class LangType:
         elif self.is_unknown():
             result = code_type.get_void()
         return result
+
+    def add_dim(self, dim):
+        self.__dims.append(dim)
+
+    def get_dim(self):
+        return self.__dims[-1]
 
     def __eq__(self, other):
         return self.__type == other.__type

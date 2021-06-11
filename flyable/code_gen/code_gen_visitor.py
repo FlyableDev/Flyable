@@ -8,6 +8,8 @@ import flyable.code_gen.runtime as runtime
 import flyable.code_gen.caller as caller
 import flyable.code_gen.code_type as code_type
 import flyable.data.lang_type as lang_type
+import flyable.code_gen.exception as excp
+import flyable.code_gen.list as gen_list
 
 
 class CodeGenVisitor(NodeVisitor):
@@ -83,8 +85,9 @@ class CodeGenVisitor(NodeVisitor):
         elif isinstance(info, NodeInfoPyCall):
             name = info.get_name()
             args_types = [code_type.get_int8_ptr()] * len(args)
-            caller.call_obj(self.__code_gen, self.__builder, name, self.__last_value, lang_type.get_python_obj_type(),
-                            args, args_types)
+            self.__last_value = caller.call_obj(self.__code_gen, self.__builder, name, self.__last_value,
+                                                lang_type.get_python_obj_type(), args, args_types)
+            excp.py_runtime_print_error(self.__code_gen, self.__builder)
         else:
             raise NotImplementedError(str(info) + " Node info not implemented")
 
@@ -269,6 +272,19 @@ class CodeGenVisitor(NodeVisitor):
             raise NotImplementedError("AugAssign op not supported")
 
         self.__builder.store(result_to_store, to_assign)
+
+    def visit_List(self, node: List) -> Any:
+        values = []
+        for e in node.elts:
+            values.append(self.__parse_node(e))
+        self.__last_value = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder,len(values))
+
+        for i,e in enumerate(values):
+            index = self.__builder.const_int64(i)
+            gen_list.python_list_set(self.__code_gen, self.__builder,self.__last_value, index, e)
+
+    def visit_Dict(self, node: Dict) -> Any:
+        pass
 
     def visit_With(self, node: With) -> Any:
         items = node.items

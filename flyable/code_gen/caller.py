@@ -60,7 +60,6 @@ def generate_python_call(code_gen, builder, callable, args):
     call_func = code_gen.get_or_create_func("PyObject_Call", code_type.get_int8_ptr(), call_funcs_args,
                                             gen.Linkage.EXTERNAL)
 
-    args = [callable] + args
     arg_list = list_call.instanciate_pyton_list(code_gen, builder, builder.const_int64(len(args)))
     for i, e in enumerate(args):
         list_call.python_list_set(code_gen, builder, arg_list, builder.const_int64(i), e)
