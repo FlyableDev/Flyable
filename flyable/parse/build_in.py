@@ -4,18 +4,27 @@ Module managing all functions
 
 import flyable.code_gen.runtime as runtime
 import flyable.code_gen.code_type as code_type
+import flyable.code_gen.list as gen_list
+import flyable.data.lang_type as lang_type
 
 
 class BuildInFunc:
 
     def __init__(self):
         self.__arg_types = []
+        self.__type = None
 
     def parse(self, node, args, parser):
         pass
 
     def codegen(self, args, codegen, builder):
         pass
+
+    def set_type(self, type):
+        self.__type = type
+
+    def get_type(self):
+        return self.__type
 
 
 class BuildInPrint(BuildInFunc):
@@ -41,10 +50,25 @@ class BuildInPrint(BuildInFunc):
         runtime.py_runtime_object_print(codegen, builder, obj_to_send)
 
 
+class BuildInList(BuildInFunc):
+
+    def __init__(self):
+        super().__init__()
+        self.set_type(lang_type.get_python_obj_type())
+
+    def parse(self, node, args, parser):
+        if len(args) > 1:
+            parser.throw_error("list() expect one or less argument", node.line_no, node.col_no)
+
+    def codegen(self, args, codegen, builder):
+        return gen_list.instanciate_pyton_list(codegen, builder, builder.const_int64(0))
+
+
 def get_build_in(name):
     name = str(name)
     build_in_funcs = {
         "print": BuildInPrint,
+        "list": BuildInList,
     }
 
     if name in build_in_funcs:

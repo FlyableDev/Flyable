@@ -170,6 +170,7 @@ class ParserVisitor(NodeVisitor):
             build_in_func = build.get_build_in(name_call)
             if build_in_func is not None and self.__last_type is None:  # Build-in func call
                 build_in_func.parse(node, args_types, self.__parser)
+                self.__last_type = build_in_func.get_type()
                 self.__current_func.set_node_info(node, NodeInfoCallBuildIn(build_in_func))
             else:
                 if self.__last_type is None:

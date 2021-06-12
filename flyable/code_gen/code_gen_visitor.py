@@ -81,7 +81,7 @@ class CodeGenVisitor(NodeVisitor):
                 self.__builder.call(func_impl_to_call.get_code_func(),
                                     [self.__last_value] + args)  # Add the 'self' arg !
         elif isinstance(info, NodeInfoCallBuildIn):
-            info.get_func().codegen(args, self.__code_gen, self.__builder)
+            self.__last_value = info.get_func().codegen(args, self.__code_gen, self.__builder)
         elif isinstance(info, NodeInfoPyCall):
             name = info.get_name()
             args_types = [code_type.get_int8_ptr()] * len(args)
@@ -277,8 +277,10 @@ class CodeGenVisitor(NodeVisitor):
         values = []
         for e in node.elts:
             values.append(self.__parse_node(e))
-        self.__last_value = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder,len(values))
+            self.__last_value = None
 
+        array = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder,self.__builder.const_int64(len(values)))
+        self.__last_value = array
         for i,e in enumerate(values):
             index = self.__builder.const_int64(i)
             gen_list.python_list_set(self.__code_gen, self.__builder,self.__last_value, index, e)
