@@ -64,11 +64,26 @@ class BuildInList(BuildInFunc):
         return gen_list.instanciate_pyton_list(codegen, builder, builder.const_int64(0))
 
 
+class BuildInLen(BuildInFunc):
+
+    def __init__(self):
+        super().__init__()
+        self.set_type(lang_type.get_int_type())
+
+    def parse(self, node, args, parser):
+        if len(args) != 1:
+            parser.throw_error("len() expect only one argument", node.line_no, node.col_no)
+
+    def codegen(self, args, codegen, builder):
+        return runtime.py_runtime_obj_len(codegen, builder, args[0])
+
+
 def get_build_in(name):
     name = str(name)
     build_in_funcs = {
         "print": BuildInPrint,
         "list": BuildInList,
+        "len": BuildInLen,
     }
 
     if name in build_in_funcs:
