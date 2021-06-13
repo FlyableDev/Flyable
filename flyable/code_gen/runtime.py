@@ -63,3 +63,8 @@ def value_to_pyobj(code_gen, builder, value, lang_type):
         return builder.call(py_func, [value])
     elif lang_type.is_obj():
         return value
+
+def py_runtime_obj_len(code_gen, builder, value):
+    func_name = "PyObject_Length"
+    py_func = code_gen.get_or_create_func(func_name, code_type.get_int64(),[code_type.get_int8_ptr()],Linkage.EXTERNAL)
+    return builder.call(py_func, [value])

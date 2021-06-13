@@ -25,6 +25,14 @@ def get_int8_ptr():
     return get_int8().get_ptr_to()
 
 
+def get_py_obj(code_gen):
+    return CodeType(CodeType.CodePrimitive.STRUCT, code_gen.get_py_obj_struct().get_id())
+
+
+def get_py_obj_ptr(code_gen):
+    return get_py_obj(code_gen).get_ptr_to()
+
+
 class CodeType:
     """
     CodeType represents a type that can be describe in low-level machine code.
@@ -93,4 +101,3 @@ class CodeType:
             result += "*"
 
         return result
-

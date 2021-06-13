@@ -10,6 +10,7 @@ import flyable.code_gen.code_type as code_type
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.exception as excp
 import flyable.code_gen.list as gen_list
+import flyable.code_gen.dict as gen_dict
 
 
 class CodeGenVisitor(NodeVisitor):
@@ -279,14 +280,20 @@ class CodeGenVisitor(NodeVisitor):
             values.append(self.__parse_node(e))
             self.__last_value = None
 
-        array = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder,self.__builder.const_int64(len(values)))
+        array = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder,
+                                                self.__builder.const_int64(len(values)))
         self.__last_value = array
-        for i,e in enumerate(values):
+        for i, e in enumerate(values):
             index = self.__builder.const_int64(i)
-            gen_list.python_list_set(self.__code_gen, self.__builder,self.__last_value, index, e)
+            gen_list.python_list_set(self.__code_gen, self.__builder, self.__last_value, index, e)
 
     def visit_Dict(self, node: Dict) -> Any:
-        pass
+        new_dict = gen_dict.python_dict_new(self.__code_gen, self.__builder)
+        for i, e in enumerate(node.values):
+            key = self.__parse_node(node.keys[i])
+            value = self.__parse_node(node.values[i])
+            gen_dict.python_dict_set_item(self.__code_gen, self.__builder, new_dict, key, value)
+        self.__last_value = new_dict
 
     def visit_With(self, node: With) -> Any:
         items = node.items

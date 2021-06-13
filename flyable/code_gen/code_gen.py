@@ -58,7 +58,7 @@ class GlobalVar:
     Represent a low-level const address variable
     """
 
-    def __init__(self, name, type, linkage = Linkage.INTERNAL):
+    def __init__(self, name, type, linkage=Linkage.INTERNAL):
         self.__id = -1
         self.__name = name
         self.__type = type
@@ -87,7 +87,6 @@ class GlobalVar:
 
 
 class CodeFunc:
-
     class CodeBlock:
 
         """
@@ -223,8 +222,14 @@ class CodeGen:
         self.__data = None
         self.__strings = {}
 
-        self.__true_var = self.add_global_var(GlobalVar("Py_True",code_type.get_int8_ptr(),Linkage.EXTERNAL))
-        self.__false_var = self.add_global_var(GlobalVar("Py_False",code_type.get_int8_ptr(),Linkage.EXTERNAL))
+        self.__true_var = self.add_global_var(GlobalVar("Py_True", code_type.get_int8_ptr(), Linkage.EXTERNAL))
+        self.__false_var = self.add_global_var(GlobalVar("Py_False", code_type.get_int8_ptr(), Linkage.EXTERNAL))
+
+        # Create the Python object struct
+        self.__python_obj_struct = StructType("__flyable_py_obj")
+        self.__python_obj_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
+        self.__python_obj_struct.add_type(code_type.get_int8_ptr())  # PyTypeObject * ob_type
+        self.add_struct(self.__python_obj_struct)
 
     def generate(self, comp_data):
         self.__data = comp_data
@@ -263,7 +268,10 @@ class CodeGen:
         """
         return self.__false_var
 
-    def get_or_create_func(self, name, return_type, args_type = [], link= Linkage.INTERNAL):
+    def get_py_obj_struct(self):
+        return self.__structs
+
+    def get_or_create_func(self, name, return_type, args_type=[], link=Linkage.INTERNAL):
         # Get case
         if name in self.__funcs:
             return self.__funcs[name]
@@ -278,6 +286,10 @@ class CodeGen:
         self.__funcs[name] = new_func
 
         return new_func
+
+    def add_struct(self, struct):
+        struct.set_id(len(self.__structs))
+        self.__structs.append(struct)
 
     def add_global_var(self, var):
         var.set_id(len(self.__global_vars))
@@ -305,8 +317,7 @@ class CodeGen:
         for current_class in comp_data.classes_iter():
             new_struct = StructType("@flyable@__" + current_class.get_name())
             current_class.set_struct(new_struct)
-            new_struct.set_id(len(self.__structs))
-            self.__structs.append(new_struct)
+            self.add_struct(new_struct)
 
     def __fill_structs(self, comp_data):
         # Fill all the structures
@@ -336,7 +347,7 @@ class CodeGen:
                 for i, impl in enumerate(func.impls_iter()):
                     if impl.is_unknown() == False:
                         func_name = "@flyable@__" + func.get_name() + "@" + str(i) + "@" \
-                                + str(func.get_id()) + "@" + str(impl.get_id())
+                                    + str(func.get_id()) + "@" + str(impl.get_id())
                         return_type = impl.get_return_type().to_code_type(comp_data)
                         func_args = lang_type.to_code_type(self.__data, list(impl.args_iter()))
                         new_func = self.get_or_create_func(func_name, return_type, func_args)

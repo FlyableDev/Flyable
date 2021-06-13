@@ -76,6 +76,9 @@ class LangType:
     def is_list(self):
         return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.LIST
 
+    def is_dict(self):
+        return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.DICT
+
     def is_int(self):
         return len(self.__dims) == 0 and self.__type == LangType.Type.INTEGER
 
@@ -102,7 +105,7 @@ class LangType:
 
     def to_code_type(self, comp_data):
         result = CodeType()
-        if self.is_list():
+        if self.is_list() or self.is_dict():
             result = code_type.get_int8_ptr()
         elif self.is_int() or self.is_module():
             result = code_type.get_int64()
