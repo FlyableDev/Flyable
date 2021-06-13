@@ -19,7 +19,8 @@ class Parser(ErrorThrower):
 
     def parse_impl(self, data, func_impl):
         for i, e in enumerate(func_impl.args_iter()):
-            func_impl.get_context().add_var(func_impl.get_parent_func().get_arg(i).arg, e)
+            new_var = func_impl.get_context().add_var(func_impl.get_parent_func().get_arg(i).arg, e)
+            new_var.set_is_arg(True)
         vis = ParserVisitor(self, data)
         vis.parse(func_impl)
 

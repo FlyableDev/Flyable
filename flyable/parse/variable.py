@@ -32,7 +32,7 @@ class Variable:
     def set_is_arg(self, arg):
         self.__is_arg = arg
 
-    def get_is_arg(self):
+    def is_arg(self):
         return self.__is_arg
 
     def set_code_gen_value(self, value):

@@ -87,6 +87,10 @@ class GlobalVar:
 
 
 class CodeFunc:
+    """
+    Represents a low level function with machine instructions
+    """
+
     class CodeBlock:
 
         """
@@ -126,17 +130,13 @@ class CodeFunc:
             """
             Return if the block points to no other block and has no ending (return instruction)
             """
-            return self.has_br_block() == False and self.has_return() == False
+            return not self.has_br_block() and not self.has_return()
 
         def __len__(self):
             return len(self.__code_writer.get_data())
 
         def get_name(self):
             return "Block@" + str(self.__id)
-
-    '''
-    Represent a low level function with instructions
-    '''
 
     def __init__(self, name):
         self.__id = -1
@@ -220,7 +220,7 @@ class CodeGen:
         self.__structs = []
         self.__funcs = OrderedDict()
         self.__data = None
-        self.__strings = {}
+        self.__global_strings = {}
 
         self.__true_var = self.add_global_var(GlobalVar("Py_True", code_type.get_int8_ptr(), Linkage.EXTERNAL))
         self.__false_var = self.add_global_var(GlobalVar("Py_False", code_type.get_int8_ptr(), Linkage.EXTERNAL))
@@ -287,6 +287,13 @@ class CodeGen:
 
         return new_func
 
+    def get_or_insert_str(self, value):
+        if value in self.__global_strings:
+            return self.__global_strings[value]
+
+        new_var = GlobalVar("@flyable@str" + str(len(self.__global_strings)), code_type.get_int8_ptr(),
+                            Linkage.INTERNAL)
+
     def add_struct(self, struct):
         struct.set_id(len(self.__structs))
         self.__structs.append(struct)
@@ -299,7 +306,7 @@ class CodeGen:
     def __code_gen_func(self, comp_data):
         for func in comp_data.funcs_iter():
             for impl in func.impls_iter():
-                if impl.is_unknown() == False:  # Only generate a function for known function
+                if not impl.is_unknown():  # Only generate a function for known function
                     visitor = CodeGenVisitor(self, impl)
                     visitor.visit(func.get_node())
                     self.__fill_not_terminated_block(impl.get_code_func())
@@ -307,7 +314,7 @@ class CodeGen:
         for _class in comp_data.classes_iter():
             for func in _class.funcs_iter():
                 for impl in func.impls_iter():
-                    if impl.is_unknown() == False:  # Only visit functions with a complete signature
+                    if not impl.is_unknown():  # Only visit functions with a complete signature
                         visitor = CodeGenVisitor(self, impl)
                         visitor.visit(func.get_node())
                         self.__fill_not_terminated_block(impl.get_code_func())
@@ -334,7 +341,7 @@ class CodeGen:
         """
         for func in comp_data.funcs_iter():
             for i, impl in enumerate(func.impls_iter()):
-                if impl.is_unknown() == False:
+                if not impl.is_unknown():
                     func_name = "@flyable@__" + func.get_name() + "@" + str(i) + "@" \
                                 + str(func.get_id()) + "@" + str(impl.get_id())
                     return_type = impl.get_return_type().to_code_type(comp_data)
@@ -345,7 +352,7 @@ class CodeGen:
         for _class in comp_data.classes_iter():
             for func in _class.funcs_iter():
                 for i, impl in enumerate(func.impls_iter()):
-                    if impl.is_unknown() == False:
+                    if not impl.is_unknown():
                         func_name = "@flyable@__" + func.get_name() + "@" + str(i) + "@" \
                                     + str(func.get_id()) + "@" + str(impl.get_id())
                         return_type = impl.get_return_type().to_code_type(comp_data)
@@ -422,7 +429,7 @@ class CodeGen:
         runtime.py_runtime_init(self, builder)  # This call is required to properly starts the CPython interpreter
 
         # Create all the static Python string that we need
-        for str in self.__strings:
+        for str in self.__global_strings:
             # TODO : Generate the string
             pass
 

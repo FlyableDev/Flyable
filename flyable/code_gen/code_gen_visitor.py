@@ -41,9 +41,12 @@ class CodeGenVisitor(NodeVisitor):
         """
         All variables stack allocations are made in the entry block
         """
-        for var in self.__func.get_context().vars_iter():
-            type = var.get_type().to_code_type(self.__code_gen.get_data())
-            var.set_code_gen_value(self.__builder.alloca(type))
+        for i, var in enumerate(self.__func.get_context().vars_iter()):
+            if not var.is_arg():
+                var_type = var.get_type().to_code_type(self.__code_gen.get_data())
+                var.set_code_gen_value(self.__builder.alloca(var_type))
+            else:
+                var.set_code_gen_value(i)
 
     def __parse_node(self, node):
         self.visit(node)
@@ -123,7 +126,7 @@ class CodeGenVisitor(NodeVisitor):
         info = self.__func.get_node_info(node)
         if isinstance(info, NodeInfoNameLocalVarCall):
             value = info.get_var().get_code_gen_value()
-            if isinstance(node.ctx, ast.Load):
+            if isinstance(node.ctx, ast.Load) and not info.get_var().is_arg():
                 self.__last_value = self.__builder.load(value)
             else:
                 self.__last_value = value
@@ -136,7 +139,7 @@ class CodeGenVisitor(NodeVisitor):
             attr = info.get_attr().get_id()
         elif isinstance(info, NodeInfoPythonAttrCall):
             pass
-        elif isinstance(info, NodeInfoNameLocalVarCall):
+        elif isinstance(info, NodeInfoNameLocalVarCall) and not info.get_var().is_arg():
             value = info.get_var().get_code_gen_value()
             if isinstance(node.ctx, ast.Load):
                 self.__last_value = self.__builder.load(value)
