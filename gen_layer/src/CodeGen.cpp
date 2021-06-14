@@ -137,7 +137,8 @@ void CodeGen::readGlobalVars(FormatReader& reader)
         std::string name = reader.readString();
         llvm::Type* type = readType(reader);
         auto link = readLinkage(reader);
-        llvm::GlobalVariable* globalVar = new llvm::GlobalVariable(*mModule,type,false,link,0,name);
+        llvm::GlobalVariable* globalVar = new llvm::GlobalVariable(*mModule,type,false,link,nullptr,name);
+        globalVar->setInitializer(llvm::Constant::getNullValue(type));
         mGlobalVars[i] = globalVar;
     }
 }

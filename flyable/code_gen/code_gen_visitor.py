@@ -58,7 +58,8 @@ class CodeGenVisitor(NodeVisitor):
         elif isinstance(node.value, float):
             self.__last_value = self.__builder.const_double(node.value)
         elif isinstance(node.value, str):
-            self.__last_value = runtime.py_runtime_get_string(self.__code_gen, self.__builder, node.value)
+            self.__last_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.value))
+            self.__last_value = self.__builder.load(self.__last_value)
         else:
             raise ValueError("Unsupported const node")
 

@@ -83,7 +83,7 @@ class GlobalVar:
     def write_to_code(self, writer):
         writer.add_str(self.__name)
         self.__type.write_to_code(writer)
-        writer.add_int32(self.__linking)
+        writer.add_int32(int(self.__linking))
 
 
 class CodeFunc:
@@ -252,7 +252,7 @@ class CodeGen:
     def get_c_string(self, str):
         if str in self.__strings:
             return self.__strings[str]
-        new_str = GlobalVar("@flyable@str@" + str, CodeType(CodeType.CodePrimitive.INT8).get_ptr_to())
+        new_str = GlobalVar("@flyable@str@" + str, CodeType(CodeType.CodePrimitive.INT8).get_ptr_to(), Linkage.INTERNAL)
         self.__global_vars.append(new_str)
         self.__strings[str] = new_str
 
@@ -293,6 +293,9 @@ class CodeGen:
 
         new_var = GlobalVar("@flyable@str" + str(len(self.__global_strings)), code_type.get_int8_ptr(),
                             Linkage.INTERNAL)
+        self.add_global_var(new_var)
+        self.__global_strings[value] = new_var
+        return new_var
 
     def add_struct(self, struct):
         struct.set_id(len(self.__structs))
@@ -429,9 +432,9 @@ class CodeGen:
         runtime.py_runtime_init(self, builder)  # This call is required to properly starts the CPython interpreter
 
         # Create all the static Python string that we need
-        for str in self.__global_strings:
-            # TODO : Generate the string
-            pass
+        for global_str in self.__global_strings.items():
+            new_str = runtime.py_runtime_get_string(self, builder, global_str[0])
+            builder.store(new_str, builder.global_var(global_str[1]))
 
         # Initialize all global vars
         # Set True global var
