@@ -275,12 +275,38 @@ class ParserVisitor(NodeVisitor):
                 var.set_use(False)
         self.__current_func.set_node_info(node, NodeInfoWith(with_types, all_vars_with))
 
+    def visit_comprehension(self, node: comprehension) -> Any:
+        name = node.target.id
+        type_to_iter = self.__visit_node(node.iter)
+        iter_var = self.__current_func.get_context().add_var(name, type_to_iter)
+        self.__current_func.set_node_info(node, NodeInfoComprehension(iter_var))
+        if node.ifs is not None:
+            self.__visit_node(node.ifs)
+        self.__last_type = lang_type.get_python_obj_type()
+
+    def visit_ListComp(self, node: ListComp) -> Any:
+        for e in node.generators:
+            self.__last_type = self.__visit_node(e)
+
+        expr_type = self.__visit_node(node.elt)
+
+        self.__last_type.add_dim(LangType.Dimension.LIST)
+
     def visit_List(self, node: List) -> Any:
         values = []
         for e in node.elts:
             values.append(self.__visit_node(e))
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
+
+    def visit_Tuple(self, node: Tuple) -> Any:
+        for e in node.elts:
+            self.__visit_node(e)
+        self.__last_type = lang_type.get_python_obj_type()
+        self.__last_type.add_dim(lang_type.LangType.Dimension.TUPLE)
+
+    def visit_DictComp(self, node: DictComp) -> Any:
+        pass
 
     def visit_Dict(self, node: Dict) -> Any:
         values = []

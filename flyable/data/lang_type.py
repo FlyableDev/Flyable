@@ -42,6 +42,10 @@ def get_module_type():
     return LangType(LangType.Type.MODULE)
 
 
+def get_none_type():
+    return LangType(LangType.Type.NONE)
+
+
 def get_unknown_type():
     return LangType(LangType.Type.UNKNOWN)
 
@@ -56,11 +60,13 @@ class LangType:
         MODULE = 4,  # Module object
         SUPER = 5,  # 'super()' call return a specific type of the object
         PYTHON = 6,  # Pure python object
-        BOOLEAN = 7  # Boolean value
+        BOOLEAN = 7,  # Boolean value
+        NONE = 8
 
     class Dimension(Enum):
         LIST = 0,
-        DICT = 1
+        DICT = 1,
+        TUPLE = 2
 
     def __init__(self, type=Type.UNKNOWN, id=0):
         if not isinstance(id, int): raise TypeError("Integer expected for id")
@@ -78,6 +84,9 @@ class LangType:
 
     def is_dict(self):
         return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.DICT
+
+    def is_tuple(self):
+        return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.TUPLE
 
     def is_int(self):
         return len(self.__dims) == 0 and self.__type == LangType.Type.INTEGER
@@ -100,12 +109,15 @@ class LangType:
     def is_python_obj(self):
         return len(self.__dims) == 0 and self.__type == LangType.Type.PYTHON
 
+    def is_none(self):
+        return len(self.__dims) == 0 and self.__type == LangType.Type.NONE
+
     def get_id(self):
         return self.__id
 
     def to_code_type(self, comp_data):
         result = CodeType()
-        if self.is_list() or self.is_dict():
+        if self.is_list() or self.is_dict() or self.is_tuple():
             result = code_type.get_int8_ptr()
         elif self.is_int() or self.is_module():
             result = code_type.get_int64()
@@ -153,4 +165,13 @@ class LangType:
         }
 
         result += str_types[self.__type]
+
+        for dim in self.__dims:
+            if dim == LangType.Dimension.DICT:
+                result = "{ " + result + " }"
+            elif dim == LangType.Dimension.LIST:
+                result = "[ " + result + " ]"
+            elif dim == LangType.Dimension.TUPLE:
+                result = "( " + result + " )"
+
         return result

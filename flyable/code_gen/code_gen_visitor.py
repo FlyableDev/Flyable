@@ -11,6 +11,7 @@ import flyable.data.lang_type as lang_type
 import flyable.code_gen.exception as excp
 import flyable.code_gen.list as gen_list
 import flyable.code_gen.dict as gen_dict
+import flyable.code_gen.tuple as gen_tuple
 
 
 class CodeGenVisitor(NodeVisitor):
@@ -278,6 +279,24 @@ class CodeGenVisitor(NodeVisitor):
 
         self.__builder.store(result_to_store, to_assign)
 
+    def visit_comprehension(self, node: comprehension) -> Any:
+        info = self.__func.get_node_info(node)
+        if isinstance(info, NodeInfoComprehension):
+            pass
+
+    def visit_ListComp(self, node: ListComp) -> Any:
+        list_result = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder, self.__builder.const_int64(0))
+
+
+
+        self.__last_value = list_result
+
+    def visit_DictComp(self, node: DictComp) -> Any:
+        dict_result = gen_dict.python_dict_new()
+
+
+        self.__last_value = dict_result
+
     def visit_List(self, node: List) -> Any:
         values = []
         for e in node.elts:
@@ -297,7 +316,21 @@ class CodeGenVisitor(NodeVisitor):
             key = self.__parse_node(node.keys[i])
             value = self.__parse_node(node.values[i])
             gen_dict.python_dict_set_item(self.__code_gen, self.__builder, new_dict, key, value)
+            self.__last_value = None
         self.__last_value = new_dict
+
+    def visit_Tuple(self, node: Tuple) -> Any:
+        values = []
+        for e in node.elts:
+            values.append(self.__parse_node(e))
+            self.__last_value = None
+
+        new_tuple = gen_tuple.python_tuple_new(self.__code_gen, self.__builder,
+                                                self.__builder.const_int64(len(values)))
+        self.__last_value = new_tuple
+        for i, e in enumerate(values):
+            index = self.__builder.const_int64(i)
+            gen_tuple.python_tuple_set(self.__code_gen, self.__builder, self.__last_value, index, e)
 
     def visit_With(self, node: With) -> Any:
         items = node.items

@@ -191,7 +191,7 @@ class NodeInfoImportPythonModule(NodeInfo):
         return self.__var
 
 # With
-class NodeInfoWith:
+class NodeInfoWith(NodeInfo):
 
     def __init__(self,with_types,vars):
         self.__vars = vars
@@ -202,3 +202,13 @@ class NodeInfoWith:
 
     def get_with_types(self):
         return self.__with_types
+
+
+# Comprehension
+class NodeInfoComprehension(NodeInfo):
+
+    def __init__(self,var):
+        self.__var = var
+
+    def get_var(self):
+        return self.__var
