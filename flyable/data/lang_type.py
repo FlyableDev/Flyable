@@ -1,3 +1,4 @@
+import copy
 from enum import Enum
 from flyable.code_gen.code_type import CodeType
 import  flyable.code_gen.code_type as code_type
@@ -138,6 +139,11 @@ class LangType:
 
     def get_dim(self):
         return self.__dims[-1]
+
+    def get_content(self):
+        result = copy.copy(self)
+        result.__dims.pop()
+        return result
 
     def __eq__(self, other):
         return self.__type == other.__type

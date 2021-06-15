@@ -139,6 +139,20 @@ class NodeInfoPyCall(NodeInfo):
         return self.__name
 
 
+# Assign info
+
+class NodeInfoAssignBasic(NodeInfo):
+    pass
+
+
+class NodeInfoAssignTupleTuple(NodeInfo):
+    pass
+
+
+class NodeInfoAssignIter(NodeInfo):
+    pass
+
+
 # Op call
 class NodeInfoOpPythonCall(NodeInfo):
     """
@@ -190,10 +204,11 @@ class NodeInfoImportPythonModule(NodeInfo):
     def get_var(self):
         return self.__var
 
+
 # With
 class NodeInfoWith(NodeInfo):
 
-    def __init__(self,with_types,vars):
+    def __init__(self, with_types, vars):
         self.__vars = vars
         self.__with_types = with_types
 
@@ -207,7 +222,7 @@ class NodeInfoWith(NodeInfo):
 # Comprehension
 class NodeInfoComprehension(NodeInfo):
 
-    def __init__(self,var):
+    def __init__(self, var):
         self.__var = var
 
     def get_var(self):

@@ -42,6 +42,19 @@ class ParserVisitor(NodeVisitor):
         self.__last_type = None
         self.__assign_type = self.__visit_node(node.value)
         self.__last_type = None
+
+        if not isinstance(node.targets[0], ast.Tuple):
+            self.__current_func.set_node_info(node, NodeInfoAssignBasic())
+        elif isinstance(node.targets[0], ast.Tuple) and (
+                isinstance(node.value, ast.Tuple) or isinstance(node.value, ast.List)):
+            self.__assign_type = self.__assign_type.get_content()
+            self.__current_func.set_node_info(node, NodeInfoAssignTupleTuple())
+            if len(node.targets[0].elts) != len(node.value.elts):
+                self.__parser.throw_error("Amount of values to assign and to unpack doesn't match", node.lineno,
+                                          node.end_col_offset)
+        else:
+            self.__current_func.set_node_info(node, NodeInfoAssignIter())
+
         for target in node.targets:
             target_type = self.__visit_node(target)
             self.__last_type = None

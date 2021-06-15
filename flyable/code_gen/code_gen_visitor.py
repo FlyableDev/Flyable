@@ -208,9 +208,6 @@ class CodeGenVisitor(NodeVisitor):
 
         self.__builder.set_insert_block(block_continue)
 
-    def visit_With(self, node: With) -> Any:
-        pass
-
     def visit_Break(self, node: Break) -> Any:
         self.__builder.br(self.__out_blocks[-1])
 
@@ -256,9 +253,20 @@ class CodeGenVisitor(NodeVisitor):
         super().visit(node.value)
 
     def visit_Assign(self, node: Assign) -> Any:
-        # TODO: Support multiple assign
-        for target in node.targets:
-            self.__builder.store(self.__parse_node(node.value), self.__parse_node(target))
+        info = self.__func.get_node_info(node)
+        if isinstance(info,NodeInfoAssignTupleTuple):
+            targets_value = []
+            values = []
+            for target in node.targets[0].elts:
+                targets_value.append(self.__parse_node(target))
+            for value_assign in node.value.elts:
+                values.append(self.__parse_node(value_assign))
+            for i in range(len(targets_value)):
+                self.__builder.store(values[i], targets_value[i])
+        elif isinstance(info,NodeInfoAssignBasic):
+            self.__builder.store(self.__parse_node(node.value), self.__parse_node(node.targets[0]))
+        else:
+            raise NotImplementedError()
 
     def visit_AugAssign(self, node: AugAssign) -> Any:
         to_assign = self.__parse_node(node.target)
@@ -287,13 +295,12 @@ class CodeGenVisitor(NodeVisitor):
     def visit_ListComp(self, node: ListComp) -> Any:
         list_result = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder, self.__builder.const_int64(0))
 
-
+        # self.__parse_node(node.)
 
         self.__last_value = list_result
 
     def visit_DictComp(self, node: DictComp) -> Any:
         dict_result = gen_dict.python_dict_new()
-
 
         self.__last_value = dict_result
 
@@ -320,17 +327,18 @@ class CodeGenVisitor(NodeVisitor):
         self.__last_value = new_dict
 
     def visit_Tuple(self, node: Tuple) -> Any:
+        raise Exception()
         values = []
         for e in node.elts:
             values.append(self.__parse_node(e))
             self.__last_value = None
 
         new_tuple = gen_tuple.python_tuple_new(self.__code_gen, self.__builder,
-                                                self.__builder.const_int64(len(values)))
+                                               self.__builder.const_int64(len(values)))
         self.__last_value = new_tuple
         for i, e in enumerate(values):
             index = self.__builder.const_int64(i)
-            gen_tuple.python_tuple_set(self.__code_gen, self.__builder, self.__last_value, index, e)
+            gen_tuple.python_tuple_set_unsafe(self.__code_gen, self.__builder, self.__last_value, index, e)
 
     def visit_With(self, node: With) -> Any:
         items = node.items
