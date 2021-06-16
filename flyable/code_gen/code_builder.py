@@ -52,7 +52,7 @@ class CodeBuilder:
         self.__writer.add_int32(v2)
         return self.__gen_value()
 
-    def neg(self, v1, v2):
+    def ne(self, v1, v2):
         self.__writer.add_int32(6)
         self.__writer.add_int32(v1)
         self.__writer.add_int32(v2)
@@ -80,6 +80,11 @@ class CodeBuilder:
         self.__writer.add_int32(10)
         self.__writer.add_int32(v1)
         self.__writer.add_int32(v2)
+        return self.__gen_value()
+
+    def neg(self, value):
+        self.__writer.add_int32(11)
+        self.__writer.add_int32(value)
         return self.__gen_value()
 
     def store(self, value, store):
@@ -147,14 +152,14 @@ class CodeBuilder:
         self.__writer.add_int32(int(value))
         return self.__gen_value()
 
-    def const_float64(self, value):
-        self.__writer.add_int32(1004)
-        self.__writer.add_float64(value)
+    def const_float32(self, value):
+        self.__writer.add_float32(1004)
+        self.__writer.add_float32(value)
         return self.__gen_value()
 
-    def const_float32(self, value):
-        self.__writer.add_float32(1005)
-        self.__writer.add_float32(value)
+    def const_float64(self, value):
+        self.__writer.add_int32(1005)
+        self.__writer.add_float64(value)
         return self.__gen_value()
 
     def const_null(self, type):

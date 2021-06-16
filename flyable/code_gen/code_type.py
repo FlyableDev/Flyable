@@ -37,6 +37,14 @@ def get_py_obj_ptr(code_gen):
     return get_py_obj(code_gen).get_ptr_to()
 
 
+def get_float():
+    return CodeType(CodeType.CodePrimitive.FLOAT)
+
+
+def get_double():
+    return CodeType(CodeType.CodePrimitive.DOUBLE)
+
+
 class CodeType:
     """
     CodeType represents a type that can be describe in low-level machine code.

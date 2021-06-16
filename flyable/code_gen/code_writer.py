@@ -1,3 +1,6 @@
+import struct
+
+
 class CodeWriter:
     """
     This class holds all the methods to binary write data.
@@ -20,11 +23,13 @@ class CodeWriter:
 
     def add_float32(self, value):
         if not self.is_lock():
-            self.__data += value.to_bytes(4, byteorder='little')
+            bytes = bytearray(struct.pack("f", value))
+            self.__data += bytes
 
     def add_float64(self, value):
         if not self.is_lock():
-            self.__data += value.to_bytes(8, byteorder='little')
+            bytes = bytearray(struct.pack("d", value))
+            self.__data += bytes
 
     def add_str(self, value):
         if not self.is_lock():

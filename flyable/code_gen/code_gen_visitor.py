@@ -12,6 +12,7 @@ import flyable.code_gen.exception as excp
 import flyable.code_gen.list as gen_list
 import flyable.code_gen.dict as gen_dict
 import flyable.code_gen.tuple as gen_tuple
+import flyable.code_gen.op_call as op_call
 
 
 class CodeGenVisitor(NodeVisitor):
@@ -57,7 +58,7 @@ class CodeGenVisitor(NodeVisitor):
         if isinstance(node.value, int):
             self.__last_value = self.__builder.const_int64(node.value)
         elif isinstance(node.value, float):
-            self.__last_value = self.__builder.const_double(node.value)
+            self.__last_value = self.__builder.const_float64(node.value)
         elif isinstance(node.value, str):
             self.__last_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.value))
             self.__last_value = self.__builder.load(self.__last_value)
@@ -111,7 +112,7 @@ class CodeGenVisitor(NodeVisitor):
             elif isinstance(current_op, ast.Eq):
                 last = self.__builder.eq(first, second)
             elif isinstance(current_op, ast.NotEq):
-                last = self.__builder.neg(first, second)
+                last = self.__builder.ne(first, second)
             elif isinstance(current_op, ast.Lt):
                 last = self.__builder.lt(first, second)
             elif isinstance(current_op, ast.LtE):
@@ -248,18 +249,9 @@ class CodeGenVisitor(NodeVisitor):
         if isinstance(info, NodeInfoUnary):
             value = self.__parse_node(node.operand)
             if not info.get_call_type().is_primitive():
-                caller.call_obj(self.__code_gen, self.__builder, node.get_func_name(), value, info.get_call_type(), [], [])
-            elif info.get_call_type().is_int():
-                if isinstance(node.op, ast.Not):
-                    value = self.__builder.eq(value, self.__builder.const_int64(0))
-            elif info.get_call_type().is_dec():
-                if isinstance(node.op, ast.Not):
-                    value = self.__builder.eq(value, self.__builder.const_float64(0.0))
-            elif info.get_call_type().is_bool():
-                if isinstance(node.op, ast.Not):
-                    value = self.__builder.eq(value, self.__builder.const_int1(0))
+                value = caller.call_obj(self.__code_gen, self.__builder, node.get_func_name(), value, info.get_call_type(), [], [])
             else:
-                raise NotImplementedError()
+                value = op_call.unary_op(self.__code_gen, self.__builder, info.get_call_type(), value, node.op)
 
             self.__last_value = value
         else:

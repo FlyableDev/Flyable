@@ -311,6 +311,15 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                 }
                 break;
 
+                case 11:
+                {
+                      llvm::Value* value = values[current->readInt32()];
+                      if(isDecimalType(value))
+                        values.push_back(mBuilder.CreateFNeg(value));
+                      else
+                        values.push_back(mBuilder.CreateNeg(value));
+                }
+                break;
 
                 case 100:
                 {
@@ -375,7 +384,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                 break;
 
                 case 1005:
-                    values.push_back(llvm::ConstantFP::get(llvm::Type::getFloatTy(mContext),llvm::APFloat(current->readDouble())));
+                    values.push_back(llvm::ConstantFP::get(llvm::Type::getDoubleTy(mContext),llvm::APFloat(current->readDouble())));
                 break;
 
                 case 1007:
@@ -454,7 +463,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                 break;
 
                 default:
-                    std::cout<<"Wrong op type"<<std::endl;
+                    std::cout<<"Wrong op type "<<opcode<<std::endl;
                 break;
 
             }

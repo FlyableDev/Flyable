@@ -59,9 +59,8 @@ def value_to_pyobj(code_gen, builder, value, value_type):
                                               [CodeType(CodeType.CodePrimitive.INT64)], Linkage.EXTERNAL)
         return builder.call(py_func, [value])
     elif value_type.is_dec():
-        py_func = code_gen.get_or_create_func("PyFloat_FromDouble",
-                                              CodeType(CodeType.CodePrimitive.INT8).get_ptr_to()
-                                              [CodeType(CodeType.CodePrimitive.DOUBLE)])
+        py_func = code_gen.get_or_create_func("PyFloat_FromDouble",code_type.get_int8_ptr(),[code_type.get_double()],
+                                              Linkage.EXTERNAL)
         return builder.call(py_func, [value])
     elif value_type.is_bool():
         # TODO : Directly use the global var to avoid the func call

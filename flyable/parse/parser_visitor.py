@@ -90,6 +90,8 @@ class ParserVisitor(NodeVisitor):
             # Not op return a boolean, the others return the same type
             if isinstance(node.op, ast.Not):
                 self.__last_type = lang_type.get_bool_type()
+            elif isinstance(node.op, ast.Invert):
+                self.__last_type = lang_type.get_int_type()
             else:
                 self.__last_type = value_type
         else:
