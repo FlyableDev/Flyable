@@ -19,6 +19,21 @@ class NodeInfo:
         return self.__type
 
 
+# Unary
+
+class NodeInfoUnary(NodeInfo):
+
+    def __init__(self, call_type, func_name):
+        self.__call_type = call_type
+        self.__func_name = func_name
+
+    def get_call_type(self):
+        return self.__call_type
+
+    def get_func_name(self):
+        return self.__func_name
+
+
 # Name
 class NodeInfoNameLocalVarCall(NodeInfo):
     '''
@@ -138,7 +153,8 @@ class NodeInfoPyCall(NodeInfo):
     def get_name(self):
         return self.__name
 
-#Info info
+
+# Info info
 
 class NodeInfoIfExpr(NodeInfo):
 

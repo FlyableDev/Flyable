@@ -27,10 +27,12 @@ def malloc_call(code_gen, builder, value_size):
 
 
 def py_runtime_get_string(code_gen, builder, value):
-    str_ptr = builder.ptr_cast(builder.global_str(value),code_type.get_int8_ptr())
+    str_ptr = builder.ptr_cast(builder.global_str(value), code_type.get_int8_ptr())
     args_type = [code_type.get_int8_ptr(), code_type.get_int64()]
-    new_str_func = code_gen.get_or_create_func("PyUnicode_FromStringAndSize", code_type.get_int8_ptr(), args_type, Linkage.EXTERNAL)
+    new_str_func = code_gen.get_or_create_func("PyUnicode_FromStringAndSize", code_type.get_int8_ptr(), args_type,
+                                               Linkage.EXTERNAL)
     return builder.call(new_str_func, [str_ptr, builder.const_int64(len(value))])
+
 
 def py_runtime_init(code_gen, builder):
     init_func = code_gen.get_or_create_func("Py_Initialize", code_type.get_void(), [], Linkage.EXTERNAL)
@@ -51,20 +53,27 @@ def py_runtime_ImportModule(code_gen, builder, name):
     return builder.call(imp_func, [name_c_str])
 
 
-def value_to_pyobj(code_gen, builder, value, lang_type):
-    if lang_type.is_int():
+def value_to_pyobj(code_gen, builder, value, value_type):
+    if value_type.is_int():
         py_func = code_gen.get_or_create_func("PyLong_FromLongLong", code_type.get_int8_ptr(),
                                               [CodeType(CodeType.CodePrimitive.INT64)], Linkage.EXTERNAL)
         return builder.call(py_func, [value])
-    elif lang_type.is_dec():
+    elif value_type.is_dec():
         py_func = code_gen.get_or_create_func("PyFloat_FromDouble",
                                               CodeType(CodeType.CodePrimitive.INT8).get_ptr_to()
                                               [CodeType(CodeType.CodePrimitive.DOUBLE)])
         return builder.call(py_func, [value])
-    elif lang_type.is_obj():
+    elif value_type.is_bool():
+        # TODO : Directly use the global var to avoid the func call
+        py_func = code_gen.get_or_create_func("PyBool_FromLong", code_type.get_int8_ptr(), [code_type.get_int1()],
+                                              Linkage.EXTERNAL)
+        return builder.call(py_func, [value])
+    elif value_type.is_obj():
         return value
+
 
 def py_runtime_obj_len(code_gen, builder, value):
     func_name = "PyObject_Length"
-    py_func = code_gen.get_or_create_func(func_name, code_type.get_int64(),[code_type.get_int8_ptr()],Linkage.EXTERNAL)
+    py_func = code_gen.get_or_create_func(func_name, code_type.get_int64(), [code_type.get_int8_ptr()],
+                                          Linkage.EXTERNAL)
     return builder.call(py_func, [value])

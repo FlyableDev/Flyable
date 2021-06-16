@@ -21,6 +21,10 @@ def get_int8():
     return CodeType(CodeType.CodePrimitive.INT8)
 
 
+def get_int1():
+    return CodeType(CodeType.CodePrimitive.INT1)
+
+
 def get_int8_ptr():
     return get_int8().get_ptr_to()
 

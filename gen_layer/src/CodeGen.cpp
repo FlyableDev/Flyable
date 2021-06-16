@@ -378,6 +378,10 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     values.push_back(llvm::ConstantFP::get(llvm::Type::getFloatTy(mContext),llvm::APFloat(current->readDouble())));
                 break;
 
+                case 1007:
+                    values.push_back(mBuilder.getInt1(current->readInt32()));
+                break;
+
                 case 1006:
                 {
                     llvm::Value* value;

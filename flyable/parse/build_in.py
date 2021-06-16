@@ -40,7 +40,7 @@ class BuildInPrint(BuildInFunc):
     def codegen(self, args, codegen, builder):
         arg_type = self.__arg_types[0]
         obj_to_send = None
-        if arg_type.is_int() or arg_type.is_dec():
+        if arg_type.is_int() or arg_type.is_dec() or arg_type.is_bool():
             obj_to_send = runtime.value_to_pyobj(codegen, builder, args[0], arg_type)
         elif arg_type.is_obj():
             obj_to_send = builder.ptr_cast(args[0], code_type.get_int8_ptr())

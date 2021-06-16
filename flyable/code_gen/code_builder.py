@@ -142,6 +142,11 @@ class CodeBuilder:
         self.__writer.add_int32(value)
         return self.__gen_value()
 
+    def const_int1(self, value):
+        self.__writer.add_int32(1007)
+        self.__writer.add_int32(int(value))
+        return self.__gen_value()
+
     def const_float64(self, value):
         self.__writer.add_int32(1004)
         self.__writer.add_float64(value)

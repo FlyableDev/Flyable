@@ -243,7 +243,27 @@ class CodeGenVisitor(NodeVisitor):
         self.__last_value = result
 
     def visit_UnaryOp(self, node: UnaryOp) -> Any:
-        self.visit_BinOp(node)
+        # TODO : Clean that up
+        info = self.__func.get_node_info(node)
+        if isinstance(info, NodeInfoUnary):
+            value = self.__parse_node(node.operand)
+            if not info.get_call_type().is_primitive():
+                caller.call_obj(self.__code_gen, self.__builder, node.get_func_name(), value, info.get_call_type(), [], [])
+            elif info.get_call_type().is_int():
+                if isinstance(node.op, ast.Not):
+                    value = self.__builder.eq(value, self.__builder.const_int64(0))
+            elif info.get_call_type().is_dec():
+                if isinstance(node.op, ast.Not):
+                    value = self.__builder.eq(value, self.__builder.const_float64(0.0))
+            elif info.get_call_type().is_bool():
+                if isinstance(node.op, ast.Not):
+                    value = self.__builder.eq(value, self.__builder.const_int1(0))
+            else:
+                raise NotImplementedError()
+
+            self.__last_value = value
+        else:
+            raise NotImplementedError()
 
     def visit_BoolOp(self, node: BoolOp) -> Any:
         self.visit_BinOp(node)

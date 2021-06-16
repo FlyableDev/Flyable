@@ -82,7 +82,18 @@ class ParserVisitor(NodeVisitor):
         super().visit(node.op)
 
     def visit_UnaryOp(self, node: UnaryOp) -> Any:
-        self.visit_BinOp(node)
+        value_type = self.__visit_node(node.operand)
+        op_name = op.get_op_func_call(node.op)
+        self.__current_func.set_node_info(node, NodeInfoUnary(value_type, op_name))
+
+        if value_type.is_primitive():
+            # Not op return a boolean, the others return the same type
+            if isinstance(node.op, ast.Not):
+                self.__last_type = lang_type.get_bool_type()
+            else:
+                self.__last_type = value_type
+        else:
+            self.__last_type = adapter.adapt_call(op_name, value_type, [value_type], self.__data, self.__parser)
 
     def visit_BoolOp(self, node: BoolOp) -> Any:
         self.visit_BinOp(node)
@@ -250,8 +261,8 @@ class ParserVisitor(NodeVisitor):
         body_type = self.__visit_node(node.body)
         self.__visit_node(node.orelse)
         self.__last_type = body_type
-        new_var = self.__current_func.get_context().add_var("@internal_var@",body_type)
-        self.__current_func.set_node_info(node,NodeInfoIfExpr(new_var))
+        new_var = self.__current_func.get_context().add_var("@internal_var@", body_type)
+        self.__current_func.set_node_info(node, NodeInfoIfExpr(new_var))
 
     def visit_If(self, node: If) -> Any:
         cond_type = self.__visit_node(node.test)
