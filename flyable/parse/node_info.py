@@ -138,6 +138,16 @@ class NodeInfoPyCall(NodeInfo):
     def get_name(self):
         return self.__name
 
+#Info info
+
+class NodeInfoIfExpr(NodeInfo):
+
+    def __init__(self, var):
+        self.__var = var
+
+    def get_var(self):
+        return self.__var
+
 
 # Assign info
 

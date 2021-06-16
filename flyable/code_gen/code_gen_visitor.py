@@ -252,9 +252,39 @@ class CodeGenVisitor(NodeVisitor):
         self.__last_type = None
         super().visit(node.value)
 
+    def visit_IfExp(self, node: IfExp) -> Any:
+        info = self.__func.get_node_info(node)
+        if isinstance(info, NodeInfoIfExpr):
+            var = info.get_var()
+            true_cond = self.__builder.create_block()
+            false_cond = self.__builder.create_block()
+            continue_cond = self.__builder.create_block()
+
+            value = self.__parse_node(node.test)
+            self.__builder.cond_br(value, true_cond, false_cond)
+
+            # If true put the true value in the returned variale
+            self.__builder.set_insert_block(true_cond)
+            value_true = self.__parse_node(node.body)
+            self.__builder.store(value_true, var.get_code_gen_value())
+            self.__builder.br(continue_cond)
+
+            # If false put the false value in the returned variable
+            self.__builder.set_insert_block(false_cond)
+            value_false = self.__parse_node(node.orelse)
+            self.__builder.store(value_false, var.get_code_gen_value())
+            self.__builder.br(continue_cond)
+
+            # And then the expression load the value to return it
+            self.__builder.set_insert_block(continue_cond)
+            self.__last_value = self.__builder.load(var.get_code_gen_value())  # Load the value containing the result
+
+        else:
+            raise NotImplementedError()
+
     def visit_Assign(self, node: Assign) -> Any:
         info = self.__func.get_node_info(node)
-        if isinstance(info,NodeInfoAssignTupleTuple):
+        if isinstance(info, NodeInfoAssignTupleTuple):
             targets_value = []
             values = []
             for target in node.targets[0].elts:
@@ -263,7 +293,7 @@ class CodeGenVisitor(NodeVisitor):
                 values.append(self.__parse_node(value_assign))
             for i in range(len(targets_value)):
                 self.__builder.store(values[i], targets_value[i])
-        elif isinstance(info,NodeInfoAssignBasic):
+        elif isinstance(info, NodeInfoAssignBasic):
             self.__builder.store(self.__parse_node(node.value), self.__parse_node(node.targets[0]))
         else:
             raise NotImplementedError()

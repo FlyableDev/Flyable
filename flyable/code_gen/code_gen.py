@@ -269,7 +269,7 @@ class CodeGen:
         return self.__false_var
 
     def get_py_obj_struct(self):
-        return self.__structs
+        return self.__python_obj_struct
 
     def get_or_create_func(self, name, return_type, args_type=[], link=Linkage.INTERNAL):
         # Get case

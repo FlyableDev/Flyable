@@ -245,6 +245,14 @@ class ParserVisitor(NodeVisitor):
         else:
             self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
 
+    def visit_IfExp(self, node: IfExp) -> Any:
+        self.__visit_node(node.test)
+        body_type = self.__visit_node(node.body)
+        self.__visit_node(node.orelse)
+        self.__last_type = body_type
+        new_var = self.__current_func.get_context().add_var("@internal_var@",body_type)
+        self.__current_func.set_node_info(node,NodeInfoIfExpr(new_var))
+
     def visit_If(self, node: If) -> Any:
         cond_type = self.__visit_node(node.test)
         if not cond_type == type.get_bool_type():
