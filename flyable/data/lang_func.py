@@ -68,8 +68,8 @@ class LangFunc:
                     same_signature = True
                     if i.get_arg(j) != args_type[j]:
                         same_signature = False
-                    if same_signature:
-                        return i
+                if same_signature:
+                    return i
 
     def get_min_args(self):
         """
