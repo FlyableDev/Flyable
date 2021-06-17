@@ -279,7 +279,8 @@ class ParserVisitor(NodeVisitor):
     def visit_For(self, node: For) -> Any:
         name = node.target.id
         type_to_iter = self.__visit_node(node.iter)
-        self.__current_func.get_context().add_var(name, type_to_iter)
+        new_var = self.__current_func.get_context().add_var(name, type_to_iter)
+        self.__current_func.set_node_info(node,NodeInfoFor(new_var))
         self.visit(node.body)
         if node.orelse is not None:
             self.visit(node.orelse)

@@ -3,10 +3,11 @@ Module that handles function calls.
 Specifically Python ones
 """
 import flyable.code_gen.code_type as code_type
-import flyable.code_gen.list as list_call
+import flyable.code_gen.tuple as tuple_call
 import flyable.code_gen.code_type as code_type
 from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_gen as gen
+import flyable.code_gen.exception as excp
 
 
 def call_obj(code_gen, builder, func_name, obj, obj_type, args, args_type):
@@ -60,7 +61,9 @@ def generate_python_call(code_gen, builder, callable, args):
     call_func = code_gen.get_or_create_func("PyObject_Call", code_type.get_int8_ptr(), call_funcs_args,
                                             gen.Linkage.EXTERNAL)
 
-    arg_list = list_call.instanciate_pyton_list(code_gen, builder, builder.const_int64(len(args)))
+    arg_list = tuple_call.python_tuple_new(code_gen, builder, builder.const_int64(len(args)))
     for i, e in enumerate(args):
-        list_call.python_list_set(code_gen, builder, arg_list, builder.const_int64(i), e)
-    return builder.call(call_func, [callable, arg_list, builder.const_null(code_type.get_int8_ptr())])
+        tuple_call.python_tuple_set_unsafe(code_gen, builder, arg_list, builder.const_int64(i), e)
+    result = builder.call(call_func, [callable, arg_list, builder.const_null(code_type.get_int8_ptr())])
+    # excp.py_runtime_print_error(code_gen, builder)
+    return result

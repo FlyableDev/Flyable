@@ -253,3 +253,13 @@ class NodeInfoComprehension(NodeInfo):
 
     def get_var(self):
         return self.__var
+
+
+# For
+class NodeInfoFor(NodeInfo):
+
+    def __init__(self, var):
+        self.__var = var
+
+    def get_var(self):
+        return self.__var

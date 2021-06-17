@@ -180,42 +180,47 @@ class CodeGenVisitor(NodeVisitor):
         self.__out_blocks.pop()
 
     def visit_For(self, node: For) -> Any:
-        block_for = self.__builder.create_block()
-        block_for_in = self.__builder.create_block()
-        block_else = self.__builder.create_block() if node.orelse is not None else None
-        block_continue = self.__builder.create_block()
+        info = self.__func.get_node_info(node)
+        if isinstance(info, NodeInfoFor):
+            var = info.get_var()
+            block_for = self.__builder.create_block()
+            block_for_in = self.__builder.create_block()
+            block_else = self.__builder.create_block() if node.orelse is not None else None
+            block_continue = self.__builder.create_block()
 
-        value = self.__parse_node(node.iter)
-        iterator = caller.call_obj(self.__code_gen, self.__builder, "__iter__", value,
-                                   lang_type.get_python_obj_type(), [value], [lang_type.get_python_obj_type()])
-        self.__builder.br(block_for)
-        self.__builder.set_insert_block(block_for)
+            value = self.__parse_node(node.iter)
+            iterator = caller.call_obj(self.__code_gen, self.__builder, "__iter__", value,
+                                       lang_type.get_python_obj_type(), [], [])
+            self.__builder.br(block_for)
+            self.__builder.set_insert_block(block_for)
 
-        next_value = caller.call_obj(self.__code_gen, self.__builder, "__next__", iterator,
-                                     lang_type.get_python_obj_type(), [iterator], [lang_type.get_python_obj_type()])
-        #null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
-        null_ptr = self.__builder.const_null(code_type.get_int8_ptr())
+            next_value = caller.call_obj(self.__code_gen, self.__builder, "__next__", iterator,
+                                         lang_type.get_python_obj_type(), [], [])
 
-        test = self.__builder.eq(next_value, null_ptr)
+            self.__builder.store(next_value, var.get_code_gen_value())
 
-        if node.orelse is None:
-            self.__builder.cond_br(test, block_continue, block_for_in)
-        else:
-            self.__builder.cond_br(test, block_else, block_for_in)
+            null_ptr = self.__builder.const_null(code_type.get_int8_ptr())
 
-        # Setup the for loop content
-        self.__builder.set_insert_block(block_for_in)
-        self.__out_blocks.append(block_continue)  # In case of a break we want to jump after the for loop
-        self.__parse_node(node.body)
-        self.__out_blocks.pop()
-        self.__builder.br(block_for)
+            test = self.__builder.eq(next_value, null_ptr)
 
-        if node.orelse is not None:
-            self.__builder.set_insert_block(block_else)
-            self.__parse_node(node.orelse)
-            self.__builder.br(block_continue)
+            if node.orelse is None:
+                self.__builder.cond_br(test, block_continue, block_for_in)
+            else:
+                self.__builder.cond_br(test, block_else, block_for_in)
 
-        self.__builder.set_insert_block(block_continue)
+            # Setup the for loop content
+            self.__builder.set_insert_block(block_for_in)
+            self.__out_blocks.append(block_continue)  # In case of a break we want to jump after the for loop
+            self.__parse_node(node.body)
+            self.__out_blocks.pop()
+            self.__builder.br(block_for)
+
+            if node.orelse is not None:
+                self.__builder.set_insert_block(block_else)
+                self.__parse_node(node.orelse)
+                self.__builder.br(block_continue)
+
+            self.__builder.set_insert_block(block_continue)
 
     def visit_While(self, node: While) -> Any:
         block_cond = self.__builder.create_block()
