@@ -264,7 +264,7 @@ class NodeInfoFor(NodeInfo):
     def get_var(self):
         return self.__var
 
-<<<<<<< Updated upstream
+
 # Exception
 class NodeInfoExcept(NodeInfo):
 
@@ -273,7 +273,7 @@ class NodeInfoExcept(NodeInfo):
 
     def get_var(self):
         return self.__var
-=======
+
 
 # List
 class NodeInfoList(NodeInfo):
@@ -293,4 +293,4 @@ class NodeInfoTuple(NodeInfo):
 
     def get_elts_types(self):
         return self.__elts_types
->>>>>>> Stashed changes
+
