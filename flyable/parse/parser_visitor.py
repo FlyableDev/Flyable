@@ -336,15 +336,18 @@ class ParserVisitor(NodeVisitor):
         self.__last_type.add_dim(LangType.Dimension.LIST)
 
     def visit_List(self, node: List) -> Any:
-        values = []
+        elts_types = []
         for e in node.elts:
-            values.append(self.__visit_node(e))
+            elts_types.append(self.__visit_node(e))
+        self.__current_func.set_node_info(node, NodeInfoList(elts_types))
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
 
     def visit_Tuple(self, node: Tuple) -> Any:
+        elts_types = []
         for e in node.elts:
-            self.__visit_node(e)
+            elts_types.append(self.__visit_node(e))
+        self.__current_func.set_node_info(node, NodeInfoTuple(elts_types))
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_type.add_dim(lang_type.LangType.Dimension.TUPLE)
 

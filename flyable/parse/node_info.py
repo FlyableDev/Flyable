@@ -264,6 +264,7 @@ class NodeInfoFor(NodeInfo):
     def get_var(self):
         return self.__var
 
+<<<<<<< Updated upstream
 # Exception
 class NodeInfoExcept(NodeInfo):
 
@@ -272,3 +273,24 @@ class NodeInfoExcept(NodeInfo):
 
     def get_var(self):
         return self.__var
+=======
+
+# List
+class NodeInfoList(NodeInfo):
+
+    def __init__(self, elts_types):
+        self.__elts_types = elts_types
+
+    def get_elts_types(self):
+        return self.__elts_types
+
+
+# Tuple
+class NodeInfoTuple(NodeInfo):
+
+    def __init__(self, elts_types):
+        self.__elts_types = elts_types
+
+    def get_elts_types(self):
+        return self.__elts_types
+>>>>>>> Stashed changes

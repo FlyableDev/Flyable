@@ -400,7 +400,10 @@ class CodeGenVisitor(NodeVisitor):
         array = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder,
                                                 self.__builder.const_int64(len(values)))
         self.__last_value = array
+        info = self.__func.get_node_info(node)
+        values_types = info.get_elts_types()
         for i, e in enumerate(values):
+            runtime.value_to_pyobj(self.__code_gen, self.__builder, e, values_types[i])
             index = self.__builder.const_int64(i)
             gen_list.python_list_set(self.__code_gen, self.__builder, self.__last_value, index, e)
 
@@ -422,7 +425,10 @@ class CodeGenVisitor(NodeVisitor):
         new_tuple = gen_tuple.python_tuple_new(self.__code_gen, self.__builder,
                                                self.__builder.const_int64(len(values)))
         self.__last_value = new_tuple
+        info = self.__func.get_node_info(node)
+        values_types = info.get_elts_types()
         for i, e in enumerate(values):
+            runtime.value_to_pyobj(self.__code_gen, self.__builder, e, values_types[i])
             index = self.__builder.const_int64(i)
             gen_tuple.python_tuple_set_unsafe(self.__code_gen, self.__builder, self.__last_value, index, e)
 
