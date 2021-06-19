@@ -280,7 +280,7 @@ class ParserVisitor(NodeVisitor):
         name = node.target.id
         type_to_iter = self.__visit_node(node.iter)
         new_var = self.__current_func.get_context().add_var(name, type_to_iter)
-        self.__current_func.set_node_info(node,NodeInfoFor(new_var))
+        self.__current_func.set_node_info(node, NodeInfoFor(new_var))
         self.visit(node.body)
         if node.orelse is not None:
             self.visit(node.orelse)
@@ -370,6 +370,23 @@ class ParserVisitor(NodeVisitor):
                 module_type = type.get_module_type(file.get_id())
             new_var = self.__current_func.get_context().add_var(e.asname, module_type)
             self.__current_func.set_node_info(NodeInfoImportPythonModule(new_var))
+
+    def visit_Try(self, node: Try) -> Any:
+        self.__visit_node(node.body)
+        self.__visit_node(node.handlers)
+        self.__visit_node(node.finalbody)
+        self.__visit_node(node.orelse)
+
+    def visit_ExceptHandler(self, node: ExceptHandler) -> Any:
+        self.__visit_node(node.body)
+        type = lang_type.get_python_obj_type()
+        excp_var = self.__current_func.get_context().add_var(node.name, type)
+        self.__current_func.set_node_info(node, NodeInfoExcept(excp_var))
+
+    def visit_Raise(self, node: Raise) -> Any:
+        self.__visit_node(node.exc)
+        if node.cause is not None:
+            self.__visit_node(node.cause)
 
     def visit_ImportFrom(self, node: ImportFrom) -> Any:
         # file = self.__data.get_file(node.module)

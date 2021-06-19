@@ -26,6 +26,7 @@ class CodeGenVisitor(NodeVisitor):
         self.__builder.set_insert_block(entry_block)
 
         self.__out_blocks = []  # Hierarchy of blocks to jump when a context is over
+        self.__exception_blocks = []  # Hierarchy of blocks to jump when an exception occur to dispatch it
 
         self.__setup_initial_block()
         content_block = self.__builder.create_block()
@@ -292,7 +293,8 @@ class CodeGenVisitor(NodeVisitor):
         if isinstance(info, NodeInfoUnary):
             value = self.__parse_node(node.operand)
             if not info.get_call_type().is_primitive():
-                value = caller.call_obj(self.__code_gen, self.__builder, node.get_func_name(), value, info.get_call_type(), [], [])
+                value = caller.call_obj(self.__code_gen, self.__builder, node.get_func_name(), value,
+                                        info.get_call_type(), [], [])
             else:
                 value = op_call.unary_op(self.__code_gen, self.__builder, info.get_call_type(), value, node.op)
 
@@ -412,7 +414,6 @@ class CodeGenVisitor(NodeVisitor):
         self.__last_value = new_dict
 
     def visit_Tuple(self, node: Tuple) -> Any:
-        raise Exception()
         values = []
         for e in node.elts:
             values.append(self.__parse_node(e))
@@ -443,6 +444,50 @@ class CodeGenVisitor(NodeVisitor):
             exit_values = [value] + ([self.__builder.const_null(code_type.get_int8_ptr())] * 3)
             exit_args = [types[i]] + ([lang_type.get_python_obj_type()] * 3)
             caller.call_obj(self.__code_gen, self.__builder, "__exit__", value, types[i], exit_values, exit_args)
+
+    def visit_Try(self, node: Try) -> Any:
+        block_continue = self.__builder.create_block()
+        try_block_dispatch = self.__builder.create_block()
+        else_block = self.__builder.create_block() if node.orelse is None else None
+        self.__exception_blocks.append(try_block_dispatch)
+
+        self.__parse_node(node.body)
+        if node.orelse is None:
+            self.__builder.br(block_continue) # If no exception happened with jump on continue
+        else:
+            self.__builder.br(else_block)  # If no exception happened with jump on the else
+
+        self.__exception_blocks.pop()
+
+        if node.orelse is not None:
+            self.__builder.set_insert_block(else_block)
+            self.__parse_node(node.orelse)
+            self.__builder.br(block_continue)
+
+        self.__builder.set_insert_block(try_block_dispatch)
+
+        except_bodies_blocks = [self.__builder.create_block() for block in node.handlers]
+        except_cond_blocks = [self.__builder.create_block() for block in node.handlers]
+        except_not_found = self.__builder.create_block()
+
+        for i, handle in enumerate(node.handlers):
+
+            self.__builder.set_insert_block(except_block[-1])
+            self.__parse_node(handle)
+
+        self.__builder.set_insert_block(block_continue)
+
+
+    def visit_ExceptHandler(self, node: ExceptHandler) -> Any:
+        self.__parse_node(node.body)
+
+    def visit_Raise(self, node: Raise) -> Any:
+        value = self.__parse_node(node.exc)
+        if len(self.__exception_blocks) == 0:
+            return_type = self.__func.get_return_type().to_code_type(self.__code_gen.get_data())
+            self.__builder.ret(self.__builder.const_null(return_type))
+        else:
+            self.__builder.br(self.__exception_blocks[-1])
 
     def visit_Import(self, node: Import) -> Any:
         pass
