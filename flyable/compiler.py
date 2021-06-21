@@ -4,13 +4,16 @@ from flyable.data import lang_file, comp_data
 from flyable.data.error_thrower import ErrorThrower
 from flyable.code_gen.code_gen import CodeGen
 from flyable.data.lang_func_impl import LangFuncImpl
+import flyable.code_gen.code_gen as gen
+import flyable.parse.adapter as adapter
 
 
 class Compiler(ErrorThrower):
 
     def __init__(self):
         self.__data = comp_data.CompData()
-        self.__parser = par.Parser()
+        self.__code_gen = gen.CodeGen(self.__data)
+        self.__parser = par.Parser(self.__data, self.__code_gen)
         self.set_output_path("flyable_output.o")
 
     def add_file(self, path):
@@ -19,21 +22,22 @@ class Compiler(ErrorThrower):
         self.__data.add_file(new_file)
 
     def set_output_path(self, path):
-        self.__data.set_config("output",path)
+        self.__data.set_config("output", path)
 
     def compile(self):
         self.__pre_parse()
 
-        if self.has_error() == False:
+        if not self.has_error():
             self.__parse()
-
-        if self.has_error() == False:
-            self.__code_gen()
 
         self.throw_errors(self.__parser.get_errors())
 
         for e in self.errors_iter():
             print("" + e.get_message() + " " + str(e.get_line()) + " " + str(e.get_row()))
+
+        if not self.has_error():
+            self.__code_gen.generate_main()
+            self.__code_gen.write()
 
     def __pre_parse(self):
         pre_parser = PreParser(self.__data)
@@ -41,25 +45,24 @@ class Compiler(ErrorThrower):
         self.throw_errors(pre_parser.get_errors())
 
     def __parse(self):
-        for i in range(self.__data.get_files_count()):
-            file = self.__data.get_file(i)
-            self.__parser.parse_file(file)
+        code_gen = CodeGen(self.__data)
 
-        for i in range(self.__data.get_funcs_count()):
-            func = self.__data.get_func(i)
-            self.__parser.parse_func(self.__data, func)
+        # Parse the code until it the compiler stop finding new data
+        while True:
 
-        for i in range(self.__data.get_classes_count()):
-            lang_class = self.__data.get_class(i)
-            self.__parser.parse_class(lang_class)
+            self.__data.set_changed(False)
+            self.__data.clear_info()
+            code_gen.clear()
+            code_gen.setup()
 
-        self.__parse_main()
+            adapter.adapt_func(self.__data.find_main(), [], self.__data, self.__parser)
+
+            if self.__parser.has_error() or not self.__data.is_changed():
+                break
+
+            self.__parse_main()
 
         self.throw_errors(self.__parser.get_errors())
-
-    def __code_gen(self):
-        code_gen = CodeGen()
-        code_gen.generate(self.__data)
 
     def __parse_main(self):
         main_func = self.__data.find_main()

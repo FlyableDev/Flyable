@@ -1,7 +1,7 @@
 import copy
 from enum import Enum
 from flyable.code_gen.code_type import CodeType
-import  flyable.code_gen.code_type as code_type
+import flyable.code_gen.code_type as code_type
 
 
 def to_code_type(comp_data, type):
@@ -18,6 +18,17 @@ def to_code_type(comp_data, type):
 
     return type.to_code_type(comp_data)
 
+
+def get_type_common(self, data, primary_type, second_type):
+    """
+    Return a type that can contains both types.
+    Return none if no common types found
+    """
+    if primary_type == second_type:
+        return primary_type
+    elif primary_type.is_obj() and second_type.is_obj():
+        return get_python_obj_type()
+    return None
 
 def get_int_type():
     return LangType(LangType.Type.INTEGER)
@@ -52,7 +63,6 @@ def get_unknown_type():
 
 
 class LangType:
-
     class Type(Enum):
         UNKNOWN = 0,  # Type information may exist but unsure yet
         INTEGER = 1,  # Standard integer
@@ -75,7 +85,7 @@ class LangType:
         self.__type = type
         self.__id = id
         self.__dims = []
-        self.__details = [] # Details are extra data that allows the compiler to perform more severe optimization
+        self.__details = []  # Details are extra data that allows the compiler to perform more severe optimization
 
     def is_unknown(self):
         return self.__type == LangType.Type.UNKNOWN

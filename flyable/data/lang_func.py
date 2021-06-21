@@ -20,11 +20,7 @@ class LangFunc:
 
         self.__id = -1
         # Setup args
-        self.__impls = [LangFuncImpl()]
-        self.__impls[0].set_parent_func(self)
-        self.__impls[0].set_unknown(True)
-        for e in self.args_iter():
-            self.get_unknown_impl().add_arg(type.get_unknown_type())
+        self.__setup_unknown_impl()
 
         self.__class_lang = None
         self.__file = None
@@ -63,9 +59,9 @@ class LangFunc:
 
     def find_impl_by_signature(self, args_type):
         for i in self.__impls:
-            if i.get_args_count() == len(args_type):  # Same arguments count
+            if not i.is_unknown() and i.get_args_count() == len(args_type):  # Same arguments count
+                same_signature = True
                 for j in range(i.get_args_count()):
-                    same_signature = True
                     if i.get_arg(j) != args_type[j]:
                         same_signature = False
                 if same_signature:
@@ -103,3 +99,15 @@ class LangFunc:
 
     def args_iter(self):
         return iter(self.__node.args.args)
+
+    def clear_info(self):
+        self.__impls.clear()
+        self.__setup_unknown_impl()
+
+    def __setup_unknown_impl(self):
+        # Setup args
+        self.__impls = [LangFuncImpl()]
+        self.__impls[0].set_parent_func(self)
+        self.__impls[0].set_unknown(True)
+        for e in self.args_iter():
+            self.get_unknown_impl().add_arg(type.get_unknown_type())

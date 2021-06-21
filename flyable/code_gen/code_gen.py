@@ -1,7 +1,6 @@
 import platform
 
 import flyable.code_gen.code_writer as _writer
-from flyable.code_gen.code_gen_visitor import CodeGenVisitor
 from flyable.code_gen.code_writer import CodeWriter
 from flyable.code_gen.code_builder import CodeBuilder
 from flyable.code_gen.code_type import CodeType
@@ -215,13 +214,15 @@ class CodeFunc:
 
 class CodeGen:
 
-    def __init__(self):
+    def __init__(self, comp_data):
         self.__global_vars = []
         self.__structs = []
         self.__funcs = OrderedDict()
-        self.__data = None
+        self.__data = comp_data
         self.__global_strings = {}
 
+
+    def setup(self):
         self.__true_var = self.add_global_var(GlobalVar("Py_True", code_type.get_int8_ptr(), Linkage.EXTERNAL))
         self.__false_var = self.add_global_var(GlobalVar("Py_False", code_type.get_int8_ptr(), Linkage.EXTERNAL))
 
@@ -231,20 +232,10 @@ class CodeGen:
         self.__python_obj_struct.add_type(code_type.get_int8_ptr())  # PyTypeObject * ob_type
         self.add_struct(self.__python_obj_struct)
 
-    def generate(self, comp_data):
-        self.__data = comp_data
-        self.__gen_structs(comp_data)
-        self.__fill_structs(comp_data)
-        self.__gen_funcs(comp_data)
-        self.__gen_vars(comp_data)
-
-        self.__code_gen_func(comp_data)
-
-        self.__generate_runtime()
-
-        self.__generate_main()
-
-        self.__write(comp_data)
+    def clear(self):
+        self.__global_vars.clear()
+        self.__funcs.clear()
+        self.__structs.clear()
 
     def get_data(self):
         return self.__data
@@ -310,58 +301,32 @@ class CodeGen:
         for func in comp_data.funcs_iter():
             for impl in func.impls_iter():
                 if not impl.is_unknown():  # Only generate a function for known function
-                    visitor = CodeGenVisitor(self, impl)
-                    visitor.visit(func.get_node())
                     self.__fill_not_terminated_block(impl.get_code_func())
 
         for _class in comp_data.classes_iter():
             for func in _class.funcs_iter():
                 for impl in func.impls_iter():
                     if not impl.is_unknown():  # Only visit functions with a complete signature
-                        visitor = CodeGenVisitor(self, impl)
-                        visitor.visit(func.get_node())
                         self.__fill_not_terminated_block(impl.get_code_func())
 
-    def __gen_structs(self, comp_data):
-        # Create all the structures
-        for current_class in comp_data.classes_iter():
-            new_struct = StructType("@flyable@__" + current_class.get_name())
-            current_class.set_struct(new_struct)
-            self.add_struct(new_struct)
-
-    def __fill_structs(self, comp_data):
-        # Fill all the structures
-        for current_class in comp_data.classes_iter():
-            current_class.get_struct().add_type(code_type.get_int32())  # Ref counter
-            current_class.get_struct().add_type(code_type.get_int32())  # class id
-            for j in current_class.attributs_iter():
-                attr = current_class.get_attribut(j)
-                current_class.get_struct().add_type(attr.get_type().to_code_type())
-
-    def __gen_funcs(self, comp_data):
+    def gen_structs(self, _class, comp_data):
         """
-        Takes all implementations in functions and create all callables functions from it
+        Create a structure from a class
         """
-        for func in comp_data.funcs_iter():
-            for i, impl in enumerate(func.impls_iter()):
-                if not impl.is_unknown():
-                    func_name = "@flyable@__" + func.get_name() + "@" + str(i) + "@" \
-                                + str(func.get_id()) + "@" + str(impl.get_id())
-                    return_type = impl.get_return_type().to_code_type(comp_data)
-                    func_args = lang_type.to_code_type(self.__data, list(impl.args_iter()))
-                    new_func = self.get_or_create_func(func_name, return_type, func_args)
-                    impl.set_code_func(new_func)
+        new_struct = StructType("@flyable@__" + _class.get_name())
+        _class.set_struct(new_struct)
+        self.add_struct(new_struct)
 
-        for _class in comp_data.classes_iter():
-            for func in _class.funcs_iter():
-                for i, impl in enumerate(func.impls_iter()):
-                    if not impl.is_unknown():
-                        func_name = "@flyable@__" + func.get_name() + "@" + str(i) + "@" \
-                                    + str(func.get_id()) + "@" + str(impl.get_id())
-                        return_type = impl.get_return_type().to_code_type(comp_data)
-                        func_args = lang_type.to_code_type(self.__data, list(impl.args_iter()))
-                        new_func = self.get_or_create_func(func_name, return_type, func_args)
-                        impl.set_code_func(new_func)
+    def gen_func(self, impl, comp_data):
+        """
+        Take an implementation  and create a callable CodeFunction from it
+        """
+        func_name = "@flyable@__" + impl.get_parent_func().get_name() + "@" + str(impl.get_id()) + "@" \
+                    + str(impl.get_parent_func().get_id()) + "@" + str(impl.get_id())
+        return_type = impl.get_return_type().to_code_type(comp_data)
+        func_args = lang_type.to_code_type(self.__data, list(impl.args_iter()))
+        new_func = self.get_or_create_func(func_name, return_type, func_args)
+        impl.set_code_func(new_func)
 
     def __fill_not_terminated_block(self, func):
         """
@@ -377,10 +342,7 @@ class CodeGen:
                 else:
                     func.get_builder().ret(func.get_builder.const_null(func_return_type))
 
-    def __gen_vars(self, comp_data):
-        pass
-
-    def __write(self, comp_data):
+    def write(self):
         # Write all the data into a buffer to pass to the code generation native layer
         writer = _writer.CodeWriter()
         writer.add_str("**Flyable format**")
@@ -403,12 +365,9 @@ class CodeGen:
         for e in self.__funcs.values():
             e.write_to_code(writer)
 
-        loader.call_code_generation_layer(writer, comp_data.get_config("output"))
+        loader.call_code_generation_layer(writer, self.__data.get_config("output"))
 
-    def __generate_runtime(self):
-        pass
-
-    def __generate_main(self):
+    def generate_main(self):
         """
         Generate Flyable program entry point.
         For now it's the found main function. In the future it should be the global module function #0

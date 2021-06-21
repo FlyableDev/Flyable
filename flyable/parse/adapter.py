@@ -1,7 +1,7 @@
 import flyable.data.lang_func_impl as lang_func_impl
 
 
-def adapt_call(func_name, call_type, args, comp_data, parser):
+def adapt_call(func_name, call_type, args, comp_data, parser, codegen):
     """
     Handle the logic to make the function call possible.
     If it's a Flyable optimized object, it will specialise a function.
@@ -27,14 +27,16 @@ def adapt_func(func, args, comp_data, parser):
     if __validate(func, args):
         adapted_impl = func.find_impl_by_signature(args)
         if adapted_impl is not None:
-            if adapted_impl.is_parse_started() == False:
-                parser.parse_func(comp_data, func)
+            if not adapted_impl.get_parse_status() == lang_func_impl.LangFuncImpl.ParseStatus.ENDED:
+                parser.parse_func(func)
         else:  # Need to create a new implementation
+            comp_data.set_changed(True)  # A new implementation is a change to take in account
             adapted_impl = lang_func_impl.LangFuncImpl()
             for i, e in enumerate(args):
                 adapted_impl.add_arg(args[i])
             func.add_impl(adapted_impl)
-            parser.parse_impl(comp_data, adapted_impl)
+            parser.get_code_gen().gen_func(adapted_impl, parser.get_data())
+            parser.parse_impl(adapted_impl)
 
         return adapted_impl
 

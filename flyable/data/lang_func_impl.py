@@ -1,5 +1,6 @@
 import flyable.data.lang_type as type
 import flyable.parse.context as context
+import enum
 
 
 class LangFuncImpl:
@@ -16,16 +17,19 @@ class LangFuncImpl:
     test("a","b") # Generate another implementation of the code that calls __add__ from the str class
     """
 
+    class ParseStatus(enum.IntEnum):
+        NOT_STARTED = 0,
+        STARTED = 1,
+        ENDED = 1
+
     def __init__(self):
         self.__id = -1
         self.__unknown = False
         self.__code_func = None
         self.__args = []
         self.__parent_func = None
-        self.__node_infos = {}
 
-        self.__has_parse_started = False
-        self.__has_parse_ended = False
+        self.__parse_status = LangFuncImpl.ParseStatus.NOT_STARTED
 
         self.__return_type = type.LangType()
 
@@ -57,17 +61,17 @@ class LangFuncImpl:
     def get_parent_func(self):
         return self.__parent_func
 
-    def set_unknown(self, unknow):
-        self.__unknown = unknow
+    def set_unknown(self, unknown):
+        self.__unknown = unknown
 
     def is_unknown(self):
         return self.__unknown
 
-    def is_parse_started(self):
-        return self.__has_parse_started
+    def set_parse_status(self, status):
+        return self.__parse_status
 
-    def is_parse_ended(self):
-        return self.__has_parse_ended
+    def get_parse_status(self):
+        return self.__parse_status
 
     def get_return_type(self):
         return self.__return_type
@@ -80,15 +84,6 @@ class LangFuncImpl:
 
     def get_code_func(self):
         return self.__code_func
-
-    def set_node_info(self, node, info):
-        self.__node_infos[id(node)] = info
-
-    def get_node_info(self, node):
-        key = id(node)
-        if key in self.__node_infos:
-            return self.__node_infos[id(node)]
-        return None
 
     def get_context(self):
         return self.__context
@@ -104,6 +99,11 @@ class LangFuncImpl:
         Return if the implementation can potentially raise an exception during his execution
         """
         return self.__can_raise
+
+    def clear_info(self):
+        self.__can_raise = False
+        self.__return_type = type.LangType()
+        self.__parse_status = LangFuncImpl.ParseStatus.NOT_STARTED
 
     def __str__(self):
         result = str(self.__return_type) + " : "
