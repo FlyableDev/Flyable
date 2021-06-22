@@ -31,22 +31,31 @@ class ParserVisitor(NodeVisitor):
         self.__func: LangFuncImpl = func_impl
         self.__parser = parser
 
-        entry_block = func_impl.get_code_func().add_block()
-
-        self.__builder: CodeBuilder = func_impl.get_code_func().get_builder()
-        self.__builder.set_insert_block(entry_block)
-
         self.__out_blocks = []  # Hierarchy of blocks to jump when a context is over
         self.__exception_blocks = []  # Hierarchy of blocks to jump when an exception occur to dispatch it
 
-        #self.__setup_initial_block()
-        content_block = self.__builder.create_block()
-        self.__builder.br(content_block)  # After variable alloca jump to the function content
-        self.__builder.set_insert_block(content_block)
+        self.__entry_block = func_impl.get_code_func().add_block()
+
+        self.__builder: CodeBuilder = func_impl.get_code_func().get_builder()
+        self.__builder.set_insert_block(self.__entry_block)
+
+        # Setup
+        for i, arg in enumerate(self.__func.args_iter()):
+            arg.set_code_gen_value(i)
+
+        self.__content_block = self.__builder.create_block()
+        self.__builder.set_insert_block(self.__content_block)
 
     def parse(self):
         self.__last_type = None
         self.visit(self.__func.get_parent_func().get_node())
+        self.__parse_over()
+
+    def __parse_over(self):
+        # When parsing is done we can put the final br of the entry block
+        self.__builder.set_insert_block(self.__entry_block)
+        self.__builder.br(self.__content_block)
+        self.__code_gen.fill_not_terminated_block(self.__func.get_code_func())
 
     def visit(self, node):
         if isinstance(node, list):
@@ -146,8 +155,12 @@ class ParserVisitor(NodeVisitor):
             found_var = self.__func.get_context().find_active_var(node.id)
             self.__last_type = found_var.get_type()
             self.__last_value = found_var.get_code_gen_value()
+            if not isinstance(node.ctx, Store):
+                self.__last_value = self.__builder.load(self.__last_value)
         elif isinstance(node.ctx, Store):  # Declaring a variable
             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
+            alloca_value = self.__generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen.get_data()))
+            found_var.set_code_gen_value(alloca_value)
             self.__last_type = found_var.get_type()
             self.__last_value = found_var.get_code_gen_value()
         else:
@@ -192,8 +205,11 @@ class ParserVisitor(NodeVisitor):
 
         type_buffer = self.__last_type
         args_types = []
+        args = []
         for e in node.args:
-            args_types.append(self.__visit_node(e))
+            type, arg = self.__visit_node(e)
+            args_types.append(type)
+            args.append(arg)
             self.__last_type = None
         self.__last_type = type_buffer
 
@@ -210,8 +226,8 @@ class ParserVisitor(NodeVisitor):
             build_in_func = build.get_build_in(name_call)
             if build_in_func is not None and self.__last_type is None:  # Build-in func call
                 build_in_func.parse(node, args_types, self.__parser)
-                self.__last_type = build_in_func.get_type()
-                self.__func.set_node_info(node, NodeInfoCallBuildIn(build_in_func))
+                self.__last_type, self.__last_value = build_in_func.codegen(args_types, args, self.__code_gen,
+                                                                            self.__builder)
             else:
                 if self.__last_type is None:
                     file = self.__func.get_parent_func().get_file()
@@ -446,3 +462,10 @@ class ParserVisitor(NodeVisitor):
     def visit_ImportFrom(self, node: ImportFrom) -> Any:
         # file = self.__data.get_file(node.module)
         raise NotImplementedError()
+
+    def __generate_entry_block_var(self, code_type):
+        current_block = self.__builder.get_current_block()
+        self.__builder.set_insert_block(self.__entry_block)
+        new_alloca = self.__builder.alloca(code_type)
+        self.__builder.set_insert_block(current_block)
+        return new_alloca

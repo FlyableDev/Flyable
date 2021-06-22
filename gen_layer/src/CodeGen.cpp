@@ -149,6 +149,7 @@ void CodeGen::readFuncs(FormatReader& reader)
     mFuncs.resize(funcsCount);
     std::vector<std::vector<FormatReader>> blocks;
     std::vector<std::vector<std::string>> blockNames;
+    std::vector<std::vector<llvm::Value*>> values;
     for(size_t i = 0;i < funcsCount;++i)
     {
         blocks.push_back(std::vector<FormatReader>());
@@ -167,6 +168,8 @@ void CodeGen::readFuncs(FormatReader& reader)
         llvm::FunctionType* funcType = llvm::FunctionType::get(returnType,llvm::ArrayRef<llvm::Type*>(argTypes),false);
         mFuncs[i] = llvm::Function::Create(funcType,link,name,mModule);
 
+        size_t valuesCount = reader.readInt32();
+        values.push_back(std::vector<llvm::Value*>(valuesCount));
         size_t blocksCount = reader.readInt32();
         for(size_t j = 0;j < blocksCount;++j)
         {
@@ -177,19 +180,22 @@ void CodeGen::readFuncs(FormatReader& reader)
 
     for(size_t i = 0;i < mFuncs.size();++i)
     {
-        readBody(mFuncs[i],blocks[i],blockNames[i]);
+        readBody(mFuncs[i],values[i],blocks[i],blockNames[i]);
     }
 }
 
-void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,std::vector<std::string>& blockNames)
+void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,std::vector<FormatReader> &readers,std::vector<std::string>& blockNames)
 {
     std::vector<llvm::BasicBlock*> blocks(readers.size());
-    std::vector<llvm::Value*> values;
     for(size_t i = 0;i < readers.size();++i)
         blocks[i] = llvm::BasicBlock::Create(mContext,blockNames[i],func);
 
+    size_t i = 0;
     for(auto it = func->arg_begin();it != func->arg_end();it++)
-        values.push_back(it);
+    {
+        values[i] = it;
+        ++i;
+    }
 
     for(size_t i = 0;i < readers.size();++i)
     {
@@ -206,9 +212,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
                     if(isDecimalType(left))
-                        values.push_back(mBuilder.CreateFAdd(left,right));
+                        values[current->readInt32()] = mBuilder.CreateFAdd(left,right);
                     else
-                        values.push_back(mBuilder.CreateAdd(left,right));
+                        values[current->readInt32()] = mBuilder.CreateAdd(left,right);
                 }
                 break;
 
@@ -217,9 +223,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
                     if(isDecimalType(left))
-                        values.push_back(mBuilder.CreateSub(left,right));
+                        values[current->readInt32()] = mBuilder.CreateSub(left,right);
                     else
-                        values.push_back(mBuilder.CreateFSub(left,right));
+                        values[current->readInt32()] = mBuilder.CreateFSub(left,right);
                 }
                 break;
 
@@ -228,9 +234,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
                     if(isDecimalType(left))
-                        values.push_back(mBuilder.CreateFMul(left,right));
+                        values[current->readInt32()] = mBuilder.CreateFMul(left,right);
                     else
-                        values.push_back(mBuilder.CreateMul(left,right));
+                        values[current->readInt32()] = mBuilder.CreateMul(left,right);
                 }
                 break;
 
@@ -239,9 +245,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
                     if(isDecimalType(left))
-                        values.push_back(mBuilder.CreateFDiv(left,right));
+                        values[current->readInt32()] = mBuilder.CreateFDiv(left,right);
                     else
-                        values.push_back(mBuilder.CreateSDiv(left,right));
+                        values[current->readInt32()] = mBuilder.CreateSDiv(left,right);
                 }
                 break;
 
@@ -250,9 +256,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
                     if(isDecimalType(left))
-                        values.push_back(mBuilder.CreateFCmpOEQ(left,right));
+                        values[current->readInt32()] = mBuilder.CreateFCmpOEQ(left,right);
                     else
-                        values.push_back(mBuilder.CreateICmpEQ(left,right));
+                        values[current->readInt32()] = mBuilder.CreateICmpEQ(left,right);
                 }
                 break;
 
@@ -261,9 +267,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
                     if(isDecimalType(left))
-                        values.push_back(mBuilder.CreateFCmpONE(left,right));
+                        values[current->readInt32()] = mBuilder.CreateFCmpONE(left,right);
                     else
-                        values.push_back(mBuilder.CreateICmpNE(left,right));
+                        values[current->readInt32()] = mBuilder.CreateICmpNE(left,right);
                 }
                 break;
 
@@ -272,9 +278,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
                     if(isDecimalType(left))
-                        values.push_back(mBuilder.CreateFCmpOLT(left,right));
+                        values[current->readInt32()] = mBuilder.CreateFCmpOLT(left,right);
                     else
-                        values.push_back(mBuilder.CreateICmpSLT(left,right));
+                        values[current->readInt32()] = mBuilder.CreateICmpSLT(left,right);
                 }
                 break;
 
@@ -283,9 +289,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
                     if(isDecimalType(left))
-                        values.push_back(mBuilder.CreateFCmpOLE(left,right));
+                        values[current->readInt32()] = mBuilder.CreateFCmpOLE(left,right);
                     else
-                        values.push_back(mBuilder.CreateICmpSLE(left,right));
+                        values[current->readInt32()] = mBuilder.CreateICmpSLE(left,right);
                 }
                 break;
 
@@ -294,9 +300,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
                     if(isDecimalType(left))
-                        values.push_back(mBuilder.CreateFCmpOGT(left,right));
+                        values[current->readInt32()] = mBuilder.CreateFCmpOGT(left,right);
                     else
-                        values.push_back(mBuilder.CreateICmpSGT(left,right));
+                        values[current->readInt32()] = mBuilder.CreateICmpSGT(left,right);
                 }
                 break;
 
@@ -305,9 +311,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
                     if(isDecimalType(left))
-                        values.push_back(mBuilder.CreateFCmpOGE(left,right));
+                        values[current->readInt32()] = mBuilder.CreateFCmpOGE(left,right);
                     else
-                        values.push_back(mBuilder.CreateICmpSGE(left,right));
+                        values[current->readInt32()] = mBuilder.CreateICmpSGE(left,right);
                 }
                 break;
 
@@ -315,9 +321,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                 {
                       llvm::Value* value = values[current->readInt32()];
                       if(isDecimalType(value))
-                        values.push_back(mBuilder.CreateFNeg(value));
+                        values[current->readInt32()] = mBuilder.CreateFNeg(value);
                       else
-                        values.push_back(mBuilder.CreateNeg(value));
+                        values[current->readInt32()] = mBuilder.CreateNeg(value);
                 }
                 break;
 
@@ -325,12 +331,15 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                 {
                     llvm::Value* value = values[current->readInt32()];
                     llvm::Value* store = values[current->readInt32()];
-                    values.push_back(mBuilder.CreateStore(value,store));
+                    values[current->readInt32()] = mBuilder.CreateStore(value,store);
                 }
                 break;
 
                 case 101:
-                    values.push_back(mBuilder.CreateLoad(values[current->readInt32()]));
+                {
+                    int id = current->readInt32();
+                    values[current->readInt32()] = mBuilder.CreateLoad(values[id]);
+                }
                 break;
 
                 case 150:
@@ -347,7 +356,11 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                 break;
 
                 case 152:
-                    values.push_back(mBuilder.CreateGEP(values[current->readInt32()],values[current->readInt32()]));
+                {
+                    llvm::Value* element = values[current->readInt32()];
+                    llvm::Value* indice = values[current->readInt32()];
+                    values[current->readInt32()] = mBuilder.CreateGEP(element,indice);
+                }
                 break;
 
                 case 153:
@@ -359,36 +372,58 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                         int id = current->readInt32();
                         args[i] = values[id];
                     }
-                    values.push_back(mBuilder.CreateCall(funcToCall,llvm::ArrayRef<llvm::Value*>(args)));
+
+                    values[current->readInt32()] = mBuilder.CreateCall(funcToCall,llvm::ArrayRef<llvm::Value*>(args));
                 }
                 break;
 
                 case 1000:
-                    values.push_back(mBuilder.getInt64(current->readInt64()));
+                {
+                    long long constVal = current->readInt64();
+                    values[current->readInt32()] = mBuilder.getInt64(constVal);
+                }
                 break;
 
                 case 1001:
-                    values.push_back(mBuilder.getInt32(current->readInt32()));
+                {
+                    int constVal = current->readInt32();
+                    values[current->readInt32()] = mBuilder.getInt32(constVal);
+                }
                 break;
 
                 case 1002:
-                    values.push_back(mBuilder.getInt16(current->readInt32()));
+                {
+                    int constVal = current->readInt32();
+                    values[current->readInt32()] = mBuilder.getInt16(constVal);
+                }
                 break;
 
                 case 1003:
-                    values.push_back(mBuilder.getInt8(current->readInt32()));
+                {
+                    int constVal = current->readInt32();
+                    values[current->readInt32()] = mBuilder.getInt8(constVal);
+                }
                 break;
 
                 case 1004:
-                    values.push_back(llvm::ConstantFP::get(llvm::Type::getFloatTy(mContext),llvm::APFloat(current->readFloat())));
+                {
+                    float constVal = current->readFloat();
+                    values[current->readInt32()] = llvm::ConstantFP::get(llvm::Type::getFloatTy(mContext),llvm::APFloat(constVal));
+                }
                 break;
 
                 case 1005:
-                    values.push_back(llvm::ConstantFP::get(llvm::Type::getDoubleTy(mContext),llvm::APFloat(current->readDouble())));
+                {
+                    double constVal = current->readDouble();
+                    values[current->readInt32()] = llvm::ConstantFP::get(llvm::Type::getDoubleTy(mContext),llvm::APFloat(constVal));
+                }
                 break;
 
                 case 1007:
-                    values.push_back(mBuilder.getInt1(current->readInt32()));
+                {
+                    int constVal = current->readInt32();
+                    values[current->readInt32()] = mBuilder.getInt1(constVal);
+                }
                 break;
 
                 case 1006:
@@ -412,7 +447,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                     else
                         value = llvm::ConstantPointerNull::get((llvm::PointerType*) type);
 
-                    values.push_back(value);
+                    values[current->readInt32()] = value;
                 }
                 break;
 
@@ -420,7 +455,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                 {
                     llvm::Value* value = values[current->readInt32()];
                     llvm::Type* type = readType(*current);
-                    values.push_back(mBuilder.CreatePointerCast(value,type));
+                    values[current->readInt32()] = mBuilder.CreatePointerCast(value,type);
                 }
                 break;
 
@@ -428,14 +463,14 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                 {
                     llvm::Value* value = values[current->readInt32()];
                     llvm::Type* type = readType(*current);
-                    values.push_back(mBuilder.CreateIntCast(value,type,true));
+                    values[current->readInt32()] = mBuilder.CreateIntCast(value,type,true);
                 }
                 break;
 
                 case 1050:
                 {
                     llvm::Type* type = readType(*current);
-                    values.push_back(mBuilder.CreateAlloca(type));
+                    values[current->readInt32()] = mBuilder.CreateAlloca(type);
                 }
                 break;
 
@@ -448,13 +483,16 @@ void CodeGen::readBody(llvm::Function* func,std::vector<FormatReader> &readers,s
                 break;
 
                 case 3000:
-                    values.push_back(mGlobalVars[current->readInt32()]);
+                {
+                    int id = current->readInt32();
+                    values[current->readInt32()] = mGlobalVars[id];
+                }
                 break;
 
                 case 3001:
                 {
                     std::string txt = current->readString();
-                    values.push_back(mBuilder.CreateGlobalString(llvm::StringRef(txt)));
+                    values[current->readInt32()] = mBuilder.CreateGlobalString(llvm::StringRef(txt));
                 }
                 break;
 

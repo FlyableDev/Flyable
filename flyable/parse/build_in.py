@@ -11,20 +11,13 @@ import flyable.data.lang_type as lang_type
 class BuildInFunc:
 
     def __init__(self):
-        self.__arg_types = []
-        self.__type = None
+        pass
 
     def parse(self, node, args, parser):
         pass
 
     def codegen(self, args, codegen, builder):
         pass
-
-    def set_type(self, type):
-        self.__type = type
-
-    def get_type(self):
-        return self.__type
 
 
 class BuildInPrint(BuildInFunc):
@@ -37,8 +30,8 @@ class BuildInPrint(BuildInFunc):
         if len(args) != 1:
             parser.throw_error("print() expect one argument", node.line_no, node.col_no)
 
-    def codegen(self, args, codegen, builder):
-        arg_type = self.__arg_types[0]
+    def codegen(self, args_types, args, codegen, builder):
+        arg_type = args_types[0]
         obj_to_send = None
         if arg_type.is_int() or arg_type.is_dec() or arg_type.is_bool():
             obj_to_send = runtime.value_to_pyobj(codegen, builder, args[0], arg_type)
@@ -47,7 +40,7 @@ class BuildInPrint(BuildInFunc):
         else:
             obj_to_send = args[0]
 
-        runtime.py_runtime_object_print(codegen, builder, obj_to_send)
+        return lang_type.get_none_type(), runtime.py_runtime_object_print(codegen, builder, obj_to_send)
 
 
 class BuildInList(BuildInFunc):

@@ -35,7 +35,7 @@ def adapt_func(func, args, comp_data, parser):
             for i, e in enumerate(args):
                 adapted_impl.add_arg(args[i])
             func.add_impl(adapted_impl)
-            parser.get_code_gen().gen_func(adapted_impl, parser.get_data())
+            parser.get_code_gen().gen_func(adapted_impl)
             parser.parse_impl(adapted_impl)
 
         return adapted_impl

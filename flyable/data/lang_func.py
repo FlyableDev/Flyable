@@ -101,8 +101,7 @@ class LangFunc:
         return iter(self.__node.args.args)
 
     def clear_info(self):
-        self.__impls.clear()
-        self.__setup_unknown_impl()
+        pass
 
     def __setup_unknown_impl(self):
         # Setup args

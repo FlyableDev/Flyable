@@ -207,6 +207,8 @@ class CodeFunc:
         for arg in self.__args:
             arg.write_to_code(writer)
 
+        writer.add_int32(self.__value_id + 1)
+
         writer.add_int32(len(self.__blocks))
         for block in self.__blocks:
             block.write_to_code(writer)
@@ -317,18 +319,19 @@ class CodeGen:
         _class.set_struct(new_struct)
         self.add_struct(new_struct)
 
-    def gen_func(self, impl, comp_data):
+    def gen_func(self, impl):
         """
         Take an implementation  and create a callable CodeFunction from it
         """
         func_name = "@flyable@__" + impl.get_parent_func().get_name() + "@" + str(impl.get_id()) + "@" \
                     + str(impl.get_parent_func().get_id()) + "@" + str(impl.get_id())
-        return_type = impl.get_return_type().to_code_type(comp_data)
+        return_type = impl.get_return_type().to_code_type(self.__data)
         func_args = lang_type.to_code_type(self.__data, list(impl.args_iter()))
         new_func = self.get_or_create_func(func_name, return_type, func_args)
         impl.set_code_func(new_func)
+        return new_func
 
-    def __fill_not_terminated_block(self, func):
+    def fill_not_terminated_block(self, func):
         """
         Some blocks of code can end without any return. We need to generate
         the code so they can return nullified value

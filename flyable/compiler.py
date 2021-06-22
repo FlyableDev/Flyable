@@ -60,15 +60,4 @@ class Compiler(ErrorThrower):
             if self.__parser.has_error() or not self.__data.is_changed():
                 break
 
-            self.__parse_main()
-
         self.throw_errors(self.__parser.get_errors())
-
-    def __parse_main(self):
-        main_func = self.__data.find_main()
-        if main_func is not None:
-            main_impl = LangFuncImpl()
-            main_func.add_impl(main_impl)
-            self.__parser.parse_impl(self.__data, main_impl)
-        else:
-            self.throw_error("No main function found with no arguments", 0, 0)
