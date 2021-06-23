@@ -12,6 +12,11 @@ import flyable.parse.build_in as build
 import flyable.data.attribut
 from flyable.data.lang_func_impl import LangFuncImpl
 from flyable.code_gen.code_builder import CodeBuilder
+import flyable.code_gen.caller as caller
+import flyable.code_gen.list as gen_list
+import flyable.code_gen.tuple as gen_tuple
+import flyable.code_gen.dict as gen_dict
+import flyable.code_gen.runtime as runtime
 import enum
 
 
@@ -30,6 +35,7 @@ class ParserVisitor(NodeVisitor):
         self.__last_value = None
         self.__func: LangFuncImpl = func_impl
         self.__parser = parser
+        self.__data = parser.get_data()
 
         self.__out_blocks = []  # Hierarchy of blocks to jump when a context is over
         self.__exception_blocks = []  # Hierarchy of blocks to jump when an exception occur to dispatch it
@@ -119,26 +125,50 @@ class ParserVisitor(NodeVisitor):
             else:
                 self.__last_type = value_type
         else:
-            self.__last_type = adapter.adapt_call(op_name, value_type, [value_type], self.__data, self.__parser)
+            self.__last_type = adapter.adapt_call(op_name, value_type, [value_type], self.__data, self.__parser,
+                                                  self.__code_gen)
 
     def visit_BoolOp(self, node: BoolOp) -> Any:
         self.visit_BinOp(node)
 
     def visit_Compare(self, node: Compare) -> Any:
-        initial_type = self.__visit_node(node.left)
-        for e in node.comparators:
-            self.__visit_node(e)
-        self.__last_type = type.get_bool_type()
+        all = [node.left] + node.comparators
+        last = None
+        for e in range(len(node.ops)):
+            first_type, first_value = self.__visit_node(all[e])
+            second_type, second_value = self.__visit_node(all[e + 1])
+            current_op = node.ops[e]
+            if isinstance(current_op, ast.And):
+                last = self.__builder.op_and(first_value, second_value)
+            elif isinstance(current_op, ast.Or):
+                last = self.__builder.op_or(first_value, second_value)
+            elif isinstance(current_op, ast.Eq):
+                last = self.__builder.eq(first_value, second_value)
+            elif isinstance(current_op, ast.NotEq):
+                last = self.__builder.ne(first_value, second_value)
+            elif isinstance(current_op, ast.Lt):
+                last = self.__builder.lt(first_value, second_value)
+            elif isinstance(current_op, ast.LtE):
+                last = self.__builder.lte(first_value, second_value)
+            elif isinstance(current_op, ast.Gt):
+                last = self.__builder.gt(first_value, second_value)
+            elif isinstance(current_op, ast.GtE):
+                last = self.__builder.gte(first_value, second_value)
+            else:
+                raise NotImplementedError("Compare op not supported")
+        self.__last_value = last
+        self.__last_type = lang_type.get_bool_type()
 
     def visit_AugAssign(self, node: AugAssign) -> Any:
-        left_type = self.__visit_node(node.value)
-        right_type = self.__visit_node(node.target)
+        left_type, left_value = self.__visit_node(node.value)
+        right_type, right_value = self.__visit_node(node.target)
         if not left_type == right_type:
             self.__parser.throw_error("Type " + left_type.to_str(self.__data) + " can't be assigned to type"
                                       + right_type.to_code_type(self.__data))
 
     def visit_Expr(self, node: Expr) -> Any:
         self.__last_type = None
+        self.__last_value = None
         super().visit(node.value)
 
     def visit_Expression(self, node: Expression) -> Any:
@@ -263,6 +293,9 @@ class ParserVisitor(NodeVisitor):
         else:
             self.__parser.throw_error("Call unrecognized", node.lineno, node.end_col_offset)
 
+    def visit_Break(self, node: Break) -> Any:
+        self.__builder.br(self.__out_blocks[-1])
+
     def visit_Return(self, node: Return) -> Any:
         return_type, return_value = self.__visit_node(node.value)
         if self.__func.get_return_type().is_unknown():
@@ -352,12 +385,78 @@ class ParserVisitor(NodeVisitor):
         self.__out_blocks.pop()
 
     def visit_For(self, node: For) -> Any:
+        block_for = self.__builder.create_block()
+        block_for_in = self.__builder.create_block()
+        block_else = self.__builder.create_block() if node.orelse is not None else None
+        block_continue = self.__builder.create_block()
+
         name = node.target.id
-        type_to_iter = self.__visit_node(node.iter)
-        new_var = self.__func.get_context().add_var(name, type_to_iter)
+        iter_type, iter_value = self.__visit_node(node.iter)
+        new_var = self.__func.get_context().add_var(name, iter_type)
+        alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__data))
+        new_var.set_code_gen_value(alloca_value)
+        iterator = caller.call_obj(self.__code_gen, self.__builder, "__iter__", iter_value,
+                                   lang_type.get_python_obj_type(), [], [])
+        self.__builder.br(block_for)
+        self.__builder.set_insert_block(block_for)
+
+        next_value = caller.call_obj(self.__code_gen, self.__builder, "__next__", iterator,
+                                     lang_type.get_python_obj_type(), [], [])
+
+        self.__builder.store(next_value, new_var.get_code_gen_value())
+
+        null_ptr = self.__builder.const_null(code_type.get_int8_ptr())
+
+        test = self.__builder.eq(next_value, null_ptr)
+
+        if node.orelse is None:
+            self.__builder.cond_br(test, block_continue, block_for_in)
+        else:
+            self.__builder.cond_br(test, block_else, block_for_in)
+
+        # Setup the for loop content
+        self.__builder.set_insert_block(block_for_in)
+        self.__out_blocks.append(block_continue)  # In case of a break we want to jump after the for loop
         self.visit(node.body)
+        self.__out_blocks.pop()
+        self.__builder.br(block_for)
+
         if node.orelse is not None:
+            self.__builder.set_insert_block(block_else)
             self.visit(node.orelse)
+            self.__builder.br(block_continue)
+
+        self.__builder.set_insert_block(block_continue)
+
+    def visit_While(self, node: While) -> Any:
+        block_cond = self.__builder.create_block()
+        block_while_in = self.__builder.create_block()
+        block_else = self.__builder.create_block() if node.orelse is not None else None
+        block_continue = self.__builder.create_block()
+
+        self.__builder.br(block_cond)
+        self.__builder.set_insert_block(block_cond)
+
+        loop_type, loop_value = self.__visit_node(node.test)
+
+        if node.orelse is None:
+            self.__builder.cond_br(loop_value, block_while_in, block_continue)
+        else:
+            self.__builder.cond_br(loop_value, block_while_in, block_else)
+
+        # Setup the while loop content
+        self.__builder.set_insert_block(block_while_in)
+        self.__out_blocks.append(block_continue)  # In case of a break we want to jump after the while loop
+        self.__visit_node(node.body)
+        self.__out_blocks.pop()
+        self.__builder.br(block_cond)
+
+        if node.orelse is not None:
+            self.__builder.set_insert_block(block_else)
+            self.__visit_node(node.orelse)
+            self.__builder.br(block_continue)
+
+        self.__builder.set_insert_block(block_continue)
 
     def visit_With(self, node: With) -> Any:
         items = node.items
@@ -368,19 +467,25 @@ class ParserVisitor(NodeVisitor):
             with_types.append(type)
             if type.is_obj() or type.is_python_obj():
                 if with_item.optional_vars is not None:
-                    all_vars_with.append(
-                        self.__func.get_context().add_var(str(with_item.optional_vars.id), type))
+                    with_var = self.__func.get_context().add_var(str(with_item.optional_vars.id), type)
+                    all_vars_with.append(with_var)
+                    self.__builder.store(value, with_var.get_code_gen_value())
                 else:
                     all_vars_with.append(None)
 
-                if adapter.adapt_call("__enter__", type, [type], self.__data, self.__parser) is None:
+                if adapter.adapt_call("__enter__", type, [type], self.__data, self.__parser, self.__code_gen) is None:
                     self.__parser.throw_error("__enter__ implementation expected", node.lineno, node.end_col_offset)
 
                 # def __exit__(self, exc_type, exc_value, traceback)
                 exit_args_type = [type] + ([lang_type.get_python_obj_type()] * 3)
+                caller.call_obj(self.__code_gen, self.__builder, "__enter__", value, type, [value], [type])
 
-                if adapter.adapt_call("__exit__", type, exit_args_type, self.__data, self.__parser) is None:
+                if adapter.adapt_call("__exit__", type, exit_args_type, self.__data, self.__parser,
+                                      self.__code_gen) is None:
                     self.__parser.throw_error("__exit__ implementation expected", node.lineno, node.end_col_offset)
+
+                exit_values = [value] + ([self.__builder.const_null(code_type.get_int8_ptr())] * 3)
+                caller.call_obj(self.__code_gen, self.__builder, "__exit__", value, type, exit_values, exit_args_type)
             else:
                 self.__parser.throw_error("Type " + type.to_str(self.__data) +
                                           " can't be used in a with statement", node.lineno, node.end_col_offset)
@@ -409,28 +514,55 @@ class ParserVisitor(NodeVisitor):
 
     def visit_List(self, node: List) -> Any:
         elts_types = []
+        elts_values = []
         for e in node.elts:
-            elts_types.append(self.__visit_node(e))
+            type, value = self.__visit_node(e)
+            elts_types.append(type)
+            elts_values.append(value)
+            self.__last_value = None
+
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
+        array = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder,
+                                                self.__builder.const_int64(len(elts_values)))
+        self.__last_value = array
+
+        for i, e in enumerate(elts_values):
+            runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
+            index = self.__builder.const_int64(i)
+            gen_list.python_list_set(self.__code_gen, self.__builder, self.__last_value, index, e)
 
     def visit_Tuple(self, node: Tuple) -> Any:
         elts_types = []
+        elts_values = []
         for e in node.elts:
-            elts_types.append(self.__visit_node(e))
+            type, value = self.__visit_node(e)
+            elts_types.append(type)
+            elts_values.append(value)
+            self.__last_value = None
+
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_type.add_dim(lang_type.LangType.Dimension.TUPLE)
+        new_tuple = gen_tuple.python_tuple_new(self.__code_gen, self.__builder,
+                                               self.__builder.const_int64(len(elts_values)))
+        self.__last_value = new_tuple
+
+        for i, e in enumerate(elts_values):
+            runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
+            index = self.__builder.const_int64(i)
+            gen_tuple.python_tuple_set_unsafe(self.__code_gen, self.__builder, self.__last_value, index, e)
 
     def visit_DictComp(self, node: DictComp) -> Any:
         pass
 
     def visit_Dict(self, node: Dict) -> Any:
-        values = []
-        keys = []
-        for e in node.values:
-            values.append(self.__visit_node(e))
-        for e in node.keys:
-            keys.append(self.__visit_node(e))
+        new_dict = gen_dict.python_dict_new(self.__code_gen, self.__builder)
+        for i, e in enumerate(node.values):
+            key_type, key_value = self.__visit_node(node.keys[i])
+            value_type, value_value = self.__visit_node(node.values[i])
+            gen_dict.python_dict_set_item(self.__code_gen, self.__builder, new_dict, key_value, value_value)
+            self.__last_value = None
+        self.__last_value = new_dict
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_type.add_dim(lang_type.LangType.Dimension.DICT)
 
@@ -438,9 +570,9 @@ class ParserVisitor(NodeVisitor):
         for e in node.names:
             file = self.__data.get_file(e.name)
             if file is None:
-                module_type = type.get_python_obj_type()  # A Python module
+                module_type = lang_type.get_python_obj_type()  # A Python module
             else:
-                module_type = type.get_module_type(file.get_id())
+                module_type = lang_type.get_module_type(file.get_id())
             new_var = self.__func.get_context().add_var(e.asname, module_type)
 
     def visit_Try(self, node: Try) -> Any:
