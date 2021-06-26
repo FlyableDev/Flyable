@@ -9,6 +9,8 @@ from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.exception as excp
 import flyable.parse.adapter as adapter
+import flyable.data.lang_type as lang_type
+import copy
 
 
 def call_obj(code_gen, builder, parser, func_name, obj, obj_type, args, args_type):
@@ -24,10 +26,13 @@ def call_obj(code_gen, builder, parser, func_name, obj, obj_type, args, args_typ
         called_class = code_gen.get_data().get_class(obj_type.get_id())
         called_func = called_class.get_func(func_name)
         called_impl = adapter.adapt_func(called_func, args_type, code_gen.get_data(), parser)
-        return builder.call(called_impl.get_code_func(), args)
-    elif obj_type.is_python_obj():
+        return called_impl.get_return_type(), builder.call(called_impl.get_code_func(), args)
+    elif obj_type.is_python_obj() or obj_type.is_list() or obj.is_dict():
         # Python call
-        return generate_python_method_call(code_gen, builder, func_name, obj, args)
+        # For python objects we need to remove the first args
+        py_args = copy.copy(args)
+        py_args.pop(0)
+        return lang_type.get_python_obj_type(), generate_python_method_call(code_gen, builder, func_name, obj, py_args)
     else:
         raise ValueError("Type un-callable: " + obj_type.to_str(code_gen.get_data()))
 
@@ -55,5 +60,5 @@ def generate_python_call(code_gen, builder, callable, args):
     for i, e in enumerate(args):
         tuple_call.python_tuple_set_unsafe(code_gen, builder, arg_list, builder.const_int64(i), e)
     result = builder.call(call_func, [callable, arg_list, builder.const_null(code_type.get_int8_ptr())])
-    # excp.py_runtime_print_error(code_gen, builder)
+    #excp.py_runtime_print_error(code_gen, builder)
     return result

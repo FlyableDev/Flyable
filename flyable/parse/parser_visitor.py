@@ -412,13 +412,13 @@ class ParserVisitor(NodeVisitor):
         new_var = self.__func.get_context().add_var(name, iter_type)
         alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__data))
         new_var.set_code_gen_value(alloca_value)
-        iterator = caller.call_obj(self.__code_gen, self.__builder, "__iter__", iter_value,
-                                   lang_type.get_python_obj_type(), [], [])
+        iterable_type, iterator = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__iter__",
+                                                  iter_value, iter_type, [iter_value], [iter_type])
         self.__builder.br(block_for)
         self.__builder.set_insert_block(block_for)
 
-        next_value = caller.call_obj(self.__code_gen, self.__builder, "__next__", iterator,
-                                     lang_type.get_python_obj_type(), [], [])
+        next_type, next_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__next__", iterator,
+                                                iterable_type, [iter_value], [iterable_type])
 
         self.__builder.store(next_value, new_var.get_code_gen_value())
 
@@ -492,10 +492,12 @@ class ParserVisitor(NodeVisitor):
 
                 # def __exit__(self, exc_type, exc_value, traceback)
                 exit_args_type = [type] + ([lang_type.get_python_obj_type()] * 3)
-                caller.call_obj(self.__code_gen, self.__builder, self.__parser,"__enter__", value, type, [value], [type])
+                caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__enter__", value, type, [value],
+                                [type])
 
                 exit_values = [value] + ([self.__builder.const_null(code_type.get_int8_ptr())] * 3)
-                caller.call_obj(self.__code_gen, self.__builder, self.__parser,"__exit__", value, type, exit_values, exit_args_type)
+                caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__exit__", value, type, exit_values,
+                                exit_args_type)
             else:
                 self.__parser.throw_error("Type " + type.to_str(self.__data) +
                                           " can't be used in a with statement", node.lineno, node.end_col_offset)
