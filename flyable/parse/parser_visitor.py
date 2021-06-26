@@ -490,19 +490,12 @@ class ParserVisitor(NodeVisitor):
                 else:
                     all_vars_with.append(None)
 
-                if adapter.adapt_call("__enter__", type, [type], self.__data, self.__parser, self.__code_gen) is None:
-                    self.__parser.throw_error("__enter__ implementation expected", node.lineno, node.end_col_offset)
-
                 # def __exit__(self, exc_type, exc_value, traceback)
                 exit_args_type = [type] + ([lang_type.get_python_obj_type()] * 3)
-                caller.call_obj(self.__code_gen, self.__builder, "__enter__", value, type, [value], [type])
-
-                if adapter.adapt_call("__exit__", type, exit_args_type, self.__data, self.__parser,
-                                      self.__code_gen) is None:
-                    self.__parser.throw_error("__exit__ implementation expected", node.lineno, node.end_col_offset)
+                caller.call_obj(self.__code_gen, self.__builder, self.__parser,"__enter__", value, type, [value], [type])
 
                 exit_values = [value] + ([self.__builder.const_null(code_type.get_int8_ptr())] * 3)
-                caller.call_obj(self.__code_gen, self.__builder, "__exit__", value, type, exit_values, exit_args_type)
+                caller.call_obj(self.__code_gen, self.__builder, self.__parser,"__exit__", value, type, exit_values, exit_args_type)
             else:
                 self.__parser.throw_error("Type " + type.to_str(self.__data) +
                                           " can't be used in a with statement", node.lineno, node.end_col_offset)
