@@ -1,5 +1,5 @@
 import flyable.data.lang_func_impl as lang_func_impl
-
+from flyable.parse.variable import Variable
 
 def adapt_call(func_name, call_type, args, comp_data, parser, codegen):
     """
@@ -33,7 +33,7 @@ def adapt_func(func, args, comp_data, parser):
             comp_data.set_changed(True)  # A new implementation is a change to take in account
             adapted_impl = lang_func_impl.LangFuncImpl()
             for i, e in enumerate(args):
-                adapted_impl.add_arg(args[i])
+                adapted_impl.add_arg(e)
             func.add_impl(adapted_impl)
             parser.get_code_gen().gen_func(adapted_impl)
             parser.parse_impl(adapted_impl)

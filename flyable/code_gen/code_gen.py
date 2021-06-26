@@ -311,7 +311,7 @@ class CodeGen:
                     if not impl.is_unknown():  # Only visit functions with a complete signature
                         self.__fill_not_terminated_block(impl.get_code_func())
 
-    def gen_structs(self, _class, comp_data):
+    def gen_struct(self, _class):
         """
         Create a structure from a class
         """

@@ -3,6 +3,22 @@ import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
 
 
+def bin_op(code_gen, builder, op, type_left, value_left, type_right, value_right):
+    if isinstance(op, ast.Add):
+        result = builder.add(value_left, value_right)
+    elif isinstance(op, ast.Sub):
+        result = builder.sub(value_left, value_right)
+    elif isinstance(op, ast.Mult):
+        result = builder.mul(value_left, value_right)
+    elif isinstance(op, ast.Div):
+        result = builder.div(value_left, value_right)
+    elif isinstance(op, ast.FloorDiv):
+        pass  # TODO: Support floor div
+    else:
+        raise ValueError("Unsupported Op " + str(op))
+    return result
+
+
 def unary_op(code_gen, builder, type, value, op):
     if isinstance(op, ast.Not):
         return unary_op_not(code_gen, builder, type, value)

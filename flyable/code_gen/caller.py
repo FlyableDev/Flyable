@@ -8,9 +8,10 @@ import flyable.code_gen.code_type as code_type
 from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.exception as excp
+import flyable.parse.adapter as adapter
 
 
-def call_obj(code_gen, builder, func_name, obj, obj_type, args, args_type):
+def call_obj(code_gen, builder, parser, func_name, obj, obj_type, args, args_type):
     """
     Call a method independent from the called type.
     There is 3 calls scenario:
@@ -22,19 +23,8 @@ def call_obj(code_gen, builder, func_name, obj, obj_type, args, args_type):
         # Traditional call
         called_class = code_gen.get_data().get_class(obj_type.get_id())
         called_func = called_class.get_func(func_name)
-        called_impl = None
-        if called_func is not None:
-            found_impl = None
-            for impl in called_func.impls_iter():
-                if called_func.get_args_count() == len(args):
-                    match_arg = True
-                    for i, arg in enumerate(impl.args_iter()):
-                        if arg != args_type[i]:
-                            match_arg = False
-                    if match_arg:
-                        called_impl = impl
-            if called_impl is not None:
-                builder.call(called_impl.get_code_func(), args)
+        called_impl = adapter.adapt_func(called_func, args_type, code_gen.get_data(), parser)
+        return builder.call(called_impl.get_code_func(), args)
     elif obj_type.is_python_obj():
         # Python call
         return generate_python_method_call(code_gen, builder, func_name, obj, args)

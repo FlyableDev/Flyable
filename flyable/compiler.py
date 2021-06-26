@@ -40,7 +40,7 @@ class Compiler(ErrorThrower):
             self.__code_gen.write()
 
     def __pre_parse(self):
-        pre_parser = PreParser(self.__data)
+        pre_parser = PreParser(self.__data,self.__code_gen)
         pre_parser.parse(self.__data)
         self.throw_errors(pre_parser.get_errors())
 

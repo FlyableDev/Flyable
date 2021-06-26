@@ -69,3 +69,6 @@ class LangClass:
 
     def get_lang_type(self):
         return LangType(LangType.Type.OBJECT, self.__id)
+
+    def clear_info(self):
+        pass

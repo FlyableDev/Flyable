@@ -8,16 +8,17 @@ from flyable.tool.repr_visitor import ReprVisitor
 
 
 class PreParser(ast.NodeVisitor, ErrorThrower):
-    '''
+    """
     PreParse visitor is a class that visit all available nodes to find all possibles functions and classes so we can
     supply them to the Code Generator and the
-    '''
+    """
 
-    def __init__(self, comp_data):
+    def __init__(self, comp_data, code_gen):
         super().__init__()
         self.__data = comp_data
         self.__current_class = None
         self.__current_file = None
+        self.__code_gen = code_gen
 
     def parse(self, comp_data):
         for i in range(comp_data.get_files_count()):
@@ -49,5 +50,6 @@ class PreParser(ast.NodeVisitor, ErrorThrower):
         self.__data.add_class(new_class)
         self.__current_file.add_class(new_class)
         self.__current_class = new_class
+        self.__code_gen.gen_struct(new_class)
         super().generic_visit(node)
         self.__current_class = None

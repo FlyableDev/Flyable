@@ -18,6 +18,8 @@ import flyable.code_gen.tuple as gen_tuple
 import flyable.code_gen.dict as gen_dict
 import flyable.code_gen.runtime as runtime
 import enum
+import flyable.code_gen.op_call as op_call
+import flyable.data.lang_type as lang_type
 
 
 class ParserVisitMode(enum.IntEnum):
@@ -45,9 +47,9 @@ class ParserVisitor(NodeVisitor):
         self.__builder: CodeBuilder = func_impl.get_code_func().get_builder()
         self.__builder.set_insert_block(self.__entry_block)
 
-        # Setup
+        # Setup argument as var
         for i, arg in enumerate(self.__func.args_iter()):
-            arg.set_code_gen_value(i)
+            self.__func.get_context().add_var(self.__func.get_parent_func().get_arg(i).arg, arg)
 
         self.__content_block = self.__builder.create_block()
         self.__builder.set_insert_block(self.__content_block)
@@ -97,20 +99,16 @@ class ParserVisitor(NodeVisitor):
             raise NotImplementedError()
 
     def visit_BinOp(self, node: BinOp) -> Any:
-        left_type = self.__visit_node(node.left)
+        left_type, left_value = self.__visit_node(node.left)
         self.__last_type = None
-        right_type = self.__visit_node(node.right)
+        right_type, right_value = self.__visit_node(node.right)
+        self.__visit_node(node.op)
         if left_type.is_primitive():
-            self.__last_type = right_type
-        elif left_type.is_python_obj():
-            self.__last_type = type.get_python_obj_type()
-        elif left_type.is_obj():
-            raise NotImplementedError("Object operator not supported")
-        elif left_type.is_unknown() is True:
-            self.__last_type = type.get_unknown_type()
+            self.__last_type = left_type
+            self.__last_value = op_call.bin_op(self.__code_gen, self.__builder, node.op,
+                                               left_type, left_value, right_type, right_value)
         else:
-            self.__parser.throw_error("Operation not expected", node.lineno, node.col_offset)
-        super().visit(node.op)
+            raise NotImplementedError()
 
     def visit_UnaryOp(self, node: UnaryOp) -> Any:
         value_type = self.__visit_node(node.operand)
@@ -160,11 +158,19 @@ class ParserVisitor(NodeVisitor):
         self.__last_type = lang_type.get_bool_type()
 
     def visit_AugAssign(self, node: AugAssign) -> Any:
-        left_type, left_value = self.__visit_node(node.value)
-        right_type, right_value = self.__visit_node(node.target)
+        right_type, right_value = self.__visit_node(node.value)
+        left_type, left_value = self.__visit_node(node.target)
         if not left_type == right_type:
             self.__parser.throw_error("Type " + left_type.to_str(self.__data) + " can't be assigned to type"
                                       + right_type.to_code_type(self.__data))
+
+        if left_type.is_primitive():
+            old_value = self.__builder.load(left_value)
+            new_value = op_call.bin_op(self.__code_gen, self.__builder, node.op, left_type, old_value, right_type,
+                                       right_value)
+            self.__builder.store(new_value, left_value)
+        else:
+            raise NotImplementedError()
 
     def visit_Expr(self, node: Expr) -> Any:
         self.__last_type = None
@@ -267,17 +273,25 @@ class ParserVisitor(NodeVisitor):
                 content = file.find_content(name_call)
                 if isinstance(content, lang_class.LangClass):
                     # New instance class call
-                    self.__last_type = type.get_obj_type(content.get_id())
-                    constructor = content.get_func("__init__")
-                    constructor_impl = None
-                    if constructor is not None:
-                        args_call = [content.get_lang_type()] + args_types  # Add the self argument
-                        constructor_impl = adapter.adapt_func(constructor, args_call, self.__data, self.__parser)
+                    self.__last_type = lang_type.get_obj_type(content.get_id())
+
+                    alloc_size = self.__builder.const_int64(100)
+                    self.__last_value = runtime.malloc_call(self.__code_gen, self.__builder, alloc_size)
+                    ptr_type = self.__last_type.to_code_type(self.__data)
+                    self.__last_value = self.__builder.ptr_cast(self.__last_value, ptr_type)
+
+                    # Call the constructor
+                    args_types += [self.__last_type]
+                    args += [self.__last_value]
+                    args_call = [content.get_lang_type()] + args_types  # Add the self argument
+                    caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__init__", self.__last_value,
+                                    self.__last_type, args, args_types)
+
                 elif isinstance(content, lang_func.LangFunc):
                     # Func call
                     func_impl_to_call = adapter.adapt_func(content, args_types, self.__data, self.__parser)
                     if func_impl_to_call is not None:
-                        if func_impl_to_call.is_unknown() == False:
+                        if not func_impl_to_call.is_unknown():
                             self.__last_type = func_impl_to_call.get_return_type()
                         else:
                             self.__parser.throw_error("Impossible to resolve function" +
@@ -354,32 +368,35 @@ class ParserVisitor(NodeVisitor):
         self.__last_value = self.__builder.load(new_var.get_code_gen_value())
 
     def visit_If(self, node: If) -> Any:
-
-        cond_type, cond_value = self.__visit_node(node.test)
-        if not cond_type == type.get_bool_type():
-            self.__parser.throw_error("bool type expected for condition instead of " + cond_type.to_str(self.__data),
-                                      node.lineno, node.end_col_offset)
-
         block_go = self.__builder.create_block()
         block_continue = self.__builder.create_block()
+        self.__out_blocks.append(self.__builder.create_block())
+
+        cond_type, cond_value = self.__visit_node(node.test)
+        if cond_type == lang_type.get_bool_type():
+            pass
+        elif cond_type.is_obj():
+            raise NotImplementedError()
+        elif cond_type.is_python_obj() or cond_type.is_list() or cond_type.is_dict():
+            pass
 
         self.__builder.cond_br(cond_value, block_go, block_continue)
 
-        self.__out_blocks.append(block_go)
         self.__builder.set_insert_block(block_go)
         self.__visit_node(node.body)
-        self.__builder.br(block_continue)
-
-        self.__out_blocks.pop()
-
-        self.__builder.set_insert_block(block_continue)
-        if isinstance(node.orelse, ast.If):  # elif handle
-            self.__visit_node(node.orelse)
-        elif node.orelse is not None:  # else statement
-            self.__visit_node(node.orelse)
-
         if self.__builder.get_current_block().needs_end():
             self.__builder.br(self.__out_blocks[-1])
+
+        self.__builder.set_insert_block(block_continue)
+
+        if isinstance(node.orelse, ast.If):  # elif handle
+            self.__visit_node(node.orelse)
+            if self.__builder.get_current_block().needs_end():
+                self.__builder.br(self.__out_blocks[-1])
+        elif node.orelse is not None:  # else statement
+            self.__visit_node(node.orelse)
+            if self.__builder.get_current_block().needs_end():
+                self.__builder.br(self.__out_blocks[-1])
 
         self.__builder.set_insert_block(self.__out_blocks[-1])
         self.__out_blocks.pop()
