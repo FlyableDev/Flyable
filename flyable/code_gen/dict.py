@@ -11,3 +11,9 @@ def python_dict_set_item(code_gen, builder, dict, key, value):
     func = code_gen.get_or_create_func("PyDict_SetItem", code_type.get_int32(),
                                        [code_type.get_int8_ptr()] * 3, gen.Linkage.EXTERNAL)
     return builder.call(func, [dict, key, value])
+
+
+def python_dict_len(code_gen, builder, dict):
+    args_types = [code_type.get_py_obj_ptr(code_gen)]
+    func = code_gen.get_or_create_func("PyDict_Size", code_type.get_int64(), args_types, gen.Linkage.EXTERNAL)
+    return builder.call(func, [dict])

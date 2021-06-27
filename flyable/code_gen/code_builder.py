@@ -87,6 +87,18 @@ class CodeBuilder:
         self.__writer.add_int32(value)
         return self.__gen_value()
 
+    def _and(self, v1, v2):
+        self.__writer.add_int32(12)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
+        return self.__gen_value()
+
+    def _or(self, v1, v2):
+        self.__writer.add_int32(13)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
+        return self.__gen_value()
+
     def store(self, value, store):
         self.__writer.add_int32(100)
         self.__writer.add_int32(value)

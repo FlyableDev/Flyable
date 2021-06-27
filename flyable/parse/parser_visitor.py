@@ -127,7 +127,19 @@ class ParserVisitor(NodeVisitor):
                                                   self.__code_gen)
 
     def visit_BoolOp(self, node: BoolOp) -> Any:
-        self.visit_BinOp(node)
+        types = []
+        values = []
+        for i in enumerate(node.values):
+            type, value = self.__visit_node(node.values[i])
+            types.append(type)
+            values.append(value)
+
+        self.__last_type = types[0]
+        self.__last_value = value[0]
+        for i in range(1, len(types)):
+            self.__last_type, self.__last_value = op_call.bool_op(op,self.__last_type,self.__last_value,
+                                                                  types[i],types[i + i])
+
 
     def visit_Compare(self, node: Compare) -> Any:
         all = [node.left] + node.comparators
