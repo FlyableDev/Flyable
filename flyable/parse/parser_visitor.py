@@ -48,8 +48,10 @@ class ParserVisitor(NodeVisitor):
         self.__builder.set_insert_block(self.__entry_block)
 
         # Setup argument as var
-        for i, arg in enumerate(self.__func.args_iter()):
-            self.__func.get_context().add_var(self.__func.get_parent_func().get_arg(i).arg, arg)
+        for i, var in enumerate(self.__func.get_context().vars_iter()):
+            if var.is_arg():
+                var.set_code_gen_value(i)
+                self.__func.get_code_func().increment_value()
 
         self.__content_block = self.__builder.create_block()
         self.__builder.set_insert_block(self.__content_block)
@@ -137,9 +139,8 @@ class ParserVisitor(NodeVisitor):
         self.__last_type = types[0]
         self.__last_value = value[0]
         for i in range(1, len(types)):
-            self.__last_type, self.__last_value = op_call.bool_op(op,self.__last_type,self.__last_value,
-                                                                  types[i],types[i + i])
-
+            self.__last_type, self.__last_value = op_call.bool_op(op, self.__last_type, self.__last_value,
+                                                                  types[i], types[i + i])
 
     def visit_Compare(self, node: Compare) -> Any:
         all = [node.left] + node.comparators
@@ -203,8 +204,9 @@ class ParserVisitor(NodeVisitor):
             found_var = self.__func.get_context().find_active_var(node.id)
             self.__last_type = found_var.get_type()
             self.__last_value = found_var.get_code_gen_value()
-            if not isinstance(node.ctx, Store):
-                self.__last_value = self.__builder.load(self.__last_value)
+            if not found_var.is_arg():
+                if not isinstance(node.ctx, Store):
+                    self.__last_value = self.__builder.load(self.__last_value)
         elif isinstance(node.ctx, Store):  # Declaring a variable
             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
             alloca_value = self.__generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen.get_data()))
@@ -219,9 +221,12 @@ class ParserVisitor(NodeVisitor):
         if self.__last_type is None:  # Variable call
             # Is it a declared variable ?
             if self.__func.get_context().find_active_var(node.value.id) is not None:
-                found_var = self.__func.get_context().find_active_var(node.value.id)
+                found_var = self.__func.get_context().find_active_var(node.id)
                 self.__last_type = found_var.get_type()
                 self.__last_value = found_var.get_code_gen_value()
+                if not found_var.is_arg():
+                    if not isinstance(node.ctx, Store):
+                        self.__last_value = self.__builder.load(self.__last_value)
             elif isinstance(node.ctx, Store):  # Declaring a variable
                 found_var = self.__func.get_context().add_var(node.value.id, self.__assign_type)
                 self.__last_value = found_var.get_code_gen_value()
@@ -309,6 +314,7 @@ class ParserVisitor(NodeVisitor):
                             self.__parser.throw_error("Impossible to resolve function" +
                                                       func_impl_to_call.get_parent_func().get_name(), node.lineno,
                                                       node.col_offset)
+                        self.__builder.call(func_impl_to_call.get_code_func(), args)
                     else:
                         self.__parser.throw_error("Function " + node.func.id + " not found", node.lineno,
                                                   node.end_col_offset)
