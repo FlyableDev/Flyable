@@ -13,10 +13,7 @@ class BuildInFunc:
     def __init__(self):
         pass
 
-    def parse(self, node, args, parser):
-        pass
-
-    def codegen(self, args, codegen, builder):
+    def parse(self, args_types, args, codegen, builder):
         pass
 
 
@@ -25,12 +22,7 @@ class BuildInPrint(BuildInFunc):
     def __init__(self):
         super().__init__()
 
-    def parse(self, node, args, parser):
-        self.__arg_types = args
-        if len(args) != 1:
-            parser.throw_error("print() expect one argument", node.line_no, node.col_no)
-
-    def codegen(self, args_types, args, codegen, builder):
+    def parse(self, args_types, args, codegen, builder):
         arg_type = args_types[0]
         obj_to_send = None
         if arg_type.is_int() or arg_type.is_dec() or arg_type.is_bool():
@@ -47,27 +39,19 @@ class BuildInList(BuildInFunc):
 
     def __init__(self):
         super().__init__()
-        self.set_type(lang_type.get_python_obj_type())
 
-    def parse(self, node, args, parser):
-        if len(args) > 1:
-            parser.throw_error("list() expect one or less argument", node.line_no, node.col_no)
+    def parse(self, args_types, args, codegen, builder):
+        if len(args_types) == 1:
+            return gen_list.instanciate_pyton_list(codegen, builder, builder.const_int64(0))
 
-    def codegen(self, args, codegen, builder):
-        return gen_list.instanciate_pyton_list(codegen, builder, builder.const_int64(0))
 
 
 class BuildInLen(BuildInFunc):
 
     def __init__(self):
         super().__init__()
-        self.set_type(lang_type.get_int_type())
 
-    def parse(self, node, args, parser):
-        if len(args) != 1:
-            parser.throw_error("len() expect only one argument", node.line_no, node.col_no)
-
-    def codegen(self, args, codegen, builder):
+    def parse(self, args, codegen, builder):
         return runtime.py_runtime_obj_len(codegen, builder, args[0])
 
 

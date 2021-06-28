@@ -278,8 +278,7 @@ class ParserVisitor(NodeVisitor):
         if self.__last_type is None or self.__last_type.is_module():  # A call from an existing variable, current module or build-in
             build_in_func = build.get_build_in(name_call)
             if build_in_func is not None and self.__last_type is None:  # Build-in func call
-                build_in_func.parse(node, args_types, self.__parser)
-                self.__last_type, self.__last_value = build_in_func.codegen(args_types, args, self.__code_gen,
+                self.__last_type, self.__last_value = build_in_func.parse(args_types, args, self.__code_gen,
                                                                             self.__builder)
             else:
                 if self.__last_type is None:
