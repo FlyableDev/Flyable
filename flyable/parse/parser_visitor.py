@@ -326,7 +326,10 @@ class ParserVisitor(NodeVisitor):
             self.__parser.throw_error("Call unrecognized", node.lineno, node.end_col_offset)
 
     def visit_Break(self, node: Break) -> Any:
-        self.__builder.br(self.__out_blocks[-1])
+        if len(self.__out_blocks) > 0:
+            self.__builder.br(self.__out_blocks[-1])
+        else:
+            self.__parser.throw_error("'break' outside a loop", node.lineno, node.end_col_offset)
 
     def visit_Return(self, node: Return) -> Any:
         return_type, return_value = self.__visit_node(node.value)
@@ -388,7 +391,6 @@ class ParserVisitor(NodeVisitor):
     def visit_If(self, node: If) -> Any:
         block_go = self.__builder.create_block()
         block_continue = self.__builder.create_block()
-        self.__out_blocks.append(self.__builder.create_block())
 
         cond_type, cond_value = self.__visit_node(node.test)
         if cond_type == lang_type.get_bool_type():
@@ -403,21 +405,25 @@ class ParserVisitor(NodeVisitor):
         self.__builder.set_insert_block(block_go)
         self.__visit_node(node.body)
         if self.__builder.get_current_block().needs_end():
-            self.__builder.br(self.__out_blocks[-1])
+            self.__builder.br(block_continue)
 
         self.__builder.set_insert_block(block_continue)
 
-        if isinstance(node.orelse, ast.If):  # elif handle
-            self.__visit_node(node.orelse)
-            if self.__builder.get_current_block().needs_end():
-                self.__builder.br(self.__out_blocks[-1])
-        elif node.orelse is not None:  # else statement
-            self.__visit_node(node.orelse)
-            if self.__builder.get_current_block().needs_end():
-                self.__builder.br(self.__out_blocks[-1])
-
-        self.__builder.set_insert_block(self.__out_blocks[-1])
-        self.__out_blocks.pop()
+        # If there is relevant info
+        has_other_block = node.orelse is not None or (isinstance(node.orelse, list) and len(node.orelse) > 0)
+        if has_other_block:
+            other_block = self.__builder.create_block()
+            if isinstance(node.orelse, ast.If):  # elif handle
+                self.__visit_node(node.orelse)
+                if self.__builder.get_current_block().needs_end():
+                    self.__builder.br(other_block)
+            else:  # Else statement
+                self.__visit_node(node.orelse)
+                if self.__builder.get_current_block().needs_end():
+                    self.__builder.br(other_block)
+            self.__builder.set_insert_block(other_block)
+        else:
+            self.__builder.set_insert_block(block_continue)
 
     def visit_For(self, node: For) -> Any:
         block_for = self.__builder.create_block()
