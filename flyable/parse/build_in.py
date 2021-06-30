@@ -41,9 +41,9 @@ class BuildInList(BuildInFunc):
         super().__init__()
 
     def parse(self, args_types, args, codegen, builder):
-        if len(args_types) == 1:
-            return gen_list.instanciate_pyton_list(codegen, builder, builder.const_int64(0))
-
+        if len(args_types) == 0:
+            list_type = lang_type.get_list_of_python_obj_type()
+            return list_type, gen_list.instanciate_pyton_list(codegen, builder, builder.const_int64(0))
 
 
 class BuildInLen(BuildInFunc):
@@ -51,7 +51,7 @@ class BuildInLen(BuildInFunc):
     def __init__(self):
         super().__init__()
 
-    def parse(self, args, codegen, builder):
+    def parse(self, args_types, args, codegen, builder):
         return runtime.py_runtime_obj_len(codegen, builder, args[0])
 
 

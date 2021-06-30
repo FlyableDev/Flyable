@@ -14,6 +14,7 @@ from flyable.data.lang_func_impl import LangFuncImpl
 from flyable.code_gen.code_builder import CodeBuilder
 import flyable.code_gen.caller as caller
 import flyable.code_gen.list as gen_list
+import flyable.code_gen.set as gen_set
 import flyable.code_gen.tuple as gen_tuple
 import flyable.code_gen.dict as gen_dict
 import flyable.code_gen.runtime as runtime
@@ -279,7 +280,7 @@ class ParserVisitor(NodeVisitor):
             build_in_func = build.get_build_in(name_call)
             if build_in_func is not None and self.__last_type is None:  # Build-in func call
                 self.__last_type, self.__last_value = build_in_func.parse(args_types, args, self.__code_gen,
-                                                                            self.__builder)
+                                                                          self.__builder)
             else:
                 if self.__last_type is None:
                     file = self.__func.get_parent_func().get_file()
@@ -586,6 +587,21 @@ class ParserVisitor(NodeVisitor):
             runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
             index = self.__builder.const_int64(i)
             gen_tuple.python_tuple_set_unsafe(self.__code_gen, self.__builder, self.__last_value, index, e)
+
+    def visit_Set(self, node: Set) -> Any:
+        set_type = lang_type.get_unknown_type()
+        set_type.add_dim(LangType.Dimension.SET)
+        values = []
+        types = []
+        null_value = self.__builder.const_null(code_type.get_int8_ptr())
+        self.__last_value = gen_set.instanciate_pyton_set(self.__code_gen, self.__builder, null_value)
+        for e in node.elts:
+            type, value = self.__visit_node(e)
+            values.append(value)
+            types.append(type)
+            gen_set.python_set_add(self.__code_gen, self.__builder, self.__last_value, value)
+
+        self.__last_type = set_type
 
     def visit_DictComp(self, node: DictComp) -> Any:
         pass

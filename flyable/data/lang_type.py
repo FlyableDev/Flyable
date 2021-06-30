@@ -19,16 +19,29 @@ def to_code_type(comp_data, type):
     return type.to_code_type(comp_data)
 
 
-def get_type_common(self, data, primary_type, second_type):
+def get_type_common(self, data, primary_type, second_type=None):
     """
     Return a type that can contains both types.
     Return none if no common types found
     """
-    if primary_type == second_type:
-        return primary_type
-    elif primary_type.is_obj() and second_type.is_obj():
-        return get_python_obj_type()
-    return None
+    if isinstance(primary_type, list) and second_type is None:
+        current_type = primary_type[0]
+        type_iter = next(iter(primary_type))
+        for e in type_iter:
+            current_type = get_type_common(data, current_type, e)
+        return current_type
+    elif isinstance(primary_type, LangType) and isinstance(second_type, LangType):
+        if primary_type == second_type:
+            return primary_type
+        elif primary_type.is_python_obj() or second_type.is_python_obj():
+            return get_python_obj_type()
+        elif primary_type.is_obj() and second_type.is_obj():
+            return get_python_obj_type()
+        else:
+            raise NotImplementedError()
+    else:
+        raise ValueError("Two types of an array of types expected for arguments")
+
 
 def get_int_type():
     return LangType(LangType.Type.INTEGER)
@@ -58,6 +71,12 @@ def get_none_type():
     return LangType(LangType.Type.NONE)
 
 
+def get_list_of_python_obj_type():
+    result = LangType(LangType.Type.PYTHON)
+    result.add_dim(LangType.Dimension.LIST)
+    return result
+
+
 def get_unknown_type():
     return LangType(LangType.Type.UNKNOWN)
 
@@ -77,7 +96,8 @@ class LangType:
     class Dimension(Enum):
         LIST = 0,
         DICT = 1,
-        TUPLE = 2
+        TUPLE = 2,
+        SET = 3
 
     def __init__(self, type=Type.UNKNOWN, id=0):
         if not isinstance(id, int): raise TypeError("Integer expected for id")
@@ -85,7 +105,7 @@ class LangType:
         self.__type = type
         self.__id = id
         self.__dims = []
-        self.__details = []  # Details are extra data that allows the compiler to perform more severe optimization
+        self.__hints = []  # Hints are extra data that allows the compiler to perform more severe optimization
 
     def is_unknown(self):
         return self.__type == LangType.Type.UNKNOWN
@@ -154,6 +174,9 @@ class LangType:
         result = copy.copy(self)
         result.__dims.pop()
         return result
+
+    def get_hints(self):
+        return copy.copy(self.__hints)
 
     def __eq__(self, other):
         return self.__type == other.__type
