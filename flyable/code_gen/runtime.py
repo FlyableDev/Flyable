@@ -68,7 +68,11 @@ def value_to_pyobj(code_gen, builder, value, value_type):
                                               Linkage.EXTERNAL)
         return builder.call(py_func, [value])
     elif value_type.is_obj():
-        return value
+        # Make sure the object is of python objet ptr so the signature works
+        return builder.ptr_cast(value, code_type.get_int8_ptr())
+
+    return value
+
 
 
 def py_runtime_obj_len(code_gen, builder, value):

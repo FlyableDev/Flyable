@@ -106,6 +106,7 @@ class LangType:
         self.__id = id
         self.__dims = []
         self.__hints = []  # Hints are extra data that allows the compiler to perform more severe optimization
+        self.__can_none = False
 
     def is_unknown(self):
         return self.__type == LangType.Type.UNKNOWN
@@ -115,6 +116,9 @@ class LangType:
 
     def is_dict(self):
         return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.DICT
+
+    def is_set(self):
+        return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.SET
 
     def is_tuple(self):
         return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.TUPLE
@@ -145,6 +149,12 @@ class LangType:
 
     def get_id(self):
         return self.__id
+
+    def can_be_none(self):
+        return self.__can_none
+
+    def set_can_be_none(self, can):
+        self.__can_none = can
 
     def to_code_type(self, comp_data):
         result = CodeType()
@@ -184,8 +194,20 @@ class LangType:
     def to_str(self, comp_data):
         if self.is_primitive() or self.is_module() or self.is_unknown():
             return str(self)
+        elif self.is_none():
+            return "None type"
         elif self.is_obj():
             return comp_data.get_class(self.__id).get_name()
+        elif self.is_python_obj():
+            return "Python object"
+        elif self.is_dict():
+            return "dict"
+        elif self.is_list():
+            return "list"
+        elif self.is_set():
+            return "set"
+        elif self.is_tuple():
+            return tuple
         return "Flyable type"
 
     def __str__(self):

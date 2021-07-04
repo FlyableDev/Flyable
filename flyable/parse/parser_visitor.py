@@ -21,6 +21,7 @@ import flyable.code_gen.runtime as runtime
 import enum
 import flyable.code_gen.op_call as op_call
 import flyable.data.lang_type as lang_type
+import flyable.code_gen.ref_counter as ref_counter
 
 
 class ParserVisitMode(enum.IntEnum):
@@ -90,6 +91,7 @@ class ParserVisitor(NodeVisitor):
 
         if not isinstance(node.targets[0], ast.Tuple):
             # Normal assign
+            ref_counter.ref_incr(self.__code_gen, self.__builder, value_type, value)
             self.__builder.store(assign_value, value)
         elif isinstance(node.targets[0], ast.Tuple) and (
                 isinstance(node.value, ast.Tuple) or isinstance(node.value, ast.List)):
@@ -324,6 +326,16 @@ class ParserVisitor(NodeVisitor):
             self.__last_type = type.get_python_obj_type()
         else:
             self.__parser.throw_error("Call unrecognized", node.lineno, node.end_col_offset)
+
+    def visit_Subscript(self, node: Subscript) -> Any:
+        value_type, value = self.__visit_node(node.value)
+        index_type, index_value = self.__visit_node(node.slice)
+        if value_type.is_primitive():
+            self.__parser.throw_error("'[]' can't be used on a primitive type", node.lineno, node.end_col_offset)
+        else:
+            self.__last_type, self.__last_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser,
+                                                                  "__get__", value, value_type, [value, index_value],
+                                                                  [value_type, index_type])
 
     def visit_Break(self, node: Break) -> Any:
         if len(self.__out_blocks) > 0:
