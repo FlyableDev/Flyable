@@ -125,10 +125,11 @@ class CodeBuilder:
         self.__current_block.add_br_block(block_false)
         self.__writer.lock()
 
-    def gep(self, value, indice):
+    def gep(self, value, first_index, second_index):
         self.__writer.add_int32(152)
         self.__writer.add_int32(value)
-        self.__writer.add_int32(indice)
+        self.__writer.add_int32(first_index)
+        self.__writer.add_int32(second_index)
         return self.__gen_value()
 
     def call(self, func, args):

@@ -4,7 +4,7 @@ from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_type as code_type
 
 
-def to_code_type(comp_data, type):
+def to_code_type(code_gen, type):
     """
     Convert a list of LangType to a list of CodeType
     Or
@@ -13,10 +13,10 @@ def to_code_type(comp_data, type):
     if isinstance(type, list):
         result = []
         for e in type:
-            result.append(e.to_code_type(comp_data))
+            result.append(e.to_code_type(code_gen))
         return result
 
-    return type.to_code_type(comp_data)
+    return type.to_code_type(code_gen)
 
 
 def get_type_common(self, data, primary_type, second_type=None):
@@ -156,20 +156,20 @@ class LangType:
     def set_can_be_none(self, can):
         self.__can_none = can
 
-    def to_code_type(self, comp_data):
+    def to_code_type(self, code_gen):
         result = CodeType()
         if self.is_list() or self.is_dict() or self.is_tuple():
-            result = code_type.get_int8_ptr()
+            result = code_type.get_py_obj_ptr(code_gen)
         elif self.is_int() or self.is_module():
             result = code_type.get_int64()
         elif self.is_dec():
-            result = CodeType(CodeType.CodePrimitive.DOUBLE)
+            result = code_type.get_double()
         elif self.is_bool():
-            result = CodeType(CodeType.CodePrimitive.INT1)
+            result = code_type.get_int1()
         elif self.is_python_obj():
-            result = code_type.get_int8_ptr()
+            result = code_type.get_py_obj_ptr(code_gen)
         elif self.is_obj():
-            result = comp_data.get_class(self.__id).get_struct().to_code_type().get_ptr_to()
+            result = code_gen.get_data().get_class(self.__id).get_struct().to_code_type().get_ptr_to()
         elif self.is_unknown():
             result = code_type.get_void()
         return result

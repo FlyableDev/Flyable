@@ -81,7 +81,7 @@ class ParserVisitor(NodeVisitor):
         return self.__last_type, self.__last_value
 
     def visit_Assign(self, node: Assign) -> Any:
-        self.__assign_type, assign_value = self.__visit_node(node.value)
+        self.__assign_type, self.__assign_value = self.__visit_node(node.value)
         value_type, value = self.__visit_node(node.targets)
 
         if self.__assign_type != value_type:
@@ -91,8 +91,8 @@ class ParserVisitor(NodeVisitor):
 
         if not isinstance(node.targets[0], ast.Tuple):
             # Normal assign
-            ref_counter.ref_incr(self.__code_gen, self.__builder, value_type, value)
-            self.__builder.store(assign_value, value)
+            ref_counter.ref_incr(self.__code_gen, self.__builder, self.__assign_type, self.__assign_value)
+            self.__builder.store(self.__assign_value, value)
         elif isinstance(node.targets[0], ast.Tuple) and (
                 isinstance(node.value, ast.Tuple) or isinstance(node.value, ast.List)):
             # List assign
@@ -178,7 +178,7 @@ class ParserVisitor(NodeVisitor):
         left_type, left_value = self.__visit_node(node.target)
         if not left_type == right_type:
             self.__parser.throw_error("Type " + left_type.to_str(self.__data) + " can't be assigned to type"
-                                      + right_type.to_code_type(self.__data))
+                                      + right_type.to_str(self.__data))
 
         if left_type.is_primitive():
             old_value = self.__builder.load(left_value)
@@ -212,7 +212,7 @@ class ParserVisitor(NodeVisitor):
                     self.__last_value = self.__builder.load(self.__last_value)
         elif isinstance(node.ctx, Store):  # Declaring a variable
             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
-            alloca_value = self.__generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen.get_data()))
+            alloca_value = self.__generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen))
             found_var.set_code_gen_value(alloca_value)
             self.__last_type = found_var.get_type()
             self.__last_value = found_var.get_code_gen_value()
@@ -296,7 +296,7 @@ class ParserVisitor(NodeVisitor):
 
                     alloc_size = self.__builder.const_int64(100)
                     self.__last_value = runtime.malloc_call(self.__code_gen, self.__builder, alloc_size)
-                    ptr_type = self.__last_type.to_code_type(self.__data)
+                    ptr_type = self.__last_type.to_code_type(self.__code_gen)
                     self.__last_value = self.__builder.ptr_cast(self.__last_value, ptr_type)
 
                     # Call the constructor
@@ -334,7 +334,8 @@ class ParserVisitor(NodeVisitor):
             self.__parser.throw_error("'[]' can't be used on a primitive type", node.lineno, node.end_col_offset)
         else:
             self.__last_type, self.__last_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser,
-                                                                  "__get__", value, value_type, [value, index_value],
+                                                                  "__getitem__", value, value_type,
+                                                                  [value, index_value],
                                                                   [value_type, index_type])
 
     def visit_Break(self, node: Break) -> Any:
@@ -446,7 +447,7 @@ class ParserVisitor(NodeVisitor):
         name = node.target.id
         iter_type, iter_value = self.__visit_node(node.iter)
         new_var = self.__func.get_context().add_var(name, iter_type)
-        alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__data))
+        alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
         new_var.set_code_gen_value(alloca_value)
         iterable_type, iterator = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__iter__",
                                                   iter_value, iter_type, [iter_value], [iter_type])

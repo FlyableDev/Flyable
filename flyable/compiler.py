@@ -13,6 +13,7 @@ class Compiler(ErrorThrower):
     def __init__(self):
         self.__data = comp_data.CompData()
         self.__code_gen = gen.CodeGen(self.__data)
+        self.__code_gen.setup()
         self.__parser = par.Parser(self.__data, self.__code_gen)
         self.set_output_path("flyable_output.o")
 

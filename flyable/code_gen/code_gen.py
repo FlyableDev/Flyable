@@ -42,6 +42,9 @@ class StructType:
     def get_id(self):
         return self.__id
 
+    def get_name(self):
+        return self.__name
+
     def to_code_type(self):
         return CodeType(CodeType.CodePrimitive.STRUCT, self.get_id())
 
@@ -223,6 +226,9 @@ class CodeGen:
         self.__data = comp_data
         self.__global_strings = {}
 
+        self.__true_var = None
+        self.__false_var = None
+        self.__python_obj_struct = None
 
     def setup(self):
         self.__true_var = self.add_global_var(GlobalVar("Py_True", code_type.get_int8_ptr(), Linkage.EXTERNAL))
@@ -284,7 +290,7 @@ class CodeGen:
         if value in self.__global_strings:
             return self.__global_strings[value]
 
-        new_var = GlobalVar("@flyable@str" + str(len(self.__global_strings)), code_type.get_int8_ptr(),
+        new_var = GlobalVar("@flyable@str" + str(len(self.__global_strings)), code_type.get_py_obj_ptr(self),
                             Linkage.INTERNAL)
         self.add_global_var(new_var)
         self.__global_strings[value] = new_var
@@ -325,8 +331,8 @@ class CodeGen:
         """
         func_name = "@flyable@__" + impl.get_parent_func().get_name() + "@" + str(impl.get_id()) + "@" \
                     + str(impl.get_parent_func().get_id()) + "@" + str(impl.get_id())
-        return_type = impl.get_return_type().to_code_type(self.__data)
-        func_args = lang_type.to_code_type(self.__data, list(impl.args_iter()))
+        return_type = impl.get_return_type().to_code_type(self)
+        func_args = lang_type.to_code_type(self, list(impl.args_iter()))
         new_func = self.get_or_create_func(func_name, return_type, func_args)
         impl.set_code_func(new_func)
         return new_func
@@ -353,7 +359,7 @@ class CodeGen:
         # Add structs
         writer.add_int32(len(self.__structs))
         for _struct in self.__structs:
-            writer.add_str("FlyableStruct")  # Name of the attr
+            writer.add_str("FlyableStruct@" + _struct.get_name())  # Name of the attr
             writer.add_int32(_struct.get_types_count())
             for attr in range(_struct.get_types_count()):
                 _struct.get_type(attr).write_to_code(writer)
