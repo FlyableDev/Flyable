@@ -225,7 +225,7 @@ class ParserVisitor(NodeVisitor):
         if self.__last_type is None:  # Variable call
             # Is it a declared variable ?
             if self.__func.get_context().find_active_var(node.value.id) is not None:
-                found_var = self.__func.get_context().find_active_var(node.id)
+                found_var = self.__func.get_context().find_active_var(node.value.id)
                 self.__last_type = found_var.get_type()
                 self.__last_value = found_var.get_code_gen_value()
                 if not found_var.is_arg():
@@ -238,7 +238,7 @@ class ParserVisitor(NodeVisitor):
             else:
                 self.__parser.throw_error("Undefined attribut '" + node.value.id + "'", node.lineno, node.col_offset)
         elif self.__last_type.is_python_obj():
-            self.__last_type = type.get_python_obj_type()
+            self.__last_type = lang_type.get_python_obj_type()
         elif self.__last_type.is_obj():
             attr = self.__data.get_class(self.__last_type.get_id()).get_attribut(node.value)
             if attr is not None:
@@ -271,7 +271,7 @@ class ParserVisitor(NodeVisitor):
 
         name_call = ""
         if isinstance(node.func, ast.Attribute):
-            self.__last_type = self.__visit_node(node.func)
+            self.__last_type, self.__last_value = self.__visit_node(node.func)
             name_call = node.func.attr
         elif isinstance(node.func, ast.Name):
             name_call = node.func.id
@@ -323,8 +323,11 @@ class ParserVisitor(NodeVisitor):
                                                   node.end_col_offset)
                 else:
                     self.__parser.throw_error("'" + name_call + "' unrecognized", node.lineno, node.end_col_offset)
-        elif self.__last_type.is_python_obj():  # Python call object
-            self.__last_type = lang_type.get_python_obj_type()
+        elif self.__last_type.is_python_obj() or self.__last_type.is_collection():  # Python call object
+            self.__last_type, self.__last_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser,
+                                                                  name_call, self.__last_value, self.__last_type,
+                                                                  [self.__last_value] + args,
+                                                                  [self.__last_type] + args_types)
         else:
             self.__parser.throw_error("Call unrecognized", node.lineno, node.end_col_offset)
 
@@ -578,9 +581,9 @@ class ParserVisitor(NodeVisitor):
         self.__last_value = array
 
         for i, e in enumerate(elts_values):
-            runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
+            py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
             index = self.__builder.const_int64(i)
-            gen_list.python_list_set(self.__code_gen, self.__builder, self.__last_value, index, e)
+            gen_list.python_list_set(self.__code_gen, self.__builder, self.__last_value, index, py_obj)
 
     def visit_Tuple(self, node: Tuple) -> Any:
         elts_types = []
@@ -598,9 +601,9 @@ class ParserVisitor(NodeVisitor):
         self.__last_value = new_tuple
 
         for i, e in enumerate(elts_values):
-            runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
+            py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
             index = self.__builder.const_int64(i)
-            gen_tuple.python_tuple_set_unsafe(self.__code_gen, self.__builder, self.__last_value, index, e)
+            gen_tuple.python_tuple_set_unsafe(self.__code_gen, self.__builder, self.__last_value, index, py_obj)
 
     def visit_Set(self, node: Set) -> Any:
         set_type = lang_type.get_set_of_python_obj_type()
@@ -609,7 +612,8 @@ class ParserVisitor(NodeVisitor):
         new_set = gen_set.instanciate_pyton_set(self.__code_gen, self.__builder, null_value)
         for e in node.elts:
             type, value = self.__visit_node(e)
-            gen_set.python_set_add(self.__code_gen, self.__builder, new_set, value)
+            py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, value, type)
+            gen_set.python_set_add(self.__code_gen, self.__builder, new_set, py_obj)
         self.__last_value = new_set
         self.__last_type = set_type
 

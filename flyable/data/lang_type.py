@@ -129,6 +129,9 @@ class LangType:
     def is_tuple(self):
         return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.TUPLE
 
+    def is_collection(self):
+        return self.is_list() or self.is_set() or self.is_dict() or self.is_tuple()
+
     def is_int(self):
         return len(self.__dims) == 0 and self.__type == LangType.Type.INTEGER
 
