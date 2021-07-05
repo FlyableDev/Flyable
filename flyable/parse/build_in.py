@@ -52,7 +52,7 @@ class BuildInLen(BuildInFunc):
         super().__init__()
 
     def parse(self, args_types, args, codegen, builder):
-        return runtime.py_runtime_obj_len(codegen, builder, args[0])
+        return lang_type.get_int_type(), runtime.py_runtime_obj_len(codegen, builder, args[0])
 
 
 def get_build_in(name):

@@ -30,8 +30,10 @@ class TypeHintPythonType(TypeHint):
     pass
 
 
-class TypeHintListSize(TypeHint):
-
+class TypeHintConstSize(TypeHint):
+    """
+    Hint representing a const len
+    """
     def __init__(self, count):
         self.__count = count
 

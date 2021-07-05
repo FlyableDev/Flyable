@@ -77,6 +77,12 @@ def get_list_of_python_obj_type():
     return result
 
 
+def get_set_of_python_obj_type():
+    result = LangType(LangType.Type.PYTHON)
+    result.add_dim(LangType.Dimension.SET)
+    return result
+
+
 def get_unknown_type():
     return LangType(LangType.Type.UNKNOWN)
 
@@ -158,7 +164,7 @@ class LangType:
 
     def to_code_type(self, code_gen):
         result = CodeType()
-        if self.is_list() or self.is_dict() or self.is_tuple():
+        if self.is_list() or self.is_dict() or self.is_tuple() or self.is_set():
             result = code_type.get_py_obj_ptr(code_gen)
         elif self.is_int() or self.is_module():
             result = code_type.get_int64()

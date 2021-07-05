@@ -11,7 +11,7 @@ def instanciate_pyton_set(code_gen, builder, obj):
     """
     Generate the code to allocate a Python List
     """
-    new_list_args_types = [code_type.get_int64()]
+    new_list_args_types = [code_type.get_py_obj_ptr(code_gen)]
     new_list_func = code_gen.get_or_create_func("PySet_New", code_type.get_py_obj_ptr(code_gen),
                                                 new_list_args_types, gen.Linkage.EXTERNAL)
     return builder.call(new_list_func, [obj])

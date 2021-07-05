@@ -81,7 +81,9 @@ class ParserVisitor(NodeVisitor):
         return self.__last_type, self.__last_value
 
     def visit_Assign(self, node: Assign) -> Any:
+        self.__reset_last()
         self.__assign_type, self.__assign_value = self.__visit_node(node.value)
+        self.__reset_last()
         value_type, value = self.__visit_node(node.targets)
 
         if self.__assign_type != value_type:
@@ -220,7 +222,6 @@ class ParserVisitor(NodeVisitor):
             self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
 
     def visit_Attribute(self, node: Attribute) -> Any:
-
         if self.__last_type is None:  # Variable call
             # Is it a declared variable ?
             if self.__func.get_context().find_active_var(node.value.id) is not None:
@@ -253,12 +254,11 @@ class ParserVisitor(NodeVisitor):
                     self.__parser.throw_error("Attribut '" + node.value + "' not declared", node.lineno,
                                               node.end_col_offset)
         elif self.__last_type.is_python_obj():
-            self.__last_type = type.get_python_obj_type()
+            self.__last_type = lang_type.get_python_obj_type()
         else:
             self.__parser.throw_error("Attribut access unrecognized")
 
     def visit_Call(self, node: Call) -> Any:
-
         type_buffer = self.__last_type
         args_types = []
         args = []
@@ -278,7 +278,8 @@ class ParserVisitor(NodeVisitor):
         else:
             NotImplementedError("Call func node not supported")
 
-        if self.__last_type is None or self.__last_type.is_module():  # A call from an existing variable, current module or build-in
+        # A call from an existing variable, current module or build-in
+        if self.__last_type is None or self.__last_type.is_module():
             build_in_func = build.get_build_in(name_call)
             if build_in_func is not None and self.__last_type is None:  # Build-in func call
                 self.__last_type, self.__last_value = build_in_func.parse(args_types, args, self.__code_gen,
@@ -323,7 +324,7 @@ class ParserVisitor(NodeVisitor):
                 else:
                     self.__parser.throw_error("'" + name_call + "' unrecognized", node.lineno, node.end_col_offset)
         elif self.__last_type.is_python_obj():  # Python call object
-            self.__last_type = type.get_python_obj_type()
+            self.__last_type = lang_type.get_python_obj_type()
         else:
             self.__parser.throw_error("Call unrecognized", node.lineno, node.end_col_offset)
 
@@ -602,18 +603,14 @@ class ParserVisitor(NodeVisitor):
             gen_tuple.python_tuple_set_unsafe(self.__code_gen, self.__builder, self.__last_value, index, e)
 
     def visit_Set(self, node: Set) -> Any:
-        set_type = lang_type.get_unknown_type()
+        set_type = lang_type.get_set_of_python_obj_type()
         set_type.add_dim(LangType.Dimension.SET)
-        values = []
-        types = []
-        null_value = self.__builder.const_null(code_type.get_int8_ptr())
-        self.__last_value = gen_set.instanciate_pyton_set(self.__code_gen, self.__builder, null_value)
+        null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        new_set = gen_set.instanciate_pyton_set(self.__code_gen, self.__builder, null_value)
         for e in node.elts:
             type, value = self.__visit_node(e)
-            values.append(value)
-            types.append(type)
-            gen_set.python_set_add(self.__code_gen, self.__builder, self.__last_value, value)
-
+            gen_set.python_set_add(self.__code_gen, self.__builder, new_set, value)
+        self.__last_value = new_set
         self.__last_type = set_type
 
     def visit_DictComp(self, node: DictComp) -> Any:
@@ -665,3 +662,7 @@ class ParserVisitor(NodeVisitor):
         new_alloca = self.__builder.alloca(code_type)
         self.__builder.set_insert_block(current_block)
         return new_alloca
+
+    def __reset_last(self):
+        self.__last_type = None
+        self.__last_value = None
