@@ -11,28 +11,36 @@ class TypeHintConstValue(TypeHint):
         return self.__value
 
 
-class TypeHintConstDec(TypeHint):
+class TypeHintConstDec(TypeHintConstValue):
     def __init__(self, value):
         super().__init__(value)
 
 
-class TypeHintConstInt(TypeHint):
+class TypeHintConstInt(TypeHintConstValue):
+    def __init__(self, value):
+        super().__init__(value)
+
+class TypeHintConstBool(TypeHintConstValue):
     def __init__(self, value):
         super().__init__(value)
 
 
-class TypeHintConstStr(TypeHint):
+class TypeHintConstStr(TypeHintConstValue):
     def __init__(self, value):
         super().__init__(value)
 
 
 class TypeHintPythonType(TypeHint):
+    """
+    Hint representing the Python type represented.
+    Used to cache functions
+    """
     pass
 
 
-class TypeHintConstSize(TypeHint):
+class TypeHintConstLen(TypeHint):
     """
-    Hint representing a const len
+    Hint representing a container (list, dict,tuple...) with a const len
     """
     def __init__(self, count):
         self.__count = count

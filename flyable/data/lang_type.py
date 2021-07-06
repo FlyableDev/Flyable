@@ -194,6 +194,19 @@ class LangType:
         result.__dims.pop()
         return result
 
+    def add_hint(self, hint):
+        self.__hints.append(hint)
+
+    def get_hint(self, index):
+        if isinstance(index, int):
+            return self.__hints[index]
+        else:
+            result = []
+            for hint in self.__hints:
+                if isinstance(hint, index):
+                    result.append(hint)
+            return result
+
     def get_hints(self):
         return copy.copy(self.__hints)
 

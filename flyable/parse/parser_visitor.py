@@ -21,6 +21,7 @@ import flyable.code_gen.runtime as runtime
 import enum
 import flyable.code_gen.op_call as op_call
 import flyable.data.lang_type as lang_type
+import flyable.data.type_hint as hint
 import flyable.code_gen.ref_counter as ref_counter
 
 
@@ -366,14 +367,18 @@ class ParserVisitor(NodeVisitor):
         if isinstance(node.value, int):
             self.__last_type = get_int_type()
             self.__last_value = self.__builder.const_int64(node.value)
+            self.__last_type.add_hint(hint.TypeHintConstInt(node.value))
         elif isinstance(node.value, float):
             self.__last_type = get_dec_type()
+            self.__last_type.add_hint(hint.TypeHintConstDec(node.value))
             self.__last_value = self.__builder.const_float64(node.value)
         elif isinstance(node.value, bool):
             self.__last_type = get_bool_type()
+            self.__last_type.add_hint(hint.TypeHintConstBool(node.value))
             self.__last_value = self.__builder.const_int1(int(node.value))
         elif isinstance(node.value, str):
             self.__last_type = get_python_obj_type()
+            self.__last_type.add_hint(hint.TypeHintConstStr(node.value))
             self.__last_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.value))
             self.__last_value = self.__builder.load(self.__last_value)
         else:
@@ -385,25 +390,29 @@ class ParserVisitor(NodeVisitor):
         continue_cond = self.__builder.create_block()
 
         test_type, test_value = self.__visit_node(node.test)
+        self.__reset_last()
 
         self.__builder.cond_br(test_value, true_cond, false_cond)
 
         # If true put the true value in the internal var
         self.__builder.set_insert_block(true_cond)
         true_type, true_value = self.__visit_node(node.body)
-        new_var = self.__func.get_context().add_var("@internal_var@", true_type)
-        self.__builder.store(true_value, new_var.get_code_gen_value())
+        self.__reset_last()
+        new_var = self.__generate_entry_block_var(true_type.to_code_type(self.__code_gen))
+        self.__builder.store(true_value, new_var)
         self.__builder.br(continue_cond)
 
         # If false put the false value in the internal var
         self.__builder.set_insert_block(false_cond)
         false_type, false_value = self.__visit_node(node.orelse)
-        self.__builder.store(false_value, new_var.get_code_gen_value())
+        self.__builder.store(false_value, new_var)
         self.__builder.br(continue_cond)
+
+        common_type = lang_type.get_type_common(self.__data, true_type, false_type)
 
         self.__builder.set_insert_block(continue_cond)
         self.__last_type = true_type
-        self.__last_value = self.__builder.load(new_var.get_code_gen_value())
+        self.__last_value = self.__builder.load(new_var)
 
     def visit_If(self, node: If) -> Any:
         block_go = self.__builder.create_block()
