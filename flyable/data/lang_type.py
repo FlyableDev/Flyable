@@ -19,7 +19,7 @@ def to_code_type(code_gen, type):
     return type.to_code_type(code_gen)
 
 
-def get_type_common(self, data, primary_type, second_type=None):
+def get_type_common(data, primary_type, second_type=None):
     """
     Return a type that can contains both types.
     Return none if no common types found
@@ -30,17 +30,20 @@ def get_type_common(self, data, primary_type, second_type=None):
         for e in type_iter:
             current_type = get_type_common(data, current_type, e)
         return current_type
-    elif isinstance(primary_type, LangType) and isinstance(second_type, LangType):
+    else:
         if primary_type == second_type:
             return primary_type
         elif primary_type.is_python_obj() or second_type.is_python_obj():
             return get_python_obj_type()
         elif primary_type.is_obj() and second_type.is_obj():
             return get_python_obj_type()
+        elif primary_type.is_none() or second_type.is_none():
+            return get_python_obj_type()
+        elif primary_type.is_primitive() or second_type.is_primitive():
+            # If one of them is primitive but they are not equals, only a py object can represent both
+            return get_python_obj_type()
         else:
             raise NotImplementedError()
-    else:
-        raise ValueError("Two types of an array of types expected for arguments")
 
 
 def get_int_type():
@@ -179,6 +182,8 @@ class LangType:
             result = code_type.get_py_obj_ptr(code_gen)
         elif self.is_obj():
             result = code_gen.get_data().get_class(self.__id).get_struct().to_code_type().get_ptr_to()
+        elif self.is_none():
+            result = code_type.get_int32()
         elif self.is_unknown():
             result = code_type.get_void()
         return result
@@ -244,7 +249,7 @@ class LangType:
             LangType.Type.OBJECT: "object",
             LangType.Type.MODULE: "module",
             LangType.Type.PYTHON: "python",
-
+            LangType.Type.NONE: "none"
         }
 
         result += str_types[self.__type]

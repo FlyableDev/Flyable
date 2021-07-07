@@ -65,7 +65,9 @@ def value_to_pyobj(code_gen, builder, value, value_type):
         return builder.call(py_func, [value])
     elif value_type.is_obj():
         # Make sure the object is of python objet ptr so the signature works
-        return builder.ptr_cast(value, code_type.get_int8_ptr())
+        return builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
+    elif value_type.is_none():
+        return builder.load(builder.global_var(code_gen.get_none()))
 
     return value
 

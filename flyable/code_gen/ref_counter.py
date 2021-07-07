@@ -7,7 +7,7 @@ def get_ref_counter_ptr(code_gen, builder, value_type, value):
     """
     Generate the code to get the ref counter address of an object
     """
-    if not value_type.is_primitive():
+    if not value_type.is_primitive() and not value_type.is_none():
         zero = builder.const_int32(0)
         return builder.gep(value, zero, zero)
     return None

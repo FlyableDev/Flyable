@@ -228,17 +228,19 @@ class CodeGen:
 
         self.__true_var = None
         self.__false_var = None
+        self.__none_var = None
         self.__python_obj_struct = None
 
     def setup(self):
-        self.__true_var = self.add_global_var(GlobalVar("Py_True", code_type.get_int8_ptr(), Linkage.EXTERNAL))
-        self.__false_var = self.add_global_var(GlobalVar("Py_False", code_type.get_int8_ptr(), Linkage.EXTERNAL))
-
         # Create the Python object struct
         self.__python_obj_struct = StructType("__flyable_py_obj")
         self.__python_obj_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
         self.__python_obj_struct.add_type(code_type.get_int8_ptr())  # PyTypeObject * ob_type
         self.add_struct(self.__python_obj_struct)
+
+        self.__true_var = self.add_global_var(GlobalVar("Py_True", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
+        self.__false_var = self.add_global_var(GlobalVar("Py_False", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
+        self.__none_var = self.add_global_var(GlobalVar("Py_None", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
 
     def clear(self):
         self.__global_vars.clear()
@@ -266,6 +268,12 @@ class CodeGen:
         Return the global variable containing the False python object
         """
         return self.__false_var
+
+    def get_none(self):
+        """
+        Return the global variable containing the None python object
+        """
+        return self.__none_var
 
     def get_py_obj_struct(self):
         return self.__python_obj_struct
@@ -413,3 +421,10 @@ class CodeGen:
             builder.ret(builder.int_cast(return_value, code_type.get_int32()))
         else:
             builder.ret(builder.const_int32(0))
+
+    def convert_type(self, builder, type_from, value, type_to):
+        if type_to.is_python_obj():
+            return runtime.value_to_pyobj(self, builder, value, type_from)
+        elif type_to.is_obj():
+            return builder.ptr_cast(type_to.get_id())
+        raise ValueError("Impossible to convert the type")

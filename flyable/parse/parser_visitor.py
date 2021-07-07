@@ -23,6 +23,7 @@ import flyable.code_gen.op_call as op_call
 import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as hint
 import flyable.code_gen.ref_counter as ref_counter
+import flyable.code_gen.cond as cond
 
 
 class ParserVisitMode(enum.IntEnum):
@@ -364,7 +365,11 @@ class ParserVisitor(NodeVisitor):
                                       return_type.to_str(self.__data))
 
     def visit_Constant(self, node: Constant) -> Any:
-        if isinstance(node.value, int):
+        if isinstance(node.value, bool):
+            self.__last_type = get_bool_type()
+            self.__last_type.add_hint(hint.TypeHintConstBool(node.value))
+            self.__last_value = self.__builder.const_int1(int(node.value))
+        elif isinstance(node.value, int):
             self.__last_type = get_int_type()
             self.__last_value = self.__builder.const_int64(node.value)
             self.__last_type.add_hint(hint.TypeHintConstInt(node.value))
@@ -372,15 +377,14 @@ class ParserVisitor(NodeVisitor):
             self.__last_type = get_dec_type()
             self.__last_type.add_hint(hint.TypeHintConstDec(node.value))
             self.__last_value = self.__builder.const_float64(node.value)
-        elif isinstance(node.value, bool):
-            self.__last_type = get_bool_type()
-            self.__last_type.add_hint(hint.TypeHintConstBool(node.value))
-            self.__last_value = self.__builder.const_int1(int(node.value))
         elif isinstance(node.value, str):
             self.__last_type = get_python_obj_type()
             self.__last_type.add_hint(hint.TypeHintConstStr(node.value))
             self.__last_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.value))
             self.__last_value = self.__builder.load(self.__last_value)
+        elif node.value is None:
+            self.__last_type = get_none_type()
+            self.__last_value = self.__builder.const_int32(0)
         else:
             self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
 
@@ -398,20 +402,26 @@ class ParserVisitor(NodeVisitor):
         self.__builder.set_insert_block(true_cond)
         true_type, true_value = self.__visit_node(node.body)
         self.__reset_last()
-        new_var = self.__generate_entry_block_var(true_type.to_code_type(self.__code_gen))
-        self.__builder.store(true_value, new_var)
-        self.__builder.br(continue_cond)
 
         # If false put the false value in the internal var
         self.__builder.set_insert_block(false_cond)
         false_type, false_value = self.__visit_node(node.orelse)
+
+        common_type = lang_type.get_type_common(self.__data, true_type, false_type)
+        new_var = self.__generate_entry_block_var(common_type.to_code_type(self.__code_gen))
+
+        self.__builder.set_insert_block(true_cond)
+        true_value = self.__code_gen.convert_type(self.__builder, true_type, true_value, common_type)
+        self.__builder.store(true_value, new_var)
+        self.__builder.br(continue_cond)
+
+        self.__builder.set_insert_block(false_cond)
+        false_value = self.__code_gen.convert_type(self.__builder, false_type, false_value, common_type)
         self.__builder.store(false_value, new_var)
         self.__builder.br(continue_cond)
 
-        common_type = lang_type.get_type_common(self.__data, true_type, false_type)
-
         self.__builder.set_insert_block(continue_cond)
-        self.__last_type = true_type
+        self.__last_type = common_type
         self.__last_value = self.__builder.load(new_var)
 
     def visit_If(self, node: If) -> Any:
@@ -419,13 +429,8 @@ class ParserVisitor(NodeVisitor):
         block_continue = self.__builder.create_block()
 
         cond_type, cond_value = self.__visit_node(node.test)
-        if cond_type == lang_type.get_bool_type():
-            pass
-        elif cond_type.is_obj():
-            raise NotImplementedError()
-        elif cond_type.is_python_obj() or cond_type.is_list() or cond_type.is_dict():
-            pass
-
+        cond_type, cond_value = cond.value_to_cond(self.__code_gen, self.__builder, self.__parser, cond_type,
+                                                   cond_value)
         self.__builder.cond_br(cond_value, block_go, block_continue)
 
         self.__builder.set_insert_block(block_go)
