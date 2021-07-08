@@ -56,7 +56,7 @@ class Compiler(ErrorThrower):
             code_gen.clear()
             code_gen.setup()
 
-            adapter.adapt_func(self.__data.find_main(), [], self.__data, self.__parser)
+            adapter.adapt_func(self.__data.get_file(0).get_global_func(), [], self.__data, self.__parser)
 
             if self.__parser.has_error() or not self.__data.is_changed():
                 break

@@ -11,6 +11,7 @@ class LangFile:
         self.__text = txt
         self.__classes = []
         self.__funcs = []
+        self.__global_func = None
 
     def read_from_path(self, path):
         with open(path) as f:
@@ -45,6 +46,12 @@ class LangFile:
 
     def get_func(self, index):
         return self.__funcs[index]
+
+    def set_global_func(self, global_func):
+        self.__global_func = global_func
+
+    def get_global_func(self):
+        return self.__global_func
 
     def get_funcs_count(self):
         return len(self.__funcs)

@@ -62,13 +62,6 @@ class CompData:
     def classes_iter(self):
         return iter(self.__classes)
 
-    def find_main(self):
-        for e in self.funcs_iter():
-            if e.get_name() == "main":
-                if e.get_args_count() == 0:
-                    return e
-        return None
-
     def set_config(self, name, data):
         self.__configs[name] = data
 

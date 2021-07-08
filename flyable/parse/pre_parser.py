@@ -29,6 +29,10 @@ class PreParser(ast.NodeVisitor, ErrorThrower):
                                  feature_version=sys.version_info[0:2])
             # ReprVisitor().visit(ast_tree)
             file.set_ast(ast_tree)
+            global_func = func.LangFunc(ast_tree)
+            global_func.set_global(True)
+            global_func.set_file(file)
+            file.set_global_func(global_func)
             self.visit(ast_tree)
 
     def generic_visit(self, node):

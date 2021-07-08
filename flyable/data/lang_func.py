@@ -13,10 +13,8 @@ class LangFunc:
     """
 
     def __init__(self, node):
-        if isinstance(node, ast.FunctionDef):
-            self.__node: ast.FunctionDef = node
-        else:
-            raise ValueError("FunctionDef expected")
+
+        self.__node = node
 
         self.__id = -1
         # Setup args
@@ -24,6 +22,7 @@ class LangFunc:
 
         self.__class_lang = None
         self.__file = None
+        self.__is_global = False
 
     def set_class(self, _class):
         self.__class_lang = _class
@@ -72,14 +71,18 @@ class LangFunc:
         Returns the minimal amount of arguments required to call.
         """
         # Amount of total args vs the amount of args with default values
-        return len(self.__node.args.args) - len(self.__node.args.defaults)
+        if isinstance(self.__node, ast.FunctionDef):
+            return len(self.__node.args.args) - len(self.__node.args.defaults)
+        return 0
 
     def get_max_args(self):
-        '''
+        """
         Returns the maximum amount that can be used on this function.
         -1 means varargs
-        '''
-        return len(self.__node.args.args)
+        """
+        if isinstance(self.__node, ast.FunctionDef):
+            return len(self.__node.args.args)
+        return 0
 
     def get_unknown_impl(self):
         return self.__impls[0]
@@ -88,17 +91,30 @@ class LangFunc:
         return self.__node
 
     def get_name(self):
-        return self.__node.name
+        if isinstance(self.__node, ast.FunctionDef):
+            return self.__node.name
+        else:
+            return "@global@module@"
 
     def get_arg(self, index):
         return self.__node.args.args[index]
 
     def get_args_count(self):
-        arg_node = self.__node.args
-        return len(arg_node.args)
+        if isinstance(self.__node, ast.FunctionDef):
+            arg_node = self.__node.args
+            return len(arg_node.args)
+        return 0
 
     def args_iter(self):
-        return iter(self.__node.args.args)
+        if isinstance(self.__node, ast.FunctionDef):
+            return iter(self.__node.args.args)
+        return iter([])
+
+    def set_global(self, _global):
+        self.__is_global = _global
+
+    def is_global(self):
+        return self.__is_global
 
     def clear_info(self):
         pass

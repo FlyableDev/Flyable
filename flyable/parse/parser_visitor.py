@@ -477,7 +477,7 @@ class ParserVisitor(NodeVisitor):
 
         self.__builder.store(next_value, new_var.get_code_gen_value())
 
-        null_ptr = self.__builder.const_null(code_type.get_int8_ptr())
+        null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
 
         test = self.__builder.eq(next_value, null_ptr)
 
@@ -673,6 +673,12 @@ class ParserVisitor(NodeVisitor):
     def visit_ImportFrom(self, node: ImportFrom) -> Any:
         # file = self.__data.get_file(node.module)
         raise NotImplementedError()
+
+    def visit_ClassDef(self, node: ClassDef) -> Any:
+        pass
+
+    def visit_FunctionDef(self, node: FunctionDef) -> Any:
+        pass
 
     def __generate_entry_block_var(self, code_type):
         current_block = self.__builder.get_current_block()

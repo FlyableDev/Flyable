@@ -390,8 +390,6 @@ class CodeGen:
         For now it's the found main function. In the future it should be the global module function #0
         """
 
-        main_impl = self.__data.find_main().get_impl(1)
-
         # On Windows, an executable starts on the WinMain symbol
         if platform.uname()[0] == "Windows":
             main_name = "WinMain"
@@ -416,8 +414,9 @@ class CodeGen:
         # Set True global var
         # Set False global var
 
-        return_value = builder.call(main_impl.get_code_func(), [])
-        if main_impl.get_return_type().is_int():
+        main_func = self.__data.get_file(0).get_global_func().get_impl(1)
+        return_value = builder.call(main_func.get_code_func(), [])
+        if main_func.get_return_type().is_int():
             builder.ret(builder.int_cast(return_value, code_type.get_int32()))
         else:
             builder.ret(builder.const_int32(0))
