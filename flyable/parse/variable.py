@@ -10,6 +10,7 @@ class Variable:
         self.__in_use = True
         self.__code_gen_value = None
         self.__is_arg = False
+        self.__global = False
 
     def get_id(self):
         return self.__id
@@ -40,6 +41,12 @@ class Variable:
 
     def get_code_gen_value(self):
         return self.__code_gen_value
+
+    def is_global(self):
+        return self.__global
+
+    def set_global(self, _global):
+        self.__global = _global
 
     def is_used(self):
         return self.__in_use

@@ -24,6 +24,7 @@ import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as hint
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.cond as cond
+import flyable.code_gen.code_gen as gen
 
 
 class ParserVisitMode(enum.IntEnum):
@@ -35,7 +36,7 @@ class ParserVisitor(NodeVisitor):
 
     def __init__(self, parser, code_gen, func_impl):
         self.__mode = ParserVisitMode.GENERAL
-        self.__code_gen = code_gen
+        self.__code_gen: gen.CodeGen = code_gen
         self.__assign_type: LangType = LangType()
         self.__last_type: LangType = LangType()
         self.__last_value = None
@@ -62,7 +63,7 @@ class ParserVisitor(NodeVisitor):
 
     def parse(self):
         self.__last_type = None
-        self.visit(self.__func.get_parent_func().get_node())
+        self.visit(self.__func.get_parent_func().get_node().body)
         self.__parse_over()
 
     def __parse_over(self):
@@ -209,17 +210,28 @@ class ParserVisitor(NodeVisitor):
         # Is it a declared variable ?
         if self.__func.get_context().find_active_var(node.id) is not None:
             found_var = self.__func.get_context().find_active_var(node.id)
+            if found_var.is_global():
+                self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
+            else:
+                self.__last_value = found_var.get_code_gen_value()
             self.__last_type = found_var.get_type()
-            self.__last_value = found_var.get_code_gen_value()
             if not found_var.is_arg():
                 if not isinstance(node.ctx, Store):
                     self.__last_value = self.__builder.load(self.__last_value)
         elif isinstance(node.ctx, Store):  # Declaring a variable
             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
-            alloca_value = self.__generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen))
-            found_var.set_code_gen_value(alloca_value)
+            if self.__func.get_parent_func().is_global():
+                var_name = "@global@var" + self.__func.get_parent_func().get_file().get_path()
+                new_global_var = gen.GlobalVar(var_name,self.__assign_type.to_code_type(self.__code_gen))
+                found_var.set_code_gen_value(new_global_var)
+                found_var.set_global(True)
+                self.__code_gen.add_global_var(new_global_var)
+                self.__last_value = self.__builder.global_var(new_global_var)
+            else:
+                alloca_value = self.__generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen))
+                found_var.set_code_gen_value(alloca_value)
+                self.__last_value = found_var.get_code_gen_value()
             self.__last_type = found_var.get_type()
-            self.__last_value = found_var.get_code_gen_value()
         else:
             self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
 
