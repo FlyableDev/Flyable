@@ -470,7 +470,31 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 {
                     llvm::Value* value = values[current->readInt32()];
                     llvm::Type* type = readType(*current);
-                    values[current->readInt32()] = mBuilder.CreateIntCast(value,type,true);
+                    if(type != value->getType())
+                    {
+                        if(value->getType()->isIntegerTy())
+                            values[current->readInt32()] = mBuilder.CreateIntCast(value,type,true);
+                        else
+                            values[current->readInt32()] = mBuilder.CreateFPToSI(value,type);
+                    }
+                    else
+                        values[current->readInt32()] = value;
+                }
+                break;
+
+                case 1012:
+                {
+                    llvm::Value* value = values[current->readInt32()];
+                    llvm::Type* type = readType(*current);
+                    if(type != value->getType())
+                    {
+                        if(value->getType()->isIntegerTy())
+                            values[current->readInt32()] = mBuilder.CreateSIToFP(value,type);
+                        else
+                            values[current->readInt32()] = mBuilder.CreateFPCast(value,type);
+                    }
+                    else
+                        values[current->readInt32()] = value;
                 }
                 break;
 

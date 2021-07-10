@@ -192,6 +192,12 @@ class CodeBuilder:
         type.write_to_code(self.__writer)
         return self.__gen_value()
 
+    def float_cast(self, value, type):
+        self.__writer.add_int32(1012)
+        self.__writer.add_int32(value)
+        type.write_to_code(self.__writer)
+        return self.__gen_value()
+
     def alloca(self, type):
         self.__writer.add_int32(1050)
         type.write_to_code(self.__writer)

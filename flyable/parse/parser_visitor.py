@@ -113,28 +113,13 @@ class ParserVisitor(NodeVisitor):
         self.__last_type = None
         right_type, right_value = self.__visit_node(node.right)
         self.__visit_node(node.op)
-        if left_type.is_primitive():
-            self.__last_type = left_type
-            self.__last_value = op_call.bin_op(self.__code_gen, self.__builder, node.op,
-                                               left_type, left_value, right_type, right_value)
-        else:
-            raise NotImplementedError()
+        self.__last_type, self.__last_value = op_call.bin_op(self.__code_gen, self.__builder, self.__parser, node.op,
+                                                             left_type, left_value, right_type, right_value)
 
     def visit_UnaryOp(self, node: UnaryOp) -> Any:
-        value_type = self.__visit_node(node.operand)
-        op_name = op.get_op_func_call(node.op)
-
-        if value_type.is_primitive():
-            # Not op return a boolean, the others return the same type
-            if isinstance(node.op, ast.Not):
-                self.__last_type = lang_type.get_bool_type()
-            elif isinstance(node.op, ast.Invert):
-                self.__last_type = lang_type.get_int_type()
-            else:
-                self.__last_type = value_type
-        else:
-            self.__last_type = adapter.adapt_call(op_name, value_type, [value_type], self.__data, self.__parser,
-                                                  self.__code_gen)
+        value_type, value = self.__visit_node(node.operand)
+        self.__last_type, self.__last_value = op_call.unary_op(self.__code_gen, self.__builder, self.__parser,
+                                                               value_type, value)
 
     def visit_BoolOp(self, node: BoolOp) -> Any:
         types = []
@@ -222,7 +207,7 @@ class ParserVisitor(NodeVisitor):
             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
             if self.__func.get_parent_func().is_global():
                 var_name = "@global@var" + self.__func.get_parent_func().get_file().get_path()
-                new_global_var = gen.GlobalVar(var_name,self.__assign_type.to_code_type(self.__code_gen))
+                new_global_var = gen.GlobalVar(var_name, self.__assign_type.to_code_type(self.__code_gen))
                 found_var.set_code_gen_value(new_global_var)
                 found_var.set_global(True)
                 self.__code_gen.add_global_var(new_global_var)
