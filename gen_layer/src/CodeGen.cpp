@@ -327,6 +327,22 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 }
                 break;
 
+                case 12:
+                {
+                    llvm::Value* left = values[current->readInt32()];
+                    llvm::Value* right = values[current->readInt32()];
+                    values[current->readInt32()] = mBuilder.CreateAnd(left,right);
+                }
+                break;
+
+                case 13:
+                {
+                    llvm::Value* left = values[current->readInt32()];
+                    llvm::Value* right = values[current->readInt32()];
+                    values[current->readInt32()] = mBuilder.CreateOr(left,right);
+                }
+                break;
+
                 case 100:
                 {
                     llvm::Value* value = values[current->readInt32()];

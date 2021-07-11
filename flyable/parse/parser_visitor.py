@@ -124,16 +124,17 @@ class ParserVisitor(NodeVisitor):
     def visit_BoolOp(self, node: BoolOp) -> Any:
         types = []
         values = []
-        for i in enumerate(node.values):
-            type, value = self.__visit_node(node.values[i])
+        for e in node.values:
+            type, value = self.__visit_node(e)
             types.append(type)
             values.append(value)
 
-        self.__last_type = types[0]
-        self.__last_value = value[0]
+        current_type = types[0]
+        current_value = values[0]
         for i in range(1, len(types)):
-            self.__last_type, self.__last_value = op_call.bool_op(op, self.__last_type, self.__last_value,
-                                                                  types[i], types[i + i])
+            current_type, current_value = op_call.bool_op(self.__code_gen, self.__builder, self.__parser, node.op,
+                                                          current_type, current_value, types[i], values[i])
+        self.__last_type, self.__last_value = current_type, current_value
 
     def visit_Compare(self, node: Compare) -> Any:
         all = [node.left] + node.comparators

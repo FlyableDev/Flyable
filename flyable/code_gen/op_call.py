@@ -114,13 +114,13 @@ def unary_op_usub(code_gen, builder, parser, type, value):
         # return lang_type.get_int_type(), result
 
 
-def bool_op(op, code_gen, builder, parser, left_type, left_value, right_type, right_value):
+def bool_op(code_gen, builder, parser, op, left_type, left_value, right_type, right_value):
     if isinstance(op, ast.And):
-        return bool_op_and(code_gen, builder, left_type, left_value, right_type, right_value)
+        return bool_op_and(code_gen, builder, parser, left_type, left_value, right_type, right_value)
     elif isinstance(op, ast.Or):
         return bool_op_or(code_gen, builder, parser, left_type, left_value, right_type, right_value)
     else:
-        raise NotImplementedError()
+        raise NotImplementedError(str(op))
 
 
 def bool_op_and(code_gen, builder, parser, left_type, left_value, right_type, right_value):
@@ -138,7 +138,7 @@ def bool_op_and(code_gen, builder, parser, left_type, left_value, right_type, ri
         raise NotImplementedError()
 
 
-def bool_op_or(code_gen, builder, left_type, parser, left_value, right_type, right_value):
+def bool_op_or(code_gen, builder, parser, left_type, left_value, right_type, right_value):
     if left_type.is_obj() or left_type.is_python_obj() or left_type.is_collection():
         args_types = [left_type, right_type]
         args = [left_value, right_value]
