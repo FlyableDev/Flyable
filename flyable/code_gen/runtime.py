@@ -57,11 +57,13 @@ def value_to_pyobj(code_gen, builder, value, value_type):
                                               [CodeType(CodeType.CodePrimitive.INT64)], Linkage.EXTERNAL)
         return builder.call(py_func, [value])
     elif value_type.is_dec():
-        py_func = code_gen.get_or_create_func("PyFloat_FromDouble", code_type.get_py_obj_ptr(code_gen), [code_type.get_double()], Linkage.EXTERNAL)
+        py_func = code_gen.get_or_create_func("PyFloat_FromDouble", code_type.get_py_obj_ptr(code_gen),
+                                              [code_type.get_double()], Linkage.EXTERNAL)
         return builder.call(py_func, [value])
     elif value_type.is_bool():
         # TODO : Directly use the global var to avoid the func call
-        py_func = code_gen.get_or_create_func("PyBool_FromLong", code_type.get_py_obj_ptr(code_gen), [code_type.get_int1()], Linkage.EXTERNAL)
+        py_func = code_gen.get_or_create_func("PyBool_FromLong", code_type.get_py_obj_ptr(code_gen),
+                                              [code_type.get_int1()], Linkage.EXTERNAL)
         return builder.call(py_func, [value])
     elif value_type.is_obj():
         # Make sure the object is of python objet ptr so the signature works
@@ -77,3 +79,9 @@ def py_runtime_obj_len(code_gen, builder, value):
     py_func = code_gen.get_or_create_func(func_name, code_type.get_int64(), [code_type.get_py_obj_ptr(code_gen)],
                                           Linkage.EXTERNAL)
     return builder.call(py_func, [value])
+
+
+def py_runtime_set_attr(code_gen, builder, o, attr_name, v):
+    py_func = code_gen.get_or_create_func("PyObject_SetAttr", code_type.get_py_obj_ptr(code_gen),
+                                          [code_type.get_py_obj_ptr(code_gen)] * 3, Linkage.EXTERNAL)
+    return builder.call(py_func,[o, attr_name, v])

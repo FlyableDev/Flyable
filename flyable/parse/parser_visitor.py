@@ -38,11 +38,14 @@ class ParserVisitor(NodeVisitor):
         self.__mode = ParserVisitMode.GENERAL
         self.__code_gen: gen.CodeGen = code_gen
         self.__assign_type: LangType = LangType()
+        self.__assign_value = None
         self.__last_type: LangType = LangType()
         self.__last_value = None
         self.__func: LangFuncImpl = func_impl
         self.__parser = parser
         self.__data = parser.get_data()
+
+        self.__assign_depth = 0
 
         self.__out_blocks = []  # Hierarchy of blocks to jump when a context is over
         self.__exception_blocks = []  # Hierarchy of blocks to jump when an exception occur to dispatch it
@@ -84,29 +87,38 @@ class ParserVisitor(NodeVisitor):
         return self.__last_type, self.__last_value
 
     def visit_Assign(self, node: Assign) -> Any:
-        self.__reset_last()
-        self.__assign_type, self.__assign_value = self.__visit_node(node.value)
-        self.__reset_last()
-        value_type, value = self.__visit_node(node.targets)
+        self.__assign_depth += 1
+        targets = []
+        values = []
 
-        if self.__assign_type != value_type:
-            type_str = self.__assign_type.to_str(self.__data)
-            type_str2 = value_type.to_str(self.__data)
-            self.__parse.throw_error("Type" + type_str + "can't be assign to" + type_str2, node.lineno, node.col_offset)
-
-        if not isinstance(node.targets[0], ast.Tuple):
-            # Normal assign
-            ref_counter.ref_incr(self.__code_gen, self.__builder, self.__assign_type, self.__assign_value)
-            self.__builder.store(self.__assign_value, value)
-        elif isinstance(node.targets[0], ast.Tuple) and (
-                isinstance(node.value, ast.Tuple) or isinstance(node.value, ast.List)):
-            # List assign
-            self.__assign_type = self.__assign_type.get_content()
-            if len(node.targets[0].elts) != len(node.value.elts):
-                self.__parser.throw_error("Amount of values to assign and to unpack doesn't match", node.lineno,
-                                          node.end_col_offset)
+        if isinstance(node.targets[0], ast.Tuple):  # mult assign
+            for e in node.targets[0].elts:
+                targets.append(e)
         else:
-            raise NotImplementedError()
+            targets.append(node.targets)
+
+        if isinstance(node.value, ast.Tuple):
+            for e in node.value.elts:
+                values.append(e)
+        else:
+            values.append(node.value)
+
+        if len(targets) == 1:  # Normal assign
+            self.__assign_type, self.__assign_value = self.__visit_node(node.value)
+            self.__last_type, self.__last_value = self.__visit_node(node.targets)
+        else:  # Mult assign
+            if len(targets) == len(values):
+                for i, e in enumerate(targets):
+                    self.__reset_last()
+                    self.__assign_type, self.__assign_value = self.__visit_node(values[i])
+                    self.__reset_last()
+                    value_type, value = self.__visit_node(targets[i])
+            elif len(targets) > 1 and len(values) == 1:  # unpack
+                raise NotImplementedError("Unpack assignation not implemented")
+            else:
+                self.__parser.throw_error("Incorrect amount of value to unpack", node.lineno, node.end_col_offset)
+
+        self.__reset_last()
 
     def visit_BinOp(self, node: BinOp) -> Any:
         left_type, left_value = self.__visit_node(node.left)
@@ -200,11 +212,14 @@ class ParserVisitor(NodeVisitor):
                 self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
             else:
                 self.__last_value = found_var.get_code_gen_value()
-            self.__last_type = found_var.get_type()
             if not found_var.is_arg():
-                if not isinstance(node.ctx, Store):
+                if isinstance(node.ctx, Store):
+                    self.__builder.store(self.__assign_value, self.__last_value)
+                    self.__last_become_assign()
+                else:
                     self.__last_value = self.__builder.load(self.__last_value)
-        elif isinstance(node.ctx, Store):  # Declaring a variable
+                    self.__last_type = found_var.get_type()
+        elif isinstance(node.ctx, Store):  # not found so declaring a variable
             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
             if self.__func.get_parent_func().is_global():
                 var_name = "@global@var" + self.__func.get_parent_func().get_file().get_path()
@@ -212,10 +227,12 @@ class ParserVisitor(NodeVisitor):
                 found_var.set_code_gen_value(new_global_var)
                 found_var.set_global(True)
                 self.__code_gen.add_global_var(new_global_var)
-                self.__last_value = self.__builder.global_var(new_global_var)
+                self.__builder.store(self.__assign_value, self.__builder.global_var(new_global_var))
+                self.__last_become_assign()
             else:
                 alloca_value = self.__generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen))
                 found_var.set_code_gen_value(alloca_value)
+                self.__builder.store(self.__assign_value)
                 self.__last_value = found_var.get_code_gen_value()
             self.__last_type = found_var.get_type()
         else:
@@ -224,21 +241,45 @@ class ParserVisitor(NodeVisitor):
     def visit_Attribute(self, node: Attribute) -> Any:
         if self.__last_type is None:  # Variable call
             # Is it a declared variable ?
-            if self.__func.get_context().find_active_var(node.value.id) is not None:
-                found_var = self.__func.get_context().find_active_var(node.value.id)
+            if self.__func.get_context().find_active_var(node.id) is not None:
+                found_var = self.__func.get_context().find_active_var(node.id)
+                if found_var.is_global():
+                    self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
+                else:
+                    self.__last_value = found_var.get_code_gen_value()
+                self.__last_value = self.__builder.load(self.__last_value)
                 self.__last_type = found_var.get_type()
-                self.__last_value = found_var.get_code_gen_value()
                 if not found_var.is_arg():
-                    if not isinstance(node.ctx, Store):
+                    if isinstance(node.ctx, Store):
+                        self.__builder.store(self.__assign_value, self.__last_value)
+                        self.__last_become_assign()
+                    else:
                         self.__last_value = self.__builder.load(self.__last_value)
-            elif isinstance(node.ctx, Store):  # Declaring a variable
-                found_var = self.__func.get_context().add_var(node.value.id, self.__assign_type)
-                self.__last_value = found_var.get_code_gen_value()
+                        self.__last_type = found_var.get_type()
+            elif isinstance(node.ctx, Store):  # not found so declaring a variable
+                found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
+                if self.__func.get_parent_func().is_global():
+                    var_name = "@global@var" + self.__func.get_parent_func().get_file().get_path()
+                    new_global_var = gen.GlobalVar(var_name, self.__assign_type.to_code_type(self.__code_gen))
+                    found_var.set_code_gen_value(new_global_var)
+                    found_var.set_global(True)
+                    self.__code_gen.add_global_var(new_global_var)
+                    self.__builder.store(self.__assign_value, self.__builder.global_var(new_global_var))
+                    self.__last_become_assign()
+                else:
+                    alloca_value = self.__generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen))
+                    found_var.set_code_gen_value(alloca_value)
+                    self.__builder.store(self.__assign_value)
+                    self.__last_value = found_var.get_code_gen_value()
                 self.__last_type = found_var.get_type()
             else:
-                self.__parser.throw_error("Undefined attribut '" + node.value.id + "'", node.lineno, node.col_offset)
+                self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
         elif self.__last_type.is_python_obj():
             self.__last_type = lang_type.get_python_obj_type()
+            py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, self.__assign_value, self.__assign_type)
+            str_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.id))
+            runtime.py_runtime_set_attr(self.__code_gen, self.__builder, self.__last_value, str_value, py_obj)
+            self.__last_become_assign()
         elif self.__last_type.is_obj():
             attr = self.__data.get_class(self.__last_type.get_id()).get_attribut(node.value)
             if attr is not None:
@@ -253,8 +294,7 @@ class ParserVisitor(NodeVisitor):
                 else:
                     self.__parser.throw_error("Attribut '" + node.value + "' not declared", node.lineno,
                                               node.end_col_offset)
-        elif self.__last_type.is_python_obj():
-            self.__last_type = lang_type.get_python_obj_type()
+                self.__last_become_assign()
         else:
             self.__parser.throw_error("Attribut access unrecognized")
 
@@ -305,7 +345,7 @@ class ParserVisitor(NodeVisitor):
                     args += [self.__last_value]
                     args_call = [content.get_lang_type()] + args_types  # Add the self argument
                     caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__init__", self.__last_value,
-                                    self.__last_type, args, args_types)
+                                    self.__last_type, args, args_types, True)
 
                 elif isinstance(content, lang_func.LangFunc):
                     # Func call
@@ -688,3 +728,7 @@ class ParserVisitor(NodeVisitor):
     def __reset_last(self):
         self.__last_type = None
         self.__last_value = None
+
+    def __last_become_assign(self):
+        self.__last_value = self.__assign_value
+        self.__last_type = self.__assign_type

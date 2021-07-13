@@ -14,7 +14,7 @@ import flyable.code_gen.runtime as runtime
 import copy
 
 
-def call_obj(code_gen, builder, parser, func_name, obj, obj_type, args, args_type):
+def call_obj(code_gen, builder, parser, func_name, obj, obj_type, args, args_type, optional=False):
     """
     Call a method independent from the called type.
     There is 3 calls scenario:
@@ -26,6 +26,8 @@ def call_obj(code_gen, builder, parser, func_name, obj, obj_type, args, args_typ
         # Traditional call
         called_class = code_gen.get_data().get_class(obj_type.get_id())
         called_func = called_class.get_func(func_name)
+        if called_func is None and optional:
+            return None, None
         called_impl = adapter.adapt_func(called_func, args_type, code_gen.get_data(), parser)
         return called_impl.get_return_type(), builder.call(called_impl.get_code_func(), args)
     elif obj_type.is_python_obj() or obj_type.is_container():
