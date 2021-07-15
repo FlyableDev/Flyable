@@ -30,7 +30,7 @@ def call_obj(code_gen, builder, parser, func_name, obj, obj_type, args, args_typ
             return None, None
         called_impl = adapter.adapt_func(called_func, args_type, code_gen.get_data(), parser)
         return called_impl.get_return_type(), builder.call(called_impl.get_code_func(), args)
-    elif obj_type.is_python_obj() or obj_type.is_container():
+    elif obj_type.is_python_obj() or obj_type.is_collection():
         # Python call
         py_args = copy.copy(args)
         py_args_type = copy.copy(args_type)
