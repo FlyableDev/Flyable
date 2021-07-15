@@ -25,6 +25,7 @@ import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as hint
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.tool.repr_visitor as repr_vis
+import flyable.code_gen.exception as excp
 import flyable.code_gen.cond as cond
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.fly_obj as fly_obj
@@ -46,7 +47,7 @@ class ParserVisitor(NodeVisitor):
         self.__last_value = None
         self.__func: LangFuncImpl = func_impl
         self.__parser = parser
-        self.__data : comp_data.CompData = parser.get_data()
+        self.__data: comp_data.CompData = parser.get_data()
 
         self.__assign_depth = 0
 
@@ -598,11 +599,12 @@ class ParserVisitor(NodeVisitor):
         target_var = self.__func.get_context().add_var(target_name, iter_type)
         alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
         target_var.set_code_gen_value(alloca_value)
-        self.__last_type, self.__last_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__iter__",
+        self.__last_type, self.__last_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser,
+                                                              "__iter__",
                                                               iter_value, iter_type, [iter_value], [iter_type])
 
-
     def visit_ListComp(self, node: ListComp) -> Any:
+        result_array = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder, self.__builder.const_int64(0))
         elts_types = []
         elts_values = []
 
@@ -624,12 +626,12 @@ class ParserVisitor(NodeVisitor):
             self.__builder.set_insert_block(block_for)
 
             next_type, next_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__next__",
-                                                    iterator,
-                                                    iterable_type, [iter_value], [iterable_type])
+                                                    iterator, iterable_type, [iter_value], [iterable_type])
 
             self.__builder.store(next_value, new_var.get_code_gen_value())
 
             null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+            excp.py_runtime_clear_error(self.__code_gen, self.__builder)
 
             test = self.__builder.eq(next_value, null_ptr)
 
@@ -640,6 +642,7 @@ class ParserVisitor(NodeVisitor):
 
             # inside for loop
             self.__builder.set_insert_block(block_for_in)
+
             # validate that each if is true
             for j, test in enumerate(e.ifs):
                 block_cond = self.__builder.create_block()
@@ -648,6 +651,9 @@ class ParserVisitor(NodeVisitor):
                                                            cond_value)
                 self.__builder.cond_br(cond_value, block_cond, block_for)
                 self.__builder.set_insert_block(block_cond)
+
+            next_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, next_value, next_type)
+            gen_list.python_list_append(self.__code_gen, self.__builder, result_array, next_obj)
 
             if i == len(node.generators) - 1:
                 elt_type, elt_value = self.__visit_node(node.elt)
@@ -658,11 +664,8 @@ class ParserVisitor(NodeVisitor):
             prev_for_block = block_for
 
         self.__builder.set_insert_block(block_continue)
-        self.__last_type = lang_type.get_python_obj_type()
-        self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
-        array = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder,
-                                                self.__builder.const_int64(len(elts_values)))
-        self.__last_value = array
+        self.__last_type = lang_type.get_list_of_python_obj_type()
+        self.__last_value = result_array
 
     def visit_List(self, node: List) -> Any:
         elts_types = []

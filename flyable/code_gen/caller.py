@@ -56,7 +56,7 @@ def generate_python_method_call(code_gen, builder, name, obj, args):
     attr_str = builder.global_var(code_gen.get_or_insert_str(name))
     attr_str = builder.load(attr_str)
     attr_obj = builder.call(get_attr_func, [obj, attr_str])
-    #excp.py_runtime_print_error(code_gen, builder)
+    excp.py_runtime_print_error(code_gen, builder)
     return generate_python_call(code_gen, builder, attr_obj, args)
 
 
