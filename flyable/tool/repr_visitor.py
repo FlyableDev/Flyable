@@ -8,4 +8,8 @@ class ReprVisitor(ast.NodeVisitor):
 
     def generic_visit(self, node):
         print(type(node).__name__)
-        super().generic_visit(node)
+        if isinstance(node, list):
+            for e in node:
+                super().visit(e)
+        else:
+            super().generic_visit(node)

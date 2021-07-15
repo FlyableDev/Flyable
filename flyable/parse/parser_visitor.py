@@ -11,6 +11,7 @@ import flyable.parse.adapter as adapter
 import flyable.parse.build_in as build
 import flyable.data.attribut
 from flyable.data.lang_func_impl import LangFuncImpl
+import flyable.data.comp_data as comp_data
 from flyable.code_gen.code_builder import CodeBuilder
 import flyable.code_gen.caller as caller
 import flyable.code_gen.list as gen_list
@@ -23,8 +24,10 @@ import flyable.code_gen.op_call as op_call
 import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as hint
 import flyable.code_gen.ref_counter as ref_counter
+import flyable.tool.repr_visitor as repr_vis
 import flyable.code_gen.cond as cond
 import flyable.code_gen.code_gen as gen
+import flyable.code_gen.fly_obj as fly_obj
 
 
 class ParserVisitMode(enum.IntEnum):
@@ -43,7 +46,7 @@ class ParserVisitor(NodeVisitor):
         self.__last_value = None
         self.__func: LangFuncImpl = func_impl
         self.__parser = parser
-        self.__data = parser.get_data()
+        self.__data : comp_data.CompData = parser.get_data()
 
         self.__assign_depth = 0
 
@@ -105,6 +108,7 @@ class ParserVisitor(NodeVisitor):
 
         if len(targets) == 1:  # Normal assign
             self.__assign_type, self.__assign_value = self.__visit_node(node.value)
+            self.__reset_last()
             self.__last_type, self.__last_value = self.__visit_node(node.targets)
         else:  # Mult assign
             if len(targets) == len(values):
@@ -203,11 +207,15 @@ class ParserVisitor(NodeVisitor):
     def visit_arg(self, node: arg) -> Any:
         pass
 
+    def visit_arguments(self, node: arguments) -> Any:
+        pass
+
     def visit_Name(self, node: Name) -> Any:
         # Name can represent multiple things
         # Is it a declared variable ?
         if self.__func.get_context().find_active_var(node.id) is not None:
             found_var = self.__func.get_context().find_active_var(node.id)
+            self.__last_type = found_var.get_type()
             if found_var.is_global():
                 self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
             else:
@@ -239,64 +247,47 @@ class ParserVisitor(NodeVisitor):
             self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
 
     def visit_Attribute(self, node: Attribute) -> Any:
-        if self.__last_type is None:  # Variable call
-            # Is it a declared variable ?
-            if self.__func.get_context().find_active_var(node.id) is not None:
-                found_var = self.__func.get_context().find_active_var(node.id)
-                if found_var.is_global():
-                    self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
-                else:
-                    self.__last_value = found_var.get_code_gen_value()
-                self.__last_value = self.__builder.load(self.__last_value)
-                self.__last_type = found_var.get_type()
-                if not found_var.is_arg():
-                    if isinstance(node.ctx, Store):
-                        self.__builder.store(self.__assign_value, self.__last_value)
-                        self.__last_become_assign()
-                    else:
-                        self.__last_value = self.__builder.load(self.__last_value)
-                        self.__last_type = found_var.get_type()
-            elif isinstance(node.ctx, Store):  # not found so declaring a variable
-                found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
-                if self.__func.get_parent_func().is_global():
-                    var_name = "@global@var" + self.__func.get_parent_func().get_file().get_path()
-                    new_global_var = gen.GlobalVar(var_name, self.__assign_type.to_code_type(self.__code_gen))
-                    found_var.set_code_gen_value(new_global_var)
-                    found_var.set_global(True)
-                    self.__code_gen.add_global_var(new_global_var)
-                    self.__builder.store(self.__assign_value, self.__builder.global_var(new_global_var))
-                    self.__last_become_assign()
-                else:
-                    alloca_value = self.__generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen))
-                    found_var.set_code_gen_value(alloca_value)
-                    self.__builder.store(self.__assign_value)
-                    self.__last_value = found_var.get_code_gen_value()
-                self.__last_type = found_var.get_type()
-            else:
-                self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
-        elif self.__last_type.is_python_obj():
+        self.__last_type, self.__last_value = self.__visit_node(node.value)
+
+        if self.__last_type.is_python_obj():  # Python obj attribute. Type is unknown
             self.__last_type = lang_type.get_python_obj_type()
             py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, self.__assign_value, self.__assign_type)
             str_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.id))
             runtime.py_runtime_set_attr(self.__code_gen, self.__builder, self.__last_value, str_value, py_obj)
             self.__last_become_assign()
-        elif self.__last_type.is_obj():
-            attr = self.__data.get_class(self.__last_type.get_id()).get_attribut(node.value)
-            if attr is not None:
-                self.__last_value = self.__builder.gep(self.__last_value, attr.get_id())
-                self.__last_type = attr.get_type()
+        elif self.__last_type.is_obj():  # Flyable obj. The attribute type might be known. GEP access for more speed
+            attr = self.__data.get_class(self.__last_type.get_id()).get_attribute(node.attr)
+            if attr is not None:  # We found the attribute
+                first_index = self.__builder.const_int32(0)
+                second_index = self.__builder.const_int32(fly_obj.get_obj_attribute_start_index() + attr.get_id())
+                attr_index = self.__builder.gep(self.__last_value, first_index, second_index)
+                if isinstance(node.ctx, ast.Store):
+                    self.__builder.store(self.__assign_value, attr_index)
+                    self.__last_become_assign()
+                else:
+                    self.__last_value = self.__builder.load(attr_index)
+                    self.__last_type = attr.get_type()
             else:  # Attribut not found. It might be a declaration !
                 if isinstance(node.ctx, ast.Store):
+                    self.__data.set_changed(True)
                     new_attr = flyable.data.attribut.Attribut()
                     new_attr.set_name(node.attr)
                     new_attr.set_type(self.__assign_type)
                     self.__data.get_class(self.__last_type.get_id()).add_attribute(new_attr)
+                    first_index = self.__builder.const_int32(0)
+                    second_index = self.__builder.const_int32(
+                        fly_obj.get_obj_attribute_start_index() + new_attr.get_id())
+                    attr_index = self.__builder.gep(self.__last_value, first_index, second_index)
+                    self.__builder.store(self.__assign_value, attr_index)
+                    self.__last_become_assign()
                 else:
-                    self.__parser.throw_error("Attribut '" + node.value + "' not declared", node.lineno,
+                    self.__parser.throw_error("Attribut '" + node.attr + "' not declared", node.lineno,
                                               node.end_col_offset)
                 self.__last_become_assign()
         else:
-            self.__parser.throw_error("Attribut access unrecognized")
+            str_error = self.__last_type.to_str(self.__data)
+            self.__parser.throw_error("Attribut access unrecognized from " + str_error, node.lineno,
+                                      node.end_col_offset)
 
     def visit_Call(self, node: Call) -> Any:
         type_buffer = self.__last_type

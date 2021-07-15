@@ -12,10 +12,10 @@ class Compiler(ErrorThrower):
 
     def __init__(self):
         self.__data = comp_data.CompData()
+        self.set_output_path("output.o")
         self.__code_gen = gen.CodeGen(self.__data)
         self.__code_gen.setup()
         self.__parser = par.Parser(self.__data, self.__code_gen)
-        self.set_output_path("flyable_output.o")
 
     def add_file(self, path):
         new_file = lang_file.LangFile()
@@ -37,6 +37,7 @@ class Compiler(ErrorThrower):
             print("" + e.get_message() + " " + str(e.get_line()) + " " + str(e.get_row()))
 
         if not self.has_error():
+            self.__code_gen.setup_struct()
             self.__code_gen.generate_main()
             self.__code_gen.write()
 
@@ -50,7 +51,6 @@ class Compiler(ErrorThrower):
 
         # Parse the code until it the compiler stop finding new data
         while True:
-
             self.__data.set_changed(False)
             self.__data.clear_info()
             code_gen.clear()

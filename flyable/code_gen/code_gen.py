@@ -313,18 +313,6 @@ class CodeGen:
         self.__global_vars.append(var)
         return var
 
-    def __code_gen_func(self, comp_data):
-        for func in comp_data.funcs_iter():
-            for impl in func.impls_iter():
-                if not impl.is_unknown():  # Only generate a function for known function
-                    self.__fill_not_terminated_block(impl.get_code_func())
-
-        for _class in comp_data.classes_iter():
-            for func in _class.funcs_iter():
-                for impl in func.impls_iter():
-                    if not impl.is_unknown():  # Only visit functions with a complete signature
-                        self.__fill_not_terminated_block(impl.get_code_func())
-
     def gen_struct(self, _class):
         """
         Create a structure from a class
@@ -332,6 +320,15 @@ class CodeGen:
         new_struct = StructType("@flyable@__" + _class.get_name())
         _class.set_struct(new_struct)
         self.add_struct(new_struct)
+
+    def setup_struct(self):
+        for _class in self.__data.classes_iter():
+            self.__python_obj_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
+            self.__python_obj_struct.add_type(code_type.get_int8_ptr())  # PyTypeObject * ob_type
+            _class.get_struct().add_type(code_type.get_int64())
+            _class.get_struct().add_type(code_type.get_int8_ptr())
+            for attribute in _class.attributes_iter():
+                _class.get_struct().add_type(attribute.get_type().to_code_type(self))
 
     def gen_func(self, impl):
         """

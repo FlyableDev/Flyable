@@ -6,7 +6,7 @@ class LangClass:
     def __init__(self, node):
         self.__node = node
         self.__funcs = []
-        self.__attributs = []
+        self.__attributes = []
         self.__id = -1
         self.__struct = None
         self.__file = None
@@ -42,24 +42,24 @@ class LangClass:
     def get_name(self):
         return self.__node.name
 
-    def add_attribut(self, attr):
-        attr.set_id(len(self.__attributs))
-        self.__attributs.append(attr)
+    def add_attribute(self, attr):
+        attr.set_id(len(self.__attributes))
+        self.__attributes.append(attr)
 
-    def get_attribut(self, index):
+    def get_attribute(self, index):
         if isinstance(index, int):
-            return self.__attributs[index]
+            return self.__attributes[index]
         elif isinstance(index, str):
-            for e in self.__attributs:
+            for e in self.__attributes:
                 if e.get_name() == index:
                     return e
         return None
 
-    def get_attributs_count(self):
-        return len(self.__attributs)
+    def get_attributes_count(self):
+        return len(self.__attributes)
 
-    def attributs_iter(self):
-        return iter(self.__attributs)
+    def attributes_iter(self):
+        return iter(self.__attributes)
 
     def set_struct(self, struct):
         self.__struct = struct
