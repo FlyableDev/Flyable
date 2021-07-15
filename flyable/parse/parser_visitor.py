@@ -639,8 +639,16 @@ class ParserVisitor(NodeVisitor):
                 self.__builder.cond_br(test, prev_for_block, block_for_in)
 
             # inside for loop
-            # TODO : ifs
             self.__builder.set_insert_block(block_for_in)
+            # validate that each if is true
+            for j, test in enumerate(e.ifs):
+                block_cond = self.__builder.create_block()
+                cond_type, cond_value = self.__visit_node(test)
+                cond_type, cond_value = cond.value_to_cond(self.__code_gen, self.__builder, self.__parser, cond_type,
+                                                           cond_value)
+                self.__builder.cond_br(cond_value, block_cond, block_for)
+                self.__builder.set_insert_block(block_cond)
+
             if i == len(node.generators) - 1:
                 elt_type, elt_value = self.__visit_node(node.elt)
                 elts_types.append(elt_type)
@@ -648,7 +656,6 @@ class ParserVisitor(NodeVisitor):
                 self.__builder.br(block_for)
 
             prev_for_block = block_for
-
 
         self.__builder.set_insert_block(block_continue)
         self.__last_type = lang_type.get_python_obj_type()
