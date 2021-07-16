@@ -7,7 +7,7 @@ import flyable.parse.op as parse_op
 
 
 def bin_op(code_gen, builder, parser, op, type_left, value_left, type_right, value_right):
-    if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection():
+    if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
         args_types = [type_left, type_right]
         args = [value_left, value_right]
         return caller.call_obj(code_gen, builder, parser, parse_op.get_op_func_call(op), value_left, type_left, args,
@@ -33,6 +33,32 @@ def bin_op(code_gen, builder, parser, op, type_left, value_left, type_right, val
             return lang_type.get_dec_type(), result
     else:
         raise ValueError("Unsupported Op " + str(op))
+
+
+def cond_op(code_gen, builder, parser, op, type_left, first_value, type_right, second_value):
+    if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
+        args_types = [type_left, type_right]
+        args = [first_value, second_value]
+        return caller.call_obj(code_gen, builder, parser, parse_op.get_op_func_call(op), first_value, type_left, args,
+                               args_types)
+    elif isinstance(op, ast.And):
+        return lang_type.get_bool_type(), builder.op_and(first_value, second_value)
+    elif isinstance(op, ast.Or):
+        return lang_type.get_bool_type(), builder.op_or(first_value, second_value)
+    elif isinstance(op, ast.Eq):
+        return lang_type.get_bool_type(), builder.eq(first_value, second_value)
+    elif isinstance(op, ast.NotEq):
+        return lang_type.get_bool_type(), builder.ne(first_value, second_value)
+    elif isinstance(op, ast.Lt):
+        return lang_type.get_bool_type(), builder.lt(first_value, second_value)
+    elif isinstance(op, ast.LtE):
+        return lang_type.get_bool_type(), builder.lte(first_value, second_value)
+    elif isinstance(op, ast.Gt):
+        return lang_type.get_bool_type(), builder.gt(first_value, second_value)
+    elif isinstance(op, ast.GtE):
+        return lang_type.get_bool_type(), builder.gte(first_value, second_value)
+    else:
+        raise NotImplementedError("Compare op not supported")
 
 
 def unary_op(code_gen, builder, parser, type, value, op):

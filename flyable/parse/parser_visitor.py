@@ -155,31 +155,16 @@ class ParserVisitor(NodeVisitor):
 
     def visit_Compare(self, node: Compare) -> Any:
         all = [node.left] + node.comparators
-        last = None
+        last_value = None
+        last_type = None
         for e in range(len(node.ops)):
             first_type, first_value = self.__visit_node(all[e])
             second_type, second_value = self.__visit_node(all[e + 1])
             current_op = node.ops[e]
-            if isinstance(current_op, ast.And):
-                last = self.__builder.op_and(first_value, second_value)
-            elif isinstance(current_op, ast.Or):
-                last = self.__builder.op_or(first_value, second_value)
-            elif isinstance(current_op, ast.Eq):
-                last = self.__builder.eq(first_value, second_value)
-            elif isinstance(current_op, ast.NotEq):
-                last = self.__builder.ne(first_value, second_value)
-            elif isinstance(current_op, ast.Lt):
-                last = self.__builder.lt(first_value, second_value)
-            elif isinstance(current_op, ast.LtE):
-                last = self.__builder.lte(first_value, second_value)
-            elif isinstance(current_op, ast.Gt):
-                last = self.__builder.gt(first_value, second_value)
-            elif isinstance(current_op, ast.GtE):
-                last = self.__builder.gte(first_value, second_value)
-            else:
-                raise NotImplementedError("Compare op not supported")
-        self.__last_value = last
-        self.__last_type = lang_type.get_bool_type()
+            last_type, last_value = op_call.cond_op(self.__code_gen, self.__builder, self.__parser, current_op,
+                                                    first_type, first_value, second_type, second_value)
+        self.__last_value = last_value
+        self.__last_type = last_type
 
     def visit_AugAssign(self, node: AugAssign) -> Any:
         right_type, right_value = self.__visit_node(node.value)
