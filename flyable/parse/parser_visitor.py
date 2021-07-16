@@ -687,6 +687,66 @@ class ParserVisitor(NodeVisitor):
             index = self.__builder.const_int64(i)
             gen_tuple.python_tuple_set_unsafe(self.__code_gen, self.__builder, self.__last_value, index, py_obj)
 
+    def visit_SetComp(self, node: SetComp) -> Any:
+        null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        result_set = gen_set.instanciate_pyton_set(self.__code_gen, self.__builder, null_value)
+
+        block_continue = self.__builder.create_block()
+        prev_for_block = None
+
+        for i, e in enumerate(node.generators):
+            block_for = self.__builder.create_block()
+            block_for_in = self.__builder.create_block()
+
+            name = e.target.id
+            iter_type, iter_value = self.__visit_node(e.iter)
+            new_var = self.__func.get_context().add_var(name, iter_type)
+            alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
+            new_var.set_code_gen_value(alloca_value)
+            iterable_type, iterator = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__iter__",
+                                                      iter_value, iter_type, [iter_value], [iter_type])
+            self.__builder.br(block_for)
+            self.__builder.set_insert_block(block_for)
+
+            next_type, next_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__next__",
+                                                    iterator, iterable_type, [iter_value], [iterable_type])
+
+            self.__builder.store(next_value, new_var.get_code_gen_value())
+
+            null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+            excp.py_runtime_clear_error(self.__code_gen, self.__builder)
+
+            test = self.__builder.eq(next_value, null_ptr)
+
+            if i == 0:
+                self.__builder.cond_br(test, block_continue, block_for_in)
+            else:
+                self.__builder.cond_br(test, prev_for_block, block_for_in)
+
+            # inside for loop
+            self.__builder.set_insert_block(block_for_in)
+
+            # validate that each if is true
+            for j, test in enumerate(e.ifs):
+                block_cond = self.__builder.create_block()
+                cond_type, cond_value = self.__visit_node(test)
+                cond_type, cond_value = cond.value_to_cond(self.__code_gen, self.__builder, self.__parser, cond_type,
+                                                           cond_value)
+                self.__builder.cond_br(cond_value, block_cond, block_for)
+                self.__builder.set_insert_block(block_cond)
+
+            if i == len(node.generators) - 1:
+                elt_type, elt_value = self.__visit_node(node.elt)
+                obj_to_set = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
+                gen_set.python_set_add(self.__code_gen, self.__builder, result_set, obj_to_set)
+                self.__builder.br(block_for)
+
+            prev_for_block = block_for
+
+        self.__builder.set_insert_block(block_continue)
+        self.__last_type = lang_type.get_set_of_python_obj_type()
+        self.__last_value = result_set
+
     def visit_Set(self, node: Set) -> Any:
         set_type = lang_type.get_set_of_python_obj_type()
         set_type.add_dim(LangType.Dimension.SET)
@@ -700,7 +760,66 @@ class ParserVisitor(NodeVisitor):
         self.__last_type = set_type
 
     def visit_DictComp(self, node: DictComp) -> Any:
-        pass
+        result_dict = gen_dict.python_dict_new(self.__code_gen, self.__builder)
+
+        block_continue = self.__builder.create_block()
+        prev_for_block = None
+
+        for i, e in enumerate(node.generators):
+            block_for = self.__builder.create_block()
+            block_for_in = self.__builder.create_block()
+
+            name = e.target.id
+            iter_type, iter_value = self.__visit_node(e.iter)
+            new_var = self.__func.get_context().add_var(name, iter_type)
+            alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
+            new_var.set_code_gen_value(alloca_value)
+            iterable_type, iterator = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__iter__",
+                                                      iter_value, iter_type, [iter_value], [iter_type])
+            self.__builder.br(block_for)
+            self.__builder.set_insert_block(block_for)
+
+            next_type, next_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__next__",
+                                                    iterator, iterable_type, [iter_value], [iterable_type])
+
+            self.__builder.store(next_value, new_var.get_code_gen_value())
+
+            null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+            excp.py_runtime_clear_error(self.__code_gen, self.__builder)
+
+            test = self.__builder.eq(next_value, null_ptr)
+
+            if i == 0:
+                self.__builder.cond_br(test, block_continue, block_for_in)
+            else:
+                self.__builder.cond_br(test, prev_for_block, block_for_in)
+
+            # inside for loop
+            self.__builder.set_insert_block(block_for_in)
+
+            # validate that each if is true
+            for j, test in enumerate(e.ifs):
+                block_cond = self.__builder.create_block()
+                cond_type, cond_value = self.__visit_node(test)
+                cond_type, cond_value = cond.value_to_cond(self.__code_gen, self.__builder, self.__parser, cond_type,
+                                                           cond_value)
+                self.__builder.cond_br(cond_value, block_cond, block_for)
+                self.__builder.set_insert_block(block_cond)
+
+            if i == len(node.generators) - 1:
+                key_type, key_value = self.__visit_node(node.key)
+                value_type, value_value = self.__visit_node(node.value)
+                obj_key = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
+                obj_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
+                gen_dict.python_dict_set_item(self.__code_gen, self.__builder, result_dict, obj_key, obj_value)
+                self.__builder.br(block_for)
+
+            prev_for_block = block_for
+
+        self.__builder.set_insert_block(block_continue)
+        self.__last_type = lang_type.get_python_obj_type()
+        self.__last_type.add_dim(lang_type.LangType.Dimension.DICT)
+        self.__last_value = result_dict
 
     def visit_Dict(self, node: Dict) -> Any:
         new_dict = gen_dict.python_dict_new(self.__code_gen, self.__builder)
