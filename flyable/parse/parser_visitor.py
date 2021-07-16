@@ -605,8 +605,6 @@ class ParserVisitor(NodeVisitor):
 
     def visit_ListComp(self, node: ListComp) -> Any:
         result_array = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder, self.__builder.const_int64(0))
-        elts_types = []
-        elts_values = []
 
         block_continue = self.__builder.create_block()
         prev_for_block = None
@@ -652,13 +650,10 @@ class ParserVisitor(NodeVisitor):
                 self.__builder.cond_br(cond_value, block_cond, block_for)
                 self.__builder.set_insert_block(block_cond)
 
-            next_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, next_value, next_type)
-            gen_list.python_list_append(self.__code_gen, self.__builder, result_array, next_obj)
-
             if i == len(node.generators) - 1:
                 elt_type, elt_value = self.__visit_node(node.elt)
-                elts_types.append(elt_type)
-                elts_values.append(elt_value)
+                obj_to_list = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
+                gen_list.python_list_append(self.__code_gen, self.__builder, result_array, obj_to_list)
                 self.__builder.br(block_for)
 
             prev_for_block = block_for

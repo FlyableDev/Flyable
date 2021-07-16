@@ -295,6 +295,8 @@ class CodeGen:
         return new_func
 
     def get_or_insert_str(self, value):
+        if value is None:
+            raise NotImplementedError()
         if value in self.__global_strings:
             return self.__global_strings[value]
 

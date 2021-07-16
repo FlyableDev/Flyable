@@ -80,3 +80,5 @@ def get_op_func_call(op):
         result = "__in__"
     elif isinstance(op, ast.NotIn):
         result = "__not_in__"  # Todo: Confirm the op
+
+    return result
