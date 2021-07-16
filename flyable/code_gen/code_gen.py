@@ -238,8 +238,8 @@ class CodeGen:
         self.__python_obj_struct.add_type(code_type.get_int8_ptr())  # PyTypeObject * ob_type
         self.add_struct(self.__python_obj_struct)
 
-        self.__true_var = self.add_global_var(GlobalVar("Py_True", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
-        self.__false_var = self.add_global_var(GlobalVar("Py_False", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
+        self.__true_var = self.add_global_var(GlobalVar("@Flyable@_True", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
+        self.__false_var = self.add_global_var(GlobalVar("@Flyable@_False", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__none_var = self.add_global_var(GlobalVar("Py_None", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
 
     def clear(self):
@@ -411,7 +411,11 @@ class CodeGen:
 
         # Initialize all global vars
         # Set True global var
+        true_value = runtime.value_to_pyobj(self, builder, builder.const_int1(1), lang_type.get_bool_type())
+        builder.store(true_value,builder.global_var(self.get_true()))
         # Set False global var
+        false_value = runtime.value_to_pyobj(self, builder, builder.const_int1(0), lang_type.get_bool_type())
+        builder.store(false_value, builder.global_var(self.get_false()))
 
         main_func = self.__data.get_file(0).get_global_func().get_impl(1)
         return_value = builder.call(main_func.get_code_func(), [])

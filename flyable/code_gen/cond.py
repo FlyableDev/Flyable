@@ -18,7 +18,8 @@ def value_to_cond(code_gen, builder, parser, value_type, value):
                                                 [value_type])
         if cond_type.is_python_obj():
             true_var = builder.global_var(code_gen.get_true())
-            return lang_type.get_python_obj_type(), builder.eq(cond_value, builder.load(true_var))
+            true_var = builder.load(true_var)
+            return lang_type.get_python_obj_type(), builder.eq(cond_value, true_var)
         elif cond_type.is_bool() or cond_type.is_int():
             return cond_type, cond_value
         else:
