@@ -84,4 +84,10 @@ def py_runtime_obj_len(code_gen, builder, value):
 def py_runtime_set_attr(code_gen, builder, o, attr_name, v):
     py_func = code_gen.get_or_create_func("PyObject_SetAttr", code_type.get_py_obj_ptr(code_gen),
                                           [code_type.get_py_obj_ptr(code_gen)] * 3, Linkage.EXTERNAL)
-    return builder.call(py_func,[o, attr_name, v])
+    return builder.call(py_func, [o, attr_name, v])
+
+
+def py_runtime_get_attr(code_gen, builder, o, attr_name):
+    py_func = code_gen.get_or_create_func("PyObject_GetAttr", code_type.get_py_obj_ptr(code_gen),
+                                          [code_type.get_py_obj_ptr(code_gen)] * 2, Linkage.EXTERNAL)
+    return builder.call(py_func, [o, attr_name])

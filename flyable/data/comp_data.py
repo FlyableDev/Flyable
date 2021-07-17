@@ -27,7 +27,10 @@ class CompData:
 
     def get_file(self, index):
         if isinstance(index, str):  # get item by path
-            return self.__files[index]
+            try:
+                return self.__files[index]
+            except KeyError:
+                return None
         elif isinstance(index, int):  # get item by index
             return list(self.__files.items())[index][1]
 

@@ -29,6 +29,7 @@ import flyable.code_gen.exception as excp
 import flyable.code_gen.cond as cond
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.fly_obj as fly_obj
+import flyable.code_gen.module as gen_module
 
 
 class ParserVisitMode(enum.IntEnum):
@@ -237,10 +238,15 @@ class ParserVisitor(NodeVisitor):
 
         if self.__last_type.is_python_obj():  # Python obj attribute. Type is unknown
             self.__last_type = lang_type.get_python_obj_type()
-            py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, self.__assign_value, self.__assign_type)
-            str_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.id))
-            runtime.py_runtime_set_attr(self.__code_gen, self.__builder, self.__last_value, str_value, py_obj)
-            self.__last_become_assign()
+            str_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.attr))
+            if isinstance(node.ctx, ast.Store):
+                py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, self.__assign_value,
+                                                self.__assign_type)
+                runtime.py_runtime_set_attr(self.__code_gen, self.__builder, self.__last_value, str_value, py_obj)
+                self.__last_become_assign()
+            else:
+                self.__last_value = runtime.py_runtime_get_attr(self.__code_gen, self.__builder, self.__last_value,
+                                                                str_value)
         elif self.__last_type.is_obj():  # Flyable obj. The attribute type might be known. GEP access for more speed
             attr = self.__data.get_class(self.__last_type.get_id()).get_attribute(node.attr)
             if attr is not None:  # We found the attribute
@@ -832,15 +838,6 @@ class ParserVisitor(NodeVisitor):
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_type.add_dim(lang_type.LangType.Dimension.DICT)
 
-    def visit_Import(self, node: Import) -> Any:
-        for e in node.names:
-            file = self.__data.get_file(e.name)
-            if file is None:
-                module_type = lang_type.get_python_obj_type()  # A Python module
-            else:
-                module_type = lang_type.get_module_type(file.get_id())
-            new_var = self.__func.get_context().add_var(e.asname, module_type)
-
     def visit_Try(self, node: Try) -> Any:
         self.__visit_node(node.body)
         self.__visit_node(node.handlers)
@@ -857,7 +854,36 @@ class ParserVisitor(NodeVisitor):
         if node.cause is not None:
             self.__visit_node(node.cause)
 
+    def visit_Import(self, node: Import) -> Any:
+        for e in node.names:
+            var_name = e.asname if e.asname is not None else e.name
+            file = self.__data.get_file(e.name)
+            if file is None:  # Python module
+                module_type = lang_type.get_python_obj_type()  # A Python module
+                content = gen_module.import_py_module(self.__code_gen, self.__builder, var_name)
+            else:  # Flyable module
+                module_type = lang_type.get_module_type(file.get_id())
+                content = self.__builder.const_int32(file.get_id())
+
+            module_code_type = module_type.to_code_type(self.__code_gen)
+            module_store = None
+
+            new_var = self.__func.get_context().add_var(var_name, module_type)
+            if self.__func.get_parent_func().is_global():
+                new_global_var = gen.GlobalVar("@flyable@global@module@" + var_name, module_code_type)
+                new_var.set_global(True)
+                new_var.set_code_gen_value(new_global_var)
+                self.__code_gen.add_global_var(new_global_var)
+                module_store = self.__builder.global_var(new_global_var)
+            else:
+                new_var_value = self.__generate_entry_block_var(module_code_type)
+                new_var.set_code_gen_value(new_var_value)
+                module_store = new_var_value
+            self.__builder.store(content, module_store)
+
     def visit_ImportFrom(self, node: ImportFrom) -> Any:
+        print(node.module)
+        self.__data.get_file(node.module)
         # file = self.__data.get_file(node.module)
         raise NotImplementedError()
 

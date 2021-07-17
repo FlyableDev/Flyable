@@ -3,7 +3,7 @@ import ast
 
 class ReprVisitor(ast.NodeVisitor):
     """
-    Internal class used to look at parser tree
+    Internal class used to look at the ast
     """
 
     def generic_visit(self, node):
