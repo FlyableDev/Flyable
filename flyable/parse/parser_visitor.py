@@ -294,7 +294,7 @@ class ParserVisitor(NodeVisitor):
 
         name_call = ""
         if isinstance(node.func, ast.Attribute):
-            self.__last_type, self.__last_value = self.__visit_node(node.func)
+            self.__last_type, self.__last_value = self.__visit_node(node.func.value)
             name_call = node.func.attr
         elif isinstance(node.func, ast.Name):
             name_call = node.func.id

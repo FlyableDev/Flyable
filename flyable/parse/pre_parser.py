@@ -27,7 +27,7 @@ class PreParser(ast.NodeVisitor, ErrorThrower):
             # Generate the ast using the CPython ast module
             ast_tree = ast.parse(file.get_text(), filename=file.get_path(), mode='exec', type_comments=False,
                                  feature_version=sys.version_info[0:2])
-            # ReprVisitor().visit(ast_tree)
+            #ReprVisitor().visit(ast_tree)
             file.set_ast(ast_tree)
             global_func = func.LangFunc(ast_tree)
             global_func.set_global(True)

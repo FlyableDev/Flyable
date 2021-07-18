@@ -45,12 +45,6 @@ def py_runtime_object_print(code_gen, builder, obj):
     return builder.call(print_func, [obj])
 
 
-def py_runtime_ImportModule(code_gen, builder, name):
-    imp_func = code_gen.get_or_create_func("PyImport_ImportModule", code_type.get_py_obj_ptr(code_gen),
-                                           [code_type.get_py_obj_ptr(code_gen)], CodeFunc.Linkage.EXTERNAL)
-    return builder.call(imp_func, [name_c_str])
-
-
 def value_to_pyobj(code_gen, builder, value, value_type):
     if value_type.is_int():
         py_func = code_gen.get_or_create_func("PyLong_FromLongLong", code_type.get_py_obj_ptr(code_gen),
