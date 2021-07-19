@@ -22,6 +22,13 @@
 #include "llvm/IR/Verifier.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/IR/Verifier.h"
+#include "llvm/Transforms/IPO.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 #ifdef _WIN32
     #define EXPORT_FUNC __declspec(dllexport) _cdecl
@@ -53,6 +60,7 @@ class CodeGen
 public:
     CodeGen();
     void init();
+    void opt();
     void output(std::string output);
     void readInput(FormatReader& reader);
 
@@ -74,6 +82,8 @@ private:
     llvm::Type* readType(FormatReader& reader);
     llvm::GlobalValue::LinkageTypes readLinkage(FormatReader& reader);
 
+    void addOptPasses(llvm::legacy::PassManagerBase &passes,llvm::legacy::FunctionPassManager &fnPasses,llvm::TargetMachine *machine);
+    void addLinkPasses(llvm::legacy::PassManagerBase &passes);
 
     llvm::LLVMContext mContext;
     llvm::DataLayout* mLayout;

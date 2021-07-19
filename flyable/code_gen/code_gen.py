@@ -229,6 +229,7 @@ class CodeGen:
         self.__true_var = None
         self.__false_var = None
         self.__none_var = None
+        self.__method_type = None
         self.__python_obj_struct = None
 
     def setup(self):
@@ -238,9 +239,13 @@ class CodeGen:
         self.__python_obj_struct.add_type(code_type.get_int8_ptr())  # PyTypeObject * ob_type
         self.add_struct(self.__python_obj_struct)
 
-        self.__true_var = self.add_global_var(GlobalVar("@Flyable@_True", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
-        self.__false_var = self.add_global_var(GlobalVar("@Flyable@_False", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
+        self.__true_var = self.add_global_var(
+            GlobalVar("@Flyable@_True", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
+        self.__false_var = self.add_global_var(
+            GlobalVar("@Flyable@_False", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__none_var = self.add_global_var(GlobalVar("Py_None", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
+        self.__method_type = self.add_global_var(
+            GlobalVar("PyMethod_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
 
     def clear(self):
         self.__global_vars.clear()
@@ -274,6 +279,12 @@ class CodeGen:
         Return the global variable containing the None python object
         """
         return self.__none_var
+
+    def get_method_type(self):
+        """
+        return the global variable containing the Python method type
+        """
+        return self.__method_type
 
     def get_py_obj_struct(self):
         return self.__python_obj_struct
@@ -356,7 +367,7 @@ class CodeGen:
                 if func_return_type == CodeType():
                     func.get_builder().ret_void()
                 else:
-                    func.get_builder().ret(func.get_builder.const_null(func_return_type))
+                    func.get_builder().ret(func.get_builder().const_null(func_return_type))
 
     def write(self):
         # Write all the data into a buffer to pass to the code generation native layer
@@ -412,7 +423,7 @@ class CodeGen:
         # Initialize all global vars
         # Set True global var
         true_value = runtime.value_to_pyobj(self, builder, builder.const_int1(1), lang_type.get_bool_type())
-        builder.store(true_value,builder.global_var(self.get_true()))
+        builder.store(true_value, builder.global_var(self.get_true()))
         # Set False global var
         false_value = runtime.value_to_pyobj(self, builder, builder.const_int1(0), lang_type.get_bool_type())
         builder.store(false_value, builder.global_var(self.get_false()))

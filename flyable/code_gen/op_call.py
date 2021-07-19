@@ -6,12 +6,12 @@ import flyable.code_gen.caller as caller
 import flyable.parse.op as parse_op
 
 
-def bin_op(code_gen, builder, parser, op, type_left, value_left, type_right, value_right):
+def bin_op(visitor, op, type_left, value_left, type_right, value_right):
+    builder = visitor.get_builder()
     if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
         args_types = [type_left, type_right]
         args = [value_left, value_right]
-        return caller.call_obj(code_gen, builder, parser, parse_op.get_op_func_call(op), value_left, type_left, args,
-                               args_types)
+        return caller.call_obj(visitor, parse_op.get_op_func_call(op), value_left, type_left, args,args_types)
     elif isinstance(op, ast.Add):
         return type_left, builder.add(value_left, value_right)
     elif isinstance(op, ast.Sub):
@@ -35,12 +35,12 @@ def bin_op(code_gen, builder, parser, op, type_left, value_left, type_right, val
         raise ValueError("Unsupported Op " + str(op))
 
 
-def cond_op(code_gen, builder, parser, op, type_left, first_value, type_right, second_value):
+def cond_op(visitor, op, type_left, first_value, type_right, second_value):
+    builder = visitor.get_builder()
     if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
         args_types = [type_left, type_right]
         args = [first_value, second_value]
-        return caller.call_obj(code_gen, builder, parser, parse_op.get_op_func_call(op), first_value, type_left, args,
-                               args_types)
+        return caller.call_obj(visitor, parse_op.get_op_func_call(op), first_value, type_left, args, args_types)
     elif isinstance(op, ast.And):
         return lang_type.get_bool_type(), builder.op_and(first_value, second_value)
     elif isinstance(op, ast.Or):
@@ -62,18 +62,18 @@ def cond_op(code_gen, builder, parser, op, type_left, first_value, type_right, s
 
 
 def unary_op(code_gen, builder, parser, type, value, op):
-    if type.is_obj() or type.is_python_obj() or type.is_container():
+    if type.is_obj() or type.is_python_obj() or type.is_collection():
         args_types = [type]
         args = [value]
         return caller.call_obj(code_gen, builder, parser, parse_op.get_op_func_call(op), value, type, args, args_types)
     elif isinstance(op, ast.Not):
-        return unary_op_not(code_gen, builder, parser, type, value)
+        return type, unary_op_not(code_gen, builder, parser, type, value)
     elif isinstance(op, ast.Invert):
-        return unary_op_invert(code_gen, builder, parser, type, value)
+        return type, unary_op_invert(code_gen, builder, parser, type, value)
     elif isinstance(op, ast.UAdd):
-        return unary_op_uadd(code_gen, builder, parser, type, value)
+        return type, unary_op_uadd(code_gen, builder, parser, type, value)
     elif isinstance(op, ast.USub):
-        return unary_op_usub(code_gen, builder, parser, type, value)
+        return type, unary_op_usub(code_gen, builder, parser, type, value)
 
 
 def unary_op_not(code_gen, builder, parser, type, value):

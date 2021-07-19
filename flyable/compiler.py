@@ -42,7 +42,7 @@ class Compiler(ErrorThrower):
             self.__code_gen.write()
 
     def __pre_parse(self):
-        pre_parser = PreParser(self.__data,self.__code_gen)
+        pre_parser = PreParser(self.__data, self.__code_gen)
         pre_parser.parse(self.__data)
         self.throw_errors(pre_parser.get_errors())
 
@@ -56,7 +56,12 @@ class Compiler(ErrorThrower):
             code_gen.clear()
             code_gen.setup()
 
-            adapter.adapt_func(self.__data.get_file(0).get_global_func(), [], self.__data, self.__parser)
+            try:
+                adapter.adapt_func(self.__data.get_file(0).get_global_func(), [], self.__data, self.__parser)
+            except Exception as exception:
+                if not self.__parser.has_error():  # If there is no error we launch the exception as a failure
+                    raise exception
+                break
 
             if self.__parser.has_error() or not self.__data.is_changed():
                 break

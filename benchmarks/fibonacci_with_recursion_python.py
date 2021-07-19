@@ -1,7 +1,14 @@
-def benchmark(n):
-    if n == 1:
-        return 0
-    elif n == 2:
-        return 1
+import time
+
+
+def bench(n):
+    if n <= 1:
+        return n
     else:
-        return benchmark(n - 1) + benchmark(n - 2)
+        return bench(n - 1) + bench(n - 2)
+
+
+begin = time.time()
+a = bench(40)
+end = time.time()
+print(end - begin)

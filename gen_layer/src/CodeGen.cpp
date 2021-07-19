@@ -8,6 +8,8 @@ void flyable_codegen_run(char* data,int size,char* path)
     gen.init();
     FormatReader reader(data,size);
     gen.readInput(reader);
+
+    gen.opt();
     gen.output(std::string(path));
 }
 
@@ -47,6 +49,60 @@ void CodeGen::init()
 
 }
 
+void CodeGen::addOptPasses(llvm::legacy::PassManagerBase &passes,llvm::legacy::FunctionPassManager &fnPasses,llvm::TargetMachine *machine)
+{
+    llvm::PassManagerBuilder builder;
+    builder.OptLevel = 3;
+    builder.SizeLevel = 0;
+    builder.Inliner = llvm::createFunctionInliningPass(3, 0, false);
+    builder.LoopVectorize = true;
+    builder.SLPVectorize = true;
+    machine->adjustPassManager(builder);
+
+    builder.populateFunctionPassManager(fnPasses);
+    builder.populateModulePassManager(passes);
+}
+
+void CodeGen::addLinkPasses(llvm::legacy::PassManagerBase &passes)
+{
+  llvm::PassManagerBuilder builder;
+  builder.VerifyInput = true;
+  builder.Inliner = llvm::createFunctionInliningPass(3, 0, false);
+  builder.populateLTOPassManager(passes);
+}
+
+
+void CodeGen::opt()
+{
+
+    for(size_t i = 0;i < 10;++i)
+    {
+        mModule->setTargetTriple(mTargetMachine->getTargetTriple().str());
+        mModule->setDataLayout(mTargetMachine->createDataLayout());
+
+        llvm::legacy::PassManager passes;
+        passes.add(new llvm::TargetLibraryInfoWrapperPass(mTargetMachine->getTargetTriple()));
+        passes.add(llvm::createTargetTransformInfoWrapperPass(mTargetMachine->getTargetIRAnalysis()));
+
+
+        llvm::legacy::FunctionPassManager fnPasses(mModule);
+        fnPasses.add(llvm::createTargetTransformInfoWrapperPass(mTargetMachine->getTargetIRAnalysis()));
+
+        addOptPasses(passes, fnPasses, mTargetMachine);
+        addLinkPasses(passes);
+
+        fnPasses.doInitialization();
+        for (llvm::Function &func : *mModule)
+        {
+            fnPasses.run(func);
+        }
+        fnPasses.doFinalization();
+
+        passes.add(llvm::createVerifierPass());
+        passes.run(*mModule);
+    }
+}
+
 void CodeGen::output(std::string output)
 {
     bool hasError = false;
@@ -64,6 +120,7 @@ void CodeGen::output(std::string output)
         }
     }
 
+
     /*
     {
         //Uncomment to output the IR in a textual format
@@ -72,6 +129,7 @@ void CodeGen::output(std::string output)
         mModule->print(ir,nullptr);
     }
     */
+
 
     if(!hasError)
     {
@@ -223,9 +281,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
                     if(isDecimalType(left))
-                        values[current->readInt32()] = mBuilder.CreateSub(left,right);
-                    else
                         values[current->readInt32()] = mBuilder.CreateFSub(left,right);
+                    else
+                        values[current->readInt32()] = mBuilder.CreateSub(left,right);
                 }
                 break;
 
@@ -403,28 +461,28 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 case 1000:
                 {
                     long long constVal = current->readInt64();
-                    values[current->readInt32()] = mBuilder.getInt64(constVal);
+                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),constVal,true);
                 }
                 break;
 
                 case 1001:
                 {
                     int constVal = current->readInt32();
-                    values[current->readInt32()] = mBuilder.getInt32(constVal);
+                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt32Ty(mContext),constVal,true);
                 }
                 break;
 
                 case 1002:
                 {
                     int constVal = current->readInt32();
-                    values[current->readInt32()] = mBuilder.getInt16(constVal);
+                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt16Ty(mContext),constVal,true);
                 }
                 break;
 
                 case 1003:
                 {
                     int constVal = current->readInt32();
-                    values[current->readInt32()] = mBuilder.getInt8(constVal);
+                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt8Ty(mContext),constVal,true);
                 }
                 break;
 

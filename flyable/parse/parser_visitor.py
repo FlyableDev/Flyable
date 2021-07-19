@@ -49,6 +49,7 @@ class ParserVisitor(NodeVisitor):
         self.__func: LangFuncImpl = func_impl
         self.__parser = parser
         self.__data: comp_data.CompData = parser.get_data()
+        self.__current_node = None
 
         self.__assign_depth = 0
 
@@ -78,9 +79,12 @@ class ParserVisitor(NodeVisitor):
         # When parsing is done we can put the final br of the entry block
         self.__builder.set_insert_block(self.__entry_block)
         self.__builder.br(self.__content_block)
+
+        self.__func.get_code_func().set_return_type(self.__func.get_return_type().to_code_type(self.__code_gen))
         self.__code_gen.fill_not_terminated_block(self.__func.get_code_func())
 
     def visit(self, node):
+        self.__current_node = node
         if isinstance(node, list):
             for e in node:
                 super().visit(e)
@@ -131,13 +135,13 @@ class ParserVisitor(NodeVisitor):
         self.__last_type = None
         right_type, right_value = self.__visit_node(node.right)
         self.__visit_node(node.op)
-        self.__last_type, self.__last_value = op_call.bin_op(self.__code_gen, self.__builder, self.__parser, node.op,
-                                                             left_type, left_value, right_type, right_value)
+        self.__last_type, self.__last_value = op_call.bin_op(self, node.op, left_type, left_value, right_type,
+                                                             right_value)
 
     def visit_UnaryOp(self, node: UnaryOp) -> Any:
         value_type, value = self.__visit_node(node.operand)
         self.__last_type, self.__last_value = op_call.unary_op(self.__code_gen, self.__builder, self.__parser,
-                                                               value_type, value)
+                                                               value_type, value, node.op)
 
     def visit_BoolOp(self, node: BoolOp) -> Any:
         types = []
@@ -162,8 +166,8 @@ class ParserVisitor(NodeVisitor):
             first_type, first_value = self.__visit_node(all[e])
             second_type, second_value = self.__visit_node(all[e + 1])
             current_op = node.ops[e]
-            last_type, last_value = op_call.cond_op(self.__code_gen, self.__builder, self.__parser, current_op,
-                                                    first_type, first_value, second_type, second_value)
+            last_type, last_value = op_call.cond_op(self, current_op, first_type, first_value, second_type,
+                                                    second_value)
         self.__last_value = last_value
         self.__last_type = last_type
 
@@ -227,13 +231,14 @@ class ParserVisitor(NodeVisitor):
             else:
                 alloca_value = self.__generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen))
                 found_var.set_code_gen_value(alloca_value)
-                self.__builder.store(self.__assign_value)
+                self.__builder.store(self.__assign_value, alloca_value)
                 self.__last_value = found_var.get_code_gen_value()
             self.__last_type = found_var.get_type()
         else:
             self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
 
     def visit_Attribute(self, node: Attribute) -> Any:
+        self.__reset_last()
         self.__last_type, self.__last_value = self.__visit_node(node.value)
 
         if self.__last_type.is_python_obj():  # Python obj attribute. Type is unknown
@@ -292,6 +297,8 @@ class ParserVisitor(NodeVisitor):
             self.__last_type = None
         self.__last_type = type_buffer
 
+        self.__reset_last()
+
         name_call = ""
         if isinstance(node.func, ast.Attribute):
             self.__last_type, self.__last_value = self.__visit_node(node.func.value)
@@ -327,8 +334,7 @@ class ParserVisitor(NodeVisitor):
                     args_types += [self.__last_type]
                     args += [self.__last_value]
                     args_call = [content.get_lang_type()] + args_types  # Add the self argument
-                    caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__init__", self.__last_value,
-                                    self.__last_type, args, args_types, True)
+                    caller.call_obj(self, "__init__", self.__last_value, self.__last_type, args, args_types, True)
 
                 elif isinstance(content, lang_func.LangFunc):
                     # Func call
@@ -340,19 +346,19 @@ class ParserVisitor(NodeVisitor):
                             self.__parser.throw_error("Impossible to resolve function" +
                                                       func_impl_to_call.get_parent_func().get_name(), node.lineno,
                                                       node.col_offset)
-                        self.__builder.call(func_impl_to_call.get_code_func(), args)
+                        self.__last_value = self.__builder.call(func_impl_to_call.get_code_func(), args)
                     else:
                         self.__parser.throw_error("Function " + node.func.id + " not found", node.lineno,
                                                   node.end_col_offset)
                 else:
                     self.__parser.throw_error("'" + name_call + "' unrecognized", node.lineno, node.end_col_offset)
         elif self.__last_type.is_python_obj() or self.__last_type.is_collection():  # Python call object
-            self.__last_type, self.__last_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser,
-                                                                  name_call, self.__last_value, self.__last_type,
+            self.__last_type, self.__last_value = caller.call_obj(self, name_call, self.__last_value, self.__last_type,
                                                                   [self.__last_value] + args,
                                                                   [self.__last_type] + args_types)
         else:
-            self.__parser.throw_error("Call unrecognized", node.lineno, node.end_col_offset)
+            str_error = "Call unrecognized with " + str(self.__last_type)
+            self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
 
     def visit_Subscript(self, node: Subscript) -> Any:
         value_type, value = self.__visit_node(node.value)
@@ -360,10 +366,8 @@ class ParserVisitor(NodeVisitor):
         if value_type.is_primitive():
             self.__parser.throw_error("'[]' can't be used on a primitive type", node.lineno, node.end_col_offset)
         else:
-            self.__last_type, self.__last_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser,
-                                                                  "__getitem__", value, value_type,
-                                                                  [value, index_value],
-                                                                  [value_type, index_type])
+            self.__last_type, self.__last_value = caller.call_obj(self, "__getitem__", value, value_type,
+                                                                  [value, index_value], [value_type, index_type])
 
     def visit_Break(self, node: Break) -> Any:
         if len(self.__out_blocks) > 0:
@@ -379,11 +383,12 @@ class ParserVisitor(NodeVisitor):
                 self.__builder.ret_void()
             else:
                 self.__builder.ret(return_value)
+        elif return_type == self.__func.get_return_type():
+            self.__builder.ret(return_value)
         else:
-            self.__parser.throw_error("Incompatible return type. Type " +
-                                      self.__func.get_return_type().to_str(self.__data) +
-                                      " expected instead of " +
-                                      return_type.to_str(self.__data))
+            str_error = "Incompatible return type. Type " + self.__func.get_return_type().to_str(
+                self.__data) + " expected instead of " + return_type.to_str(self.__data)
+            self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
 
     def visit_Constant(self, node: Constant) -> Any:
         if isinstance(node.value, bool):
@@ -450,8 +455,7 @@ class ParserVisitor(NodeVisitor):
         block_continue = self.__builder.create_block()
 
         cond_type, cond_value = self.__visit_node(node.test)
-        cond_type, cond_value = cond.value_to_cond(self.__code_gen, self.__builder, self.__parser, cond_type,
-                                                   cond_value)
+        cond_type, cond_value = cond.value_to_cond(self, cond_type, cond_value)
         self.__builder.cond_br(cond_value, block_go, block_continue)
 
         self.__builder.set_insert_block(block_go)
@@ -488,13 +492,12 @@ class ParserVisitor(NodeVisitor):
         new_var = self.__func.get_context().add_var(name, iter_type)
         alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
         new_var.set_code_gen_value(alloca_value)
-        iterable_type, iterator = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__iter__",
-                                                  iter_value, iter_type, [iter_value], [iter_type])
+        iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value], [iter_type])
         self.__builder.br(block_for)
         self.__builder.set_insert_block(block_for)
 
-        next_type, next_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__next__", iterator,
-                                                iterable_type, [iter_value], [iterable_type])
+        next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [iter_value],
+                                                [iterable_type])
 
         self.__builder.store(next_value, new_var.get_code_gen_value())
 
@@ -568,12 +571,10 @@ class ParserVisitor(NodeVisitor):
 
                 # def __exit__(self, exc_type, exc_value, traceback)
                 exit_args_type = [type] + ([lang_type.get_python_obj_type()] * 3)
-                caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__enter__", value, type, [value],
-                                [type])
+                caller.call_obj(self, "__enter__", value, type, [value], [type])
 
                 exit_values = [value] + ([self.__builder.const_null(code_type.get_int8_ptr())] * 3)
-                caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__exit__", value, type, exit_values,
-                                exit_args_type)
+                caller.call_obj(self, "__exit__", value, type, exit_values, exit_args_type)
             else:
                 self.__parser.throw_error("Type " + type.to_str(self.__data) +
                                           " can't be used in a with statement", node.lineno, node.end_col_offset)
@@ -590,9 +591,8 @@ class ParserVisitor(NodeVisitor):
         target_var = self.__func.get_context().add_var(target_name, iter_type)
         alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
         target_var.set_code_gen_value(alloca_value)
-        self.__last_type, self.__last_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser,
-                                                              "__iter__",
-                                                              iter_value, iter_type, [iter_value], [iter_type])
+        self.__last_type, self.__last_value = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
+                                                              [iter_type])
 
     def visit_ListComp(self, node: ListComp) -> Any:
         result_array = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder, self.__builder.const_int64(0))
@@ -609,13 +609,13 @@ class ParserVisitor(NodeVisitor):
             new_var = self.__func.get_context().add_var(name, iter_type)
             alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
             new_var.set_code_gen_value(alloca_value)
-            iterable_type, iterator = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__iter__",
-                                                      iter_value, iter_type, [iter_value], [iter_type])
+            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
+                                                      [iter_type])
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
-            next_type, next_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__next__",
-                                                    iterator, iterable_type, [iter_value], [iterable_type])
+            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [iter_value],
+                                                    [iterable_type])
 
             self.__builder.store(next_value, new_var.get_code_gen_value())
 
@@ -636,8 +636,7 @@ class ParserVisitor(NodeVisitor):
             for j, test in enumerate(e.ifs):
                 block_cond = self.__builder.create_block()
                 cond_type, cond_value = self.__visit_node(test)
-                cond_type, cond_value = cond.value_to_cond(self.__code_gen, self.__builder, self.__parser, cond_type,
-                                                           cond_value)
+                cond_type, cond_value = cond.value_to_cond(self, cond_type, cond_value)
                 self.__builder.cond_br(cond_value, block_cond, block_for)
                 self.__builder.set_insert_block(block_cond)
 
@@ -714,8 +713,8 @@ class ParserVisitor(NodeVisitor):
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
-            next_type, next_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__next__",
-                                                    iterator, iterable_type, [iter_value], [iterable_type])
+            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [iter_value],
+                                                    [iterable_type])
 
             self.__builder.store(next_value, new_var.get_code_gen_value())
 
@@ -736,8 +735,7 @@ class ParserVisitor(NodeVisitor):
             for j, test in enumerate(e.ifs):
                 block_cond = self.__builder.create_block()
                 cond_type, cond_value = self.__visit_node(test)
-                cond_type, cond_value = cond.value_to_cond(self.__code_gen, self.__builder, self.__parser, cond_type,
-                                                           cond_value)
+                cond_type, cond_value = cond.value_to_cond(self, cond_type, cond_value)
                 self.__builder.cond_br(cond_value, block_cond, block_for)
                 self.__builder.set_insert_block(block_cond)
 
@@ -785,8 +783,8 @@ class ParserVisitor(NodeVisitor):
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
-            next_type, next_value = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__next__",
-                                                    iterator, iterable_type, [iter_value], [iterable_type])
+            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [iter_value],
+                                                    [iterable_type])
 
             self.__builder.store(next_value, new_var.get_code_gen_value())
 
@@ -807,8 +805,7 @@ class ParserVisitor(NodeVisitor):
             for j, test in enumerate(e.ifs):
                 block_cond = self.__builder.create_block()
                 cond_type, cond_value = self.__visit_node(test)
-                cond_type, cond_value = cond.value_to_cond(self.__code_gen, self.__builder, self.__parser, cond_type,
-                                                           cond_value)
+                cond_type, cond_value = cond.value_to_cond(self, cond_type, cond_value)
                 self.__builder.cond_br(cond_value, block_cond, block_for)
                 self.__builder.set_insert_block(block_cond)
 
@@ -892,6 +889,21 @@ class ParserVisitor(NodeVisitor):
 
     def visit_FunctionDef(self, node: FunctionDef) -> Any:
         pass
+
+    def get_code_gen(self):
+        return self.__code_gen
+
+    def get_builder(self):
+        return self.__builder
+
+    def get_data(self):
+        return self.__data
+
+    def get_parser(self):
+        return self.__parser
+
+    def get_current_node(self):
+        return self.__current_node
 
     def __generate_entry_block_var(self, code_type):
         current_block = self.__builder.get_current_block()

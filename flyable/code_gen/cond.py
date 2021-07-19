@@ -5,16 +5,17 @@ import flyable.code_gen.code_type as code_type
 import flyable.code_gen.caller as caller
 
 
-def value_to_cond(code_gen, builder, parser, value_type, value):
+def value_to_cond(visitor, value_type, value):
     """
     Convert the value into an integer usable into a conditional branching
     """
+    code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
     if value_type.is_int() or value_type.is_bool():
         return value_type, value  # int and bool doesn't need conversion
     elif value_type.is_dec():
         return lang_type.get_bool_type(), builder.int_cast(value, code_type.get_int1())
     elif value_type.is_obj() or value_type.is_python_obj():
-        cond_type, cond_value = caller.call_obj(code_gen, builder, parser, "__bool__", value, value_type, [value],
+        cond_type, cond_value = caller.call_obj(visitor, "__bool__", value, value_type, [value],
                                                 [value_type])
         if cond_type.is_python_obj():
             true_var = builder.global_var(code_gen.get_true())
@@ -23,7 +24,8 @@ def value_to_cond(code_gen, builder, parser, value_type, value):
         elif cond_type.is_bool() or cond_type.is_int():
             return cond_type, cond_value
         else:
-            parser.throw_error("__bool__ should return bool, returned" + cond_type.to_str(code_gen.get_data()), 0, 0)
+            error_str = "__bool__ should return bool, returned" + cond_type.to_str(code_gen.get_data())
+            visitor.get_parser().throw_error(error_str, visitor.get_current_node().line_no, 0)
     elif value_type.is_list():
         list_len = _list.python_list_len(code_gen, builder, value)
         return lang_type.get_int_type(), builder.gt(list_len, builder.const_int64(0))
