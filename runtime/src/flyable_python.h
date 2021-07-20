@@ -17,5 +17,4 @@ static PyTypeObject cons_type;
 int __flyable__print(PyObject* obj);
 
 
-
 #endif // FLYABLE_PYTHON_H_INCLUDED

@@ -836,18 +836,38 @@ class ParserVisitor(NodeVisitor):
         self.__last_type.add_dim(lang_type.LangType.Dimension.DICT)
 
     def visit_Try(self, node: Try) -> Any:
+        """
+        excp_block = self.__builder.create_block()
+        excp_not_found_block = self.__builder.create_block()
+        self.__exception_blocks.append(excp_block)
+
         self.__visit_node(node.body)
-        self.__visit_node(node.handlers)
+
+        self.__builder.set_insert_block(excp_block)
+
+        handlers_block = []
+        for e in node.handlers: handlers_block.append(self.__builder.create_block())
+
+        excp_value = excp.py_runtime_get_excp(self.__code_gen, self.__builder)
+        excp_type = fly_obj.get_py_obj_type(self.__builder, excp_value)
+        for handler in node.handlers:  # For each exception statement
+            handle_type, handle_value = self.__visit_node(handler.type)
+            self.__visit_node(handler)
+
         self.__visit_node(node.finalbody)
+
         self.__visit_node(node.orelse)
+        """
 
     def visit_ExceptHandler(self, node: ExceptHandler) -> Any:
+        self.__last_type, self.__last_value = self.__visit_node(node.body)
+        excp_var = self.__func.get_context().add_var(node.name, self.__last_type)
+
         self.__visit_node(node.body)
-        type = lang_type.get_python_obj_type()
-        excp_var = self.__func.get_context().add_var(node.name, type)
 
     def visit_Raise(self, node: Raise) -> Any:
-        self.__visit_node(node.exc)
+        self.__func.set_can_raise(True)  # There is a raise so it can raise an exception
+        self.__last_type, self.__last_value = self.__visit_node(node.exc)
         if node.cause is not None:
             self.__visit_node(node.cause)
 
