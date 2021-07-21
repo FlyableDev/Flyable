@@ -11,7 +11,7 @@ def bin_op(visitor, op, type_left, value_left, type_right, value_right):
     if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
         args_types = [type_left, type_right]
         args = [value_left, value_right]
-        return caller.call_obj(visitor, parse_op.get_op_func_call(op), value_left, type_left, args,args_types)
+        return caller.call_obj(visitor, parse_op.get_op_func_call(op), value_left, type_left, args, args_types)
     elif isinstance(op, ast.Add):
         return type_left, builder.add(value_left, value_right)
     elif isinstance(op, ast.Sub):
@@ -67,13 +67,13 @@ def unary_op(code_gen, builder, parser, type, value, op):
         args = [value]
         return caller.call_obj(code_gen, builder, parser, parse_op.get_op_func_call(op), value, type, args, args_types)
     elif isinstance(op, ast.Not):
-        return type, unary_op_not(code_gen, builder, parser, type, value)
+        return unary_op_not(code_gen, builder, parser, type, value)
     elif isinstance(op, ast.Invert):
-        return type, unary_op_invert(code_gen, builder, parser, type, value)
+        return unary_op_invert(code_gen, builder, parser, type, value)
     elif isinstance(op, ast.UAdd):
-        return type, unary_op_uadd(code_gen, builder, parser, type, value)
+        return unary_op_uadd(code_gen, builder, parser, type, value)
     elif isinstance(op, ast.USub):
-        return type, unary_op_usub(code_gen, builder, parser, type, value)
+        return unary_op_usub(code_gen, builder, parser, type, value)
 
 
 def unary_op_not(code_gen, builder, parser, type, value):
@@ -82,11 +82,11 @@ def unary_op_not(code_gen, builder, parser, type, value):
         args = [value]
         return caller.call_obj(code_gen, builder, parser, "__not__", value, type, args, args_types)
     elif type.is_int():
-        return lang_type.get_bool_type(), builder.eq(code_gen, value, builder.const_int64(0))
+        return lang_type.get_bool_type(), builder.eq(value, builder.const_int64(0))
     elif type.is_dec():
-        return lang_type.get_bool_type(), builder.eq(code_gen, value, builder.const_float64(0.0))
+        return lang_type.get_bool_type(), builder.eq(value, builder.const_float64(0.0))
     elif type.is_bool():
-        return lang_type.get_bool_type(), builder.eq(code_gen, value, builder.const_int1(0))
+        return lang_type.get_bool_type(), builder.eq(value, builder.const_int1(0))
 
 
 def unary_op_invert(code_gen, builder, parser, type, value):
@@ -111,11 +111,11 @@ def unary_op_uadd(code_gen, builder, parser, type, value):
     elif type.is_int():
         abs_args = [code_type.get_int64(), code_type.get_int1()]
         abs_func = code_gen.get_or_create_func("llvm.abs.i64", code_type.get_int64(), abs_args, gen.Linkage.EXTERNAL)
-        return builder.call(abs_func, [value, builder.const_int1(0)])
+        return type, builder.call(abs_func, [value, builder.const_int1(0)])
     elif type.is_dec():
         abs_args = [code_type.get_double()]
         abs_func = code_gen.get_or_create_func("llvm.fabs.f64", code_type.get_double(), abs_args, gen.Linkage.EXTERNAL)
-        return builder.call(abs_func, [value])
+        return type, builder.call(abs_func, [value])
     elif type.is_bool():
         return lang_type.get_int_type(), builder.eq(code_gen, value, builder.const_int1(0))
 

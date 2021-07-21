@@ -836,28 +836,34 @@ class ParserVisitor(NodeVisitor):
         self.__last_type.add_dim(lang_type.LangType.Dimension.DICT)
 
     def visit_Try(self, node: Try) -> Any:
-        """
+        continue_block = self.__builder.create_block()
         excp_block = self.__builder.create_block()
         excp_not_found_block = self.__builder.create_block()
+        else_block = self.__builder.create_block() if node.orelse is not None else None
         self.__exception_blocks.append(excp_block)
+        handlers_block = []
+        handlers_cond_block = []
+        for e in node.handlers:
+            handlers_block.append(self.__builder.create_block())
 
         self.__visit_node(node.body)
+        if node.orelse is None:
+            self.__builder.br(continue_block)
+        else:
+            self.__builder.br(else_block)
 
         self.__builder.set_insert_block(excp_block)
 
-        handlers_block = []
-        for e in node.handlers: handlers_block.append(self.__builder.create_block())
-
         excp_value = excp.py_runtime_get_excp(self.__code_gen, self.__builder)
         excp_type = fly_obj.get_py_obj_type(self.__builder, excp_value)
-        for handler in node.handlers:  # For each exception statement
+        for i, handler in enumerate(node.handlers):  # For each exception statement
             handle_type, handle_value = self.__visit_node(handler.type)
             self.__visit_node(handler)
 
         self.__visit_node(node.finalbody)
 
         self.__visit_node(node.orelse)
-        """
+
 
     def visit_ExceptHandler(self, node: ExceptHandler) -> Any:
         self.__last_type, self.__last_value = self.__visit_node(node.body)
