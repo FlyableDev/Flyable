@@ -61,119 +61,119 @@ def cond_op(visitor, op, type_left, first_value, type_right, second_value):
         raise NotImplementedError("Compare op not supported")
 
 
-def unary_op(code_gen, builder, parser, type, value, op):
+def unary_op(visitor, type, value, op):
     if type.is_obj() or type.is_python_obj() or type.is_collection():
         args_types = [type]
         args = [value]
-        return caller.call_obj(code_gen, builder, parser, parse_op.get_op_func_call(op), value, type, args, args_types)
+        return caller.call_obj(visitor, parse_op.get_op_func_call(op), value, type, args, args_types)
     elif isinstance(op, ast.Not):
-        return type, unary_op_not(code_gen, builder, parser, type, value)
+        return type, unary_op_not(visitor, type, value)
     elif isinstance(op, ast.Invert):
-        return type, unary_op_invert(code_gen, builder, parser, type, value)
+        return type, unary_op_invert(visitor, type, value)
     elif isinstance(op, ast.UAdd):
-        return type, unary_op_uadd(code_gen, builder, parser, type, value)
+        return type, unary_op_uadd(visitor, type, value)
     elif isinstance(op, ast.USub):
-        return type, unary_op_usub(code_gen, builder, parser, type, value)
+        return type, unary_op_usub(visitor, type, value)
 
 
-def unary_op_not(code_gen, builder, parser, type, value):
+def unary_op_not(visitor, type, value):
     if type.is_obj() or type.is_python_obj() or type.is_collection():
         args_types = [type]
         args = [value]
-        return caller.call_obj(code_gen, builder, parser, "__not__", value, type, args, args_types)
+        return caller.call_obj(visitor, "__not__", value, type, args, args_types)
     elif type.is_int():
-        return lang_type.get_bool_type(), builder.eq(code_gen, value, builder.const_int64(0))
+        return lang_type.get_bool_type(), visitor.__builder.eq(value, visitor.__builder.const_int64(0))
     elif type.is_dec():
-        return lang_type.get_bool_type(), builder.eq(code_gen, value, builder.const_float64(0.0))
+        return lang_type.get_bool_type(), visitor.__builder.eq(value, visitor.__builder.const_float64(0.0))
     elif type.is_bool():
-        return lang_type.get_bool_type(), builder.eq(code_gen, value, builder.const_int1(0))
+        return lang_type.get_bool_type(), visitor.__builder.eq(value, visitor.__builder.const_int1(0))
 
 
-def unary_op_invert(code_gen, builder, parser, type, value):
+def unary_op_invert(visitor, type, value):
     if type.is_obj() or type.is_python_obj() or type.is_collection():
         args_types = [type]
         args = [value]
-        return caller.call_obj(code_gen, builder, parser, "__not__", value, type, args, args_types)
+        return caller.call_obj(visitor, "__not__", value, type, args, args_types)
     elif type.is_int():
-        return lang_type.get_int_type(), builder.eq(code_gen, value, builder.const_int64(0))
+        return lang_type.get_int_type(), visitor.__builder.eq(value, visitor.__builder.const_int64(0))
     elif type.is_dec():
-        return unary_op_invert(code_gen, builder, parser, lang_type.get_int_type(),
-                               builder.int_cast(value, code_type.get_int64()))
+        return unary_op_invert(visitor, lang_type.get_int_type(),
+                               visitor.__builder.int_cast(value, code_type.get_int64()))
     elif type.is_bool():
-        return lang_type.get_int_type(), builder.eq(code_gen, value, builder.const_int1(0))
+        return lang_type.get_int_type(), visitor.__builder.eq(value, visitor.__builder.const_int1(0))
 
 
-def unary_op_uadd(code_gen, builder, parser, type, value):
+def unary_op_uadd(visitor, type, value):
     if type.is_obj() or type.is_python_obj() or type.is_collection():
         args_types = [type]
         args = [value]
-        return caller.call_obj(code_gen, builder, parser, "__pos__", value, type, args, args_types)
+        return caller.call_obj(visitor, "__pos__", value, type, args, args_types)
     elif type.is_int():
         abs_args = [code_type.get_int64(), code_type.get_int1()]
-        abs_func = code_gen.get_or_create_func("llvm.abs.i64", code_type.get_int64(), abs_args, gen.Linkage.EXTERNAL)
-        return builder.call(abs_func, [value, builder.const_int1(0)])
+        abs_func = visitor.__code_gen.get_or_create_func("llvm.abs.i64", code_type.get_int64(), abs_args, gen.Linkage.EXTERNAL)
+        return visitor.__builder.call(abs_func, [value, visitor.__builder.const_int1(0)])
     elif type.is_dec():
         abs_args = [code_type.get_double()]
-        abs_func = code_gen.get_or_create_func("llvm.fabs.f64", code_type.get_double(), abs_args, gen.Linkage.EXTERNAL)
-        return builder.call(abs_func, [value])
+        abs_func = visitor.__code_gen.get_or_create_func("llvm.fabs.f64", code_type.get_double(), abs_args, gen.Linkage.EXTERNAL)
+        return visitor.__builder.call(abs_func, [value])
     elif type.is_bool():
-        return lang_type.get_int_type(), builder.eq(code_gen, value, builder.const_int1(0))
+        return lang_type.get_int_type(), visitor.__builder.eq(value, visitor.__builder.const_int1(0))
 
 
-def unary_op_usub(code_gen, builder, parser, type, value):
+def unary_op_usub(visitor, type, value):
     if type.is_obj() or type.is_python_obj() or type.is_collection():
         args_types = [type]
         args = [value]
-        return caller.call_obj(code_gen, builder, parser, "__neg__", value, type, args, args_types)
+        return caller.call_obj(visitor, "__neg__", value, type, args, args_types)
     elif type.is_int():
         abs_args = [code_type.get_int64(), code_type.get_int1()]
-        abs_func = code_gen.get_or_create_func("llvm.abs.i64", code_type.get_int64(), abs_args, gen.Linkage.EXTERNAL)
-        result = builder.call(abs_func, [value, builder.const_int1(0)])
-        return lang_type.get_int_type(), builder.neg(result)
+        abs_func = visitor.__code_gen.get_or_create_func("llvm.abs.i64", code_type.get_int64(), abs_args, gen.Linkage.EXTERNAL)
+        result = visitor.__builder.call(abs_func, [value, visitor.__builder.const_int1(0)])
+        return lang_type.get_int_type(), visitor.__builder.neg(result)
     elif type.is_dec():
         abs_args = [code_type.get_double()]
-        abs_func = code_gen.get_or_create_func("llvm.fabs.f64", code_type.get_double(), abs_args, gen.Linkage.EXTERNAL)
-        result = builder.call(abs_func, [value])
-        return lang_type.get_dec_type(), builder.neg(result)
+        abs_func = visitor.__code_gen.get_or_create_func("llvm.fabs.f64", code_type.get_double(), abs_args, gen.Linkage.EXTERNAL)
+        result = visitor.__builder.call(abs_func, [value])
+        return lang_type.get_dec_type(), visitor.__builder.neg(result)
     elif type.is_bool():
         raise NotImplementedError()
         # return lang_type.get_int_type(), result
 
 
-def bool_op(code_gen, builder, parser, op, left_type, left_value, right_type, right_value):
+def bool_op(visitor, op, left_type, left_value, right_type, right_value):
     if isinstance(op, ast.And):
-        return bool_op_and(code_gen, builder, parser, left_type, left_value, right_type, right_value)
+        return bool_op_and(visitor, left_type, left_value, right_type, right_value)
     elif isinstance(op, ast.Or):
-        return bool_op_or(code_gen, builder, parser, left_type, left_value, right_type, right_value)
+        return bool_op_or(visitor, left_type, left_value, right_type, right_value)
     else:
         raise NotImplementedError(str(op))
 
 
-def bool_op_and(code_gen, builder, parser, left_type, left_value, right_type, right_value):
+def bool_op_and(visitor, left_type, left_value, right_type, right_value):
     if left_type.is_obj() or left_type.is_python_obj() or left_type.is_collection():
         args_types = [left_type, right_type]
         args = [left_value, right_value]
-        return caller.call_obj(code_gen, builder, parser, "__and__", left_value, left_type, args, args_types)
+        return caller.call_obj(visitor, "__and__", left_value, left_type, args, args_types)
     elif left_type.is_primitive():
-        return lang_type.get_bool_type(), builder._and(left_value, right_value)
+        return lang_type.get_bool_type(), visitor.__builder._and(left_value, right_value)
     elif left_type.is_obj() or left_type.is_python_obj() or left_type.is_list() or left_type.is_dict():
         types = [left_type, right_type]
         values = [left_value, right_value]
-        return caller.call_obj(code_gen, builder, parser, "__and__", left_value, left_type, values, types)
+        return caller.call_obj(visitor, "__and__", left_value, left_type, values, types)
     else:
         raise NotImplementedError()
 
 
-def bool_op_or(code_gen, builder, parser, left_type, left_value, right_type, right_value):
+def bool_op_or(visitor, left_type, left_value, right_type, right_value):
     if left_type.is_obj() or left_type.is_python_obj() or left_type.is_collection():
         args_types = [left_type, right_type]
         args = [left_value, right_value]
-        return caller.call_obj(code_gen, builder, parser, "__or__", left_value, left_type, args, args_types)
+        return caller.call_obj(visitor, "__or__", left_value, left_type, args, args_types)
     elif left_type.is_primitive():
-        return lang_type.get_bool_type(), builder._or(left_value, right_value)
+        return lang_type.get_bool_type(), visitor.__builder._or(left_value, right_value)
     elif left_type.is_obj() or left_type.is_python_obj() or left_type.is_list() or left_type.is_dict():
         types = [left_type, right_type]
         values = [left_value, right_value]
-        return caller.call_obj(code_gen, builder, parser, "__or__", left_value, left_type, values, types)
+        return caller.call_obj(visitor, "__or__", left_value, left_type, values, types)
     else:
         raise NotImplementedError()

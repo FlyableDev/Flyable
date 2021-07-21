@@ -140,8 +140,7 @@ class ParserVisitor(NodeVisitor):
 
     def visit_UnaryOp(self, node: UnaryOp) -> Any:
         value_type, value = self.__visit_node(node.operand)
-        self.__last_type, self.__last_value = op_call.unary_op(self.__code_gen, self.__builder, self.__parser,
-                                                               value_type, value, node.op)
+        self.__last_type, self.__last_value = op_call.unary_op(self, value_type, value, node.op)
 
     def visit_BoolOp(self, node: BoolOp) -> Any:
         types = []
@@ -154,8 +153,8 @@ class ParserVisitor(NodeVisitor):
         current_type = types[0]
         current_value = values[0]
         for i in range(1, len(types)):
-            current_type, current_value = op_call.bool_op(self.__code_gen, self.__builder, self.__parser, node.op,
-                                                          current_type, current_value, types[i], values[i])
+            current_type, current_value = op_call.bool_op(self, node.op, current_type, current_value, types[i],
+                                                          values[i])
         self.__last_type, self.__last_value = current_type, current_value
 
     def visit_Compare(self, node: Compare) -> Any:
@@ -180,8 +179,7 @@ class ParserVisitor(NodeVisitor):
 
         if left_type.is_primitive():
             old_value = self.__builder.load(left_value)
-            new_value = op_call.bin_op(self.__code_gen, self.__builder, node.op, left_type, old_value, right_type,
-                                       right_value)
+            new_value = op_call.bin_op(self, node.op, left_type, old_value, right_type, right_value)
             self.__builder.store(new_value, left_value)
         else:
             raise NotImplementedError()
@@ -708,8 +706,8 @@ class ParserVisitor(NodeVisitor):
             new_var = self.__func.get_context().add_var(name, iter_type)
             alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
             new_var.set_code_gen_value(alloca_value)
-            iterable_type, iterator = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__iter__",
-                                                      iter_value, iter_type, [iter_value], [iter_type])
+            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
+                                                      [iter_type])
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
@@ -778,8 +776,8 @@ class ParserVisitor(NodeVisitor):
             new_var = self.__func.get_context().add_var(name, iter_type)
             alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
             new_var.set_code_gen_value(alloca_value)
-            iterable_type, iterator = caller.call_obj(self.__code_gen, self.__builder, self.__parser, "__iter__",
-                                                      iter_value, iter_type, [iter_value], [iter_type])
+            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
+                                                      [iter_type])
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
