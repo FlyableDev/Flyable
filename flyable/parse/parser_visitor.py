@@ -216,6 +216,13 @@ class ParserVisitor(NodeVisitor):
                 else:
                     self.__last_value = self.__builder.load(self.__last_value)
                     self.__last_type = found_var.get_type()
+        elif build.get_build_in_name(node.id) is not None: # An element in the build-in module
+            self.__last_type = lang_type.get_python_obj_type()
+            module = self.__builder.global_var(self.__code_gen.get_build_in_module())
+            module = self.__builder.load(module)
+            str_content = self.__code_gen.get_or_insert_str(node.id)
+            str_content = self.__builder.load(self.__builder.global_var(str_content))
+            self.__last_value = runtime.py_runtime_get_attr(self.__code_gen, self.__builder, module, str_content)
         elif isinstance(node.ctx, Store):  # not found so declaring a variable
             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
             if self.__func.get_parent_func().is_global():
@@ -843,8 +850,12 @@ class ParserVisitor(NodeVisitor):
         handlers_cond_block = []
         for e in node.handlers:
             handlers_block.append(self.__builder.create_block())
+            handlers_cond_block.append(self.__builder.create_block())
 
         self.__visit_node(node.body)
+
+        self.__builder.br(handlers_cond_block[0])
+
         if node.orelse is None:
             self.__builder.br(continue_block)
         else:
@@ -852,22 +863,32 @@ class ParserVisitor(NodeVisitor):
 
         self.__builder.set_insert_block(excp_block)
 
-        excp_value = excp.py_runtime_get_excp(self.__code_gen, self.__builder)
-        excp_type = fly_obj.get_py_obj_type(self.__builder, excp_value)
+        self.__builder.br(handlers_cond_block[0])
+
         for i, handler in enumerate(node.handlers):  # For each exception statement
-            handle_type, handle_value = self.__visit_node(handler.type)
-            self.__visit_node(handler)
+            self.__reset_last()
+            self.__builder.set_insert_block(handlers_cond_block[i])
+            excp_value = excp.py_runtime_get_excp(self.__code_gen, self.__builder)
+            excp_type = fly_obj.get_py_obj_type(self.__builder, excp_value)
+            excp_type = self.__builder.ptr_cast(excp_value, code_type.get_py_obj_ptr(self.__code_gen))
+            obj_type, obj_type_value = self.__visit_node(handler.type)
+            type_match = self.__builder.eq(obj_type_value, excp_type)
+            other_block = handlers_cond_block[i + 1] if i < len(node.handlers) - 1 else excp_not_found_block
+            self.__builder.cond_br(type_match, handlers_block[i], other_block)
+            self.__builder.br(continue_block)
+            self.__builder.set_insert_block(handlers_block[i])
+            self.__visit_node(handler.body)
+            self.__builder.br(continue_block)
 
-        self.__visit_node(node.finalbody)
 
-        self.__visit_node(node.orelse)
+        #self.__visit_node(node.finalbody)
 
+        if node.orelse is not None:
+            self.__builder.set_insert_block(else_block)
+            self.__visit_node(node.orelse)
+            self.__builder.br(continue_block)
 
-    def visit_ExceptHandler(self, node: ExceptHandler) -> Any:
-        self.__last_type, self.__last_value = self.__visit_node(node.body)
-        excp_var = self.__func.get_context().add_var(node.name, self.__last_type)
-
-        self.__visit_node(node.body)
+        self.__builder.set_insert_block(continue_block)
 
     def visit_Raise(self, node: Raise) -> Any:
         self.__func.set_can_raise(True)  # There is a raise so it can raise an exception

@@ -8,6 +8,13 @@ import flyable.code_gen.list as gen_list
 import flyable.data.lang_type as lang_type
 
 
+def get_build_in_name(name):
+    import builtins as built_in
+    try:
+        return getattr(built_in, name)
+    except AttributeError:
+        return None
+
 class BuildInFunc:
 
     def __init__(self):

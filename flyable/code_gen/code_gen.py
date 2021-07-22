@@ -8,6 +8,7 @@ import flyable.code_gen.code_type as code_type
 import flyable.code_gen.runtime as runtime
 import flyable.code_gen.library_loader as loader
 import flyable.data.lang_type as lang_type
+import flyable.code_gen.module as gen_module
 from collections import OrderedDict
 import enum
 
@@ -230,6 +231,7 @@ class CodeGen:
         self.__false_var = None
         self.__none_var = None
         self.__method_type = None
+        self.__build_in_module = None
         self.__python_obj_struct = None
 
     def setup(self):
@@ -246,6 +248,9 @@ class CodeGen:
         self.__none_var = self.add_global_var(GlobalVar("Py_None", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
         self.__method_type = self.add_global_var(
             GlobalVar("PyMethod_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
+
+        self.__build_in_module = self.add_global_var(GlobalVar("__flyable@BuildIn@Module@",
+                                                               code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
 
     def clear(self):
         self.__global_vars.clear()
@@ -285,6 +290,12 @@ class CodeGen:
         return the global variable containing the Python method type
         """
         return self.__method_type
+
+    def get_build_in_module(self):
+        """
+        return the build-in module
+        """
+        return self.__build_in_module
 
     def get_py_obj_struct(self):
         return self.__python_obj_struct
@@ -427,6 +438,9 @@ class CodeGen:
         # Set False global var
         false_value = runtime.value_to_pyobj(self, builder, builder.const_int1(0), lang_type.get_bool_type())
         builder.store(false_value, builder.global_var(self.get_false()))
+        # Set the build-in module
+        build_in_module = gen_module.import_py_module(self, builder, "builtins")
+        builder.store(build_in_module, builder.global_var(self.get_build_in_module()))
 
         main_func = self.__data.get_file(0).get_global_func().get_impl(1)
         return_value = builder.call(main_func.get_code_func(), [])

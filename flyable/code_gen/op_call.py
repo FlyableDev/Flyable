@@ -130,13 +130,13 @@ def unary_op_usub(visitor, type, value):
     elif type.is_int():
         abs_args = [code_type.get_int64(), code_type.get_int1()]
         abs_func = visitor.get_code_gen().get_or_create_func("llvm.abs.i64", code_type.get_int64(), abs_args,
-                                                         gen.Linkage.EXTERNAL)
+                                                             gen.Linkage.EXTERNAL)
         result = visitor.get_builder().call(abs_func, [value, visitor.get_builder().const_int1(0)])
         return lang_type.get_int_type(), visitor.get_builder().neg(result)
     elif type.is_dec():
         abs_args = [code_type.get_double()]
         abs_func = visitor.get_code_gen().get_or_create_func("llvm.fabs.f64", code_type.get_double(), abs_args,
-                                                         gen.Linkage.EXTERNAL)
+                                                             gen.Linkage.EXTERNAL)
         result = visitor.get_builder().call(abs_func, [value])
         return lang_type.get_dec_type(), visitor.get_builder().neg(result)
     elif type.is_bool():
