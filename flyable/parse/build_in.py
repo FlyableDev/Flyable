@@ -65,4 +65,4 @@ def get_build_in(name):
 
     if name in build_in_funcs:
         return build_in_funcs[name]()  # Create an instance of the build-in class
-    return None
+    return get_build_in_name(name) # Not implemented

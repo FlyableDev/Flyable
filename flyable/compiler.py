@@ -6,6 +6,7 @@ from flyable.code_gen.code_gen import CodeGen
 from flyable.data.lang_func_impl import LangFuncImpl
 import flyable.code_gen.code_gen as gen
 import flyable.parse.adapter as adapter
+import flyable.data.lang_class as lang_class
 
 
 class Compiler(ErrorThrower):
@@ -44,6 +45,7 @@ class Compiler(ErrorThrower):
     def __pre_parse(self):
         pre_parser = PreParser(self.__data, self.__code_gen)
         pre_parser.parse(self.__data)
+        self.__resolve_inheritance()
         self.throw_errors(pre_parser.get_errors())
 
     def __parse(self):
@@ -67,3 +69,13 @@ class Compiler(ErrorThrower):
                 break
 
         self.throw_errors(self.__parser.get_errors())
+
+    def __resolve_inheritance(self):
+        for _class in self.__data.classes_iter():
+            node = _class.get_node()
+            for e in node.bases:
+                found_class = _class.get_file().find_content(e.id)
+                if isinstance(found_class, lang_class.LangClass):
+                    _class.add_inherit(found_class)
+                else:
+                    self.__parser.throw_errors(str(e) + " not expected to inherits", node.lineno, node.end_col_offset)

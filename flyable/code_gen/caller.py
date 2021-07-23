@@ -42,7 +42,7 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
             py_args[i] = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), arg, py_args_type[i])
         return lang_type.get_python_obj_type(), generate_python_method_call(visitor, func_name, obj, py_args)
     else:
-        raise ValueError("Type un-callable: " + obj_type.to_str(visitor.get_data()))
+        raise ValueError("Type un-callable: " + obj_type.to_str(visitor.get_data()) + " for method " + func_name)
 
 
 def generate_python_method_call(visitor, name, obj, args):

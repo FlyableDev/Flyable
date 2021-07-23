@@ -216,7 +216,7 @@ class ParserVisitor(NodeVisitor):
                 else:
                     self.__last_value = self.__builder.load(self.__last_value)
                     self.__last_type = found_var.get_type()
-        elif build.get_build_in_name(node.id) is not None: # An element in the build-in module
+        elif build.get_build_in_name(node.id) is not None:  # An element in the build-in module
             self.__last_type = lang_type.get_python_obj_type()
             module = self.__builder.global_var(self.__code_gen.get_build_in_module())
             module = self.__builder.load(module)
@@ -317,8 +317,18 @@ class ParserVisitor(NodeVisitor):
         if self.__last_type is None or self.__last_type.is_module():
             build_in_func = build.get_build_in(name_call)
             if build_in_func is not None and self.__last_type is None:  # Build-in func call
-                self.__last_type, self.__last_value = build_in_func.parse(args_types, args, self.__code_gen,
-                                                                          self.__builder)
+                if isinstance(build_in_func, build.BuildInFunc):
+                    self.__last_type, self.__last_value = build_in_func.parse(args_types, args, self.__code_gen,
+                                                                              self.__builder)
+                else:  # Call a non implemented build-in function
+                    self.__last_type = lang_type.get_python_obj_type()
+                    module = self.__builder.global_var(self.__code_gen.get_build_in_module())
+                    module = self.__builder.load(module)
+                    str_content = self.__code_gen.get_or_insert_str(name_call)
+                    str_content = self.__builder.load(self.__builder.global_var(str_content))
+                    attr_call = runtime.py_runtime_get_attr(self.__code_gen, self.__builder, module, str_content)
+                    self.__last_type, self.__last_value = caller.call_obj(self, name_call, attr_call,
+                                                                          get_python_obj_type(), args, args_types)
             else:
                 if self.__last_type is None:
                     file = self.__func.get_parent_func().get_file()
@@ -361,8 +371,19 @@ class ParserVisitor(NodeVisitor):
             self.__last_type, self.__last_value = caller.call_obj(self, name_call, self.__last_value, self.__last_type,
                                                                   [self.__last_value] + args,
                                                                   [self.__last_type] + args_types)
+        elif self.__last_type.is_obj():
+            _class = self.__data.get_class(self.__last_type.get_id())
+            func_to_call = _class.get_func(name_call)
+            if func_to_call is None:
+                str_error = "Not method '" + name_call + "' found"
+                self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
+            else:
+                method_args = [self.__last_value] + args
+                method_args_types = [self.__last_type] + args_types
+                self.__last_type, self.__last_value = caller.call_obj(self, name_call, self.__last_value,
+                                                                      self.__last_type, method_args, method_args_types)
         else:
-            str_error = "Call unrecognized with " + str(self.__last_type)
+            str_error = "Call unrecognized with " + self.__last_type.to_str(self.__data)
             self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
 
     def visit_Subscript(self, node: Subscript) -> Any:
@@ -880,8 +901,7 @@ class ParserVisitor(NodeVisitor):
             self.__visit_node(handler.body)
             self.__builder.br(continue_block)
 
-
-        #self.__visit_node(node.finalbody)
+        # self.__visit_node(node.finalbody)
 
         if node.orelse is not None:
             self.__builder.set_insert_block(else_block)
@@ -924,10 +944,32 @@ class ParserVisitor(NodeVisitor):
             self.__builder.store(content, module_store)
 
     def visit_ImportFrom(self, node: ImportFrom) -> Any:
-        print(node.module)
-        self.__data.get_file(node.module)
-        # file = self.__data.get_file(node.module)
-        raise NotImplementedError()
+        name = node.module
+        for e in node.names:
+            var_name = (e.asname if e.asname is not None else e.name) + name
+            file = self.__data.get_file(e.name)
+            if file is None:  # Python module
+                module_type = lang_type.get_python_obj_type()  # A Python module
+                content = gen_module.import_py_module(self.__code_gen, self.__builder, var_name)
+            else:  # Flyable module
+                module_type = lang_type.get_module_type(file.get_id())
+                content = self.__builder.const_int32(file.get_id())
+
+            module_code_type = module_type.to_code_type(self.__code_gen)
+            module_store = None
+
+            new_var = self.__func.get_context().add_var(var_name, module_type)
+            if self.__func.get_parent_func().is_global():
+                new_global_var = gen.GlobalVar("@flyable@global@module@" + var_name, module_code_type)
+                new_var.set_global(True)
+                new_var.set_code_gen_value(new_global_var)
+                self.__code_gen.add_global_var(new_global_var)
+                module_store = self.__builder.global_var(new_global_var)
+            else:
+                new_var_value = self.__generate_entry_block_var(module_code_type)
+                new_var.set_code_gen_value(new_var_value)
+                module_store = new_var_value
+            self.__builder.store(content, module_store)
 
     def visit_ClassDef(self, node: ClassDef) -> Any:
         pass

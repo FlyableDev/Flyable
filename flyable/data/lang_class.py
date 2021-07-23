@@ -10,6 +10,10 @@ class LangClass:
         self.__id = -1
         self.__struct = None
         self.__file = None
+        self.__inherits = []
+
+    def get_node(self):
+        return self.__node
 
     def set_file(self, file):
         self.__file = file
@@ -60,6 +64,15 @@ class LangClass:
 
     def attributes_iter(self):
         return iter(self.__attributes)
+
+    def add_inherit(self, inherit):
+        self.__inherits.append(inherit)
+
+    def iter_inherits(self):
+        return iter(self.__inherits)
+
+    def get_inherits(self, index):
+        return self.__inherits[index]
 
     def set_struct(self, struct):
         self.__struct = struct

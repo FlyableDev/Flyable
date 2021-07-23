@@ -15,6 +15,12 @@ def py_runtime_clear_error(code_gen, builder):
     return builder.call(clear_error_func, [])
 
 
+def py_runtime_set_excp(visitor, type, value):
+    args_type = [code_type.get_py_obj_ptr(visitor.get_code_gen())] * 2
+    set_error_func = visitor.get_code_gen().get_or_create_func("PyErr_SetObject", code_type.get_void())
+    return visitor.get_builder().call(set_error_func, [type, value])
+
+
 def py_runtime_get_excp(code_gen, builder):
     get_excp_func = code_gen.get_or_create_func("PyErr_Occurred", code_type.get_py_obj_ptr(code_gen), [],
                                                 gen.Linkage.EXTERNAL)
