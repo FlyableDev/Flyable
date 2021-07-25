@@ -8,6 +8,27 @@ import flyable.parse.op as parse_op
 
 def bin_op(visitor, op, type_left, value_left, type_right, value_right):
     builder = visitor.get_builder()
+
+    # Check the primitive type conversion
+    if type_left.is_dec():  # If left type is decimal, the right type must also be to return a decimal
+        if type_right.is_int() or type_right.is_bool():
+            type_right = lang_type.get_dec_type()
+            value_right = visitor.get_builder().float_cast(value_right, type_right.to_code_type(visitor.get_code_gen()))
+    elif type_left.is_int():
+        if type_right.is_dec():
+            type_left = lang_type.get_dec_type()
+            value_left = visitor.get_builder().float_cast(value_left, type_left.to_code_type(visitor.get_code_gen()))
+        elif type_right.is_bool():
+            type_right = lang_type.get_bool_type()
+            value_right = visitor.get_builder().int_cast(value_left, type_right.to_code_type(visitor.get_code_gen()))
+    elif type_left.is_bool():
+        if type_right.is_dec():
+            type_left = lang_type.get_dec_type()
+            value_left = visitor.get_builder().float_cast(value_left, type_left.to_code_type(visitor.get_code_gen()))
+        elif type_right.is_bool():
+            type_right = lang_type.get_bool_type()
+            value_right = visitor.get_builder().int_cast(value_left, type_right.to_code_type(visitor.get_code_gen()))
+
     if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
         args_types = [type_left, type_right]
         args = [value_left, value_right]

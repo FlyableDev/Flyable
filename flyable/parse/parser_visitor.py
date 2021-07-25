@@ -324,10 +324,7 @@ class ParserVisitor(NodeVisitor):
                     self.__last_type = lang_type.get_python_obj_type()
                     module = self.__builder.global_var(self.__code_gen.get_build_in_module())
                     module = self.__builder.load(module)
-                    str_content = self.__code_gen.get_or_insert_str(name_call)
-                    str_content = self.__builder.load(self.__builder.global_var(str_content))
-                    attr_call = runtime.py_runtime_get_attr(self.__code_gen, self.__builder, module, str_content)
-                    self.__last_type, self.__last_value = caller.call_obj(self, name_call, attr_call,
+                    self.__last_type, self.__last_value = caller.call_obj(self, name_call, module,
                                                                           get_python_obj_type(), args, args_types)
             else:
                 if self.__last_type is None:
