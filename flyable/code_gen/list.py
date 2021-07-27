@@ -3,6 +3,7 @@ Module with routines to handle Python and Flyable list
 """
 
 from flyable.code_gen.code_type import CodeType
+import flyable.code_gen.exception as excp
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.code_type as code_type
 
@@ -35,7 +36,8 @@ def python_list_append(code_gen, builder, list, item):
     set_item_args_types = [code_type.get_py_obj_ptr(code_gen), code_type.get_py_obj_ptr(code_gen)]
     set_item_func = code_gen.get_or_create_func("PyList_Append", code_type.get_int32(),
                                                 set_item_args_types, gen.Linkage.EXTERNAL)
-    return builder.call(set_item_func, [list, item])
+    result = builder.call(set_item_func, [list, item])
+    return result
 
 
 def python_list_len(code_gen, builder, list):

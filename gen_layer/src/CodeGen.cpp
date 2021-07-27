@@ -536,7 +536,10 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 {
                     llvm::Value* value = values[current->readInt32()];
                     llvm::Type* type = readType(*current);
-                    values[current->readInt32()] = mBuilder.CreatePointerCast(value,type);
+                    if(value->getType() != type)
+                        values[current->readInt32()] = mBuilder.CreatePointerCast(value,type);
+                    else
+                        values[current->readInt32()] = value;
                 }
                 break;
 
@@ -598,6 +601,22 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 {
                     std::string txt = current->readString();
                     values[current->readInt32()] = mBuilder.CreateGlobalString(llvm::StringRef(txt));
+                }
+                break;
+
+                case 9999:
+                {
+                    size_t size;
+                    llvm::Type* type = readType(*current);
+                    if(type->isPointerTy())
+                    {
+                        llvm::PointerType* typePtr = (llvm::PointerType*) type;
+                        size = mLayout->getTypeAllocSize(typePtr->getElementType());
+                    }
+                    else
+                        size = 0;
+
+                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),size,true);
                 }
                 break;
 

@@ -233,13 +233,28 @@ class CodeGen:
         self.__method_type = None
         self.__build_in_module = None
         self.__python_obj_struct = None
+        self.__python_list_struct = None
 
     def setup(self):
         # Create the Python object struct
         self.__python_obj_struct = StructType("__flyable_py_obj")
-        self.__python_obj_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
-        self.__python_obj_struct.add_type(code_type.get_int8_ptr())  # PyTypeObject * ob_type
         self.add_struct(self.__python_obj_struct)
+        self.__python_obj_struct.add_type(code_type.get_py_obj_ptr(self))  # ob_next
+        self.__python_obj_struct.add_type(code_type.get_py_obj_ptr(self))  # ob_prev
+        self.__python_obj_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
+        self.__python_obj_struct.add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
+
+        #Create the Python list struct
+        self.__python_list_struct = StructType("__flyable_py_obj_list")
+        self.__python_list_struct.add_type(code_type.get_int8_ptr())  # ob_next
+        self.__python_list_struct.add_type(code_type.get_int8_ptr())  # ob_prev
+        self.__python_list_struct.add_type(code_type.get_int64())  # ob_refcnt
+        self.__python_list_struct.add_type(code_type.get_int8_ptr())  # ob_type
+        self.__python_list_struct.add_type(code_type.get_int64())  # ob_size
+        self.__python_list_struct.add_type(code_type.get_int8_ptr().get_ptr_to())  # ob_item
+        self.__python_list_struct.add_type(code_type.get_int64())  # allocated
+        self.add_struct(self.__python_list_struct)
+
 
         self.__true_var = self.add_global_var(
             GlobalVar("@Flyable@_True", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
@@ -347,10 +362,10 @@ class CodeGen:
 
     def setup_struct(self):
         for _class in self.__data.classes_iter():
-            self.__python_obj_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
-            self.__python_obj_struct.add_type(code_type.get_int8_ptr())  # PyTypeObject * ob_type
-            _class.get_struct().add_type(code_type.get_int64())
-            _class.get_struct().add_type(code_type.get_int8_ptr())
+            _class.get_struct().add_type(code_type.get_py_obj_ptr(self))  # ob_next
+            _class.get_struct().add_type(code_type.get_py_obj_ptr(self))  # ob_prev
+            _class.get_struct().add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
+            _class.get_struct().add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
             for attribute in _class.attributes_iter():
                 _class.get_struct().add_type(attribute.get_type().to_code_type(self))
 

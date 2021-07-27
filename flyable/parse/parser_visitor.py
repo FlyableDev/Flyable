@@ -202,8 +202,8 @@ class ParserVisitor(NodeVisitor):
     def visit_Name(self, node: Name) -> Any:
         # Name can represent multiple things
         # Is it a declared variable ?
-        if self.__func.get_context().find_active_var(node.id) is not None:
-            found_var = self.__func.get_context().find_active_var(node.id)
+        found_var = self.__find_active_var(node.id)
+        if found_var is not None:
             self.__last_type = found_var.get_type()
             if found_var.is_global():
                 self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
@@ -249,6 +249,7 @@ class ParserVisitor(NodeVisitor):
         if self.__last_type.is_python_obj():  # Python obj attribute. Type is unknown
             self.__last_type = lang_type.get_python_obj_type()
             str_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.attr))
+            str_value = self.__builder.load(str_value)
             if isinstance(node.ctx, ast.Store):
                 py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, self.__assign_value,
                                                 self.__assign_type)
@@ -296,6 +297,7 @@ class ParserVisitor(NodeVisitor):
         args_types = []
         args = []
         for e in node.args:
+            self.__reset_last()
             type, arg = self.__visit_node(e)
             args_types.append(type)
             args.append(arg)
@@ -336,15 +338,11 @@ class ParserVisitor(NodeVisitor):
                 if isinstance(content, lang_class.LangClass):
                     # New instance class call
                     self.__last_type = lang_type.get_obj_type(content.get_id())
-
-                    alloc_size = self.__builder.const_int64(100)
-                    self.__last_value = runtime.malloc_call(self.__code_gen, self.__builder, alloc_size)
-                    ptr_type = self.__last_type.to_code_type(self.__code_gen)
-                    self.__last_value = self.__builder.ptr_cast(self.__last_value, ptr_type)
+                    self.__last_value = fly_obj.allocate_flyable_instance(self, content)
 
                     # Call the constructor
-                    args_types += [self.__last_type]
-                    args += [self.__last_value]
+                    args_types = [self.__last_type] + args_types
+                    args = [self.__last_value] + args
                     args_call = [content.get_lang_type()] + args_types  # Add the self argument
                     caller.call_obj(self, "__init__", self.__last_value, self.__last_type, args, args_types, True)
 
@@ -1003,3 +1001,12 @@ class ParserVisitor(NodeVisitor):
     def __last_become_assign(self):
         self.__last_value = self.__assign_value
         self.__last_type = self.__assign_type
+
+    def __find_active_var(self, name):
+        result = self.__func.get_context().find_active_var(name)
+        if result is None:
+            parent_func = self.__func.get_parent_func().get_file().get_global_func()
+            if parent_func is not None:
+                impl = parent_func.get_impl(1)
+                result = impl.get_context().find_active_var(name)
+        return result

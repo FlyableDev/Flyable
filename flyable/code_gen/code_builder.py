@@ -224,6 +224,11 @@ class CodeBuilder:
         self.__writer.add_str(value)
         return self.__gen_value()
 
+    def size_of_type_ptr_element(self, type):
+        self.__writer.add_int32(9999)
+        type.write_to_code(self.__writer)
+        return self.__gen_value()
+
     def print_value_type(self, value):
         self.__writer.add_int32(10000)
         self.__writer.add_int32(value)
