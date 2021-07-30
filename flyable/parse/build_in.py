@@ -6,6 +6,7 @@ import flyable.code_gen.runtime as runtime
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.list as gen_list
 import flyable.data.lang_type as lang_type
+import flyable.code_gen.list as gen_list
 
 
 def get_build_in_name(name):
@@ -14,6 +15,7 @@ def get_build_in_name(name):
         return getattr(built_in, name)
     except AttributeError:
         return None
+
 
 class BuildInFunc:
 
@@ -30,7 +32,7 @@ class BuildInPrint(BuildInFunc):
         super().__init__()
 
     def parse(self, args_types, args, codegen, builder):
-        obj_to_send = runtime.value_to_pyobj(codegen,builder,args[0], args_types[0])
+        obj_to_send = runtime.value_to_pyobj(codegen, builder, args[0], args_types[0])
         runtime.py_runtime_object_print(codegen, builder, obj_to_send)
         return lang_type.get_none_type(), builder.const_int32(0)
 
@@ -52,7 +54,10 @@ class BuildInLen(BuildInFunc):
         super().__init__()
 
     def parse(self, args_types, args, codegen, builder):
-        return lang_type.get_int_type(), runtime.py_runtime_obj_len(codegen, builder, args[0])
+        if len(args_types) == 1 and args_types[0].is_list():
+            return lang_type.get_int_type(), gen_list.python_list_len(codegen, builder, args[0])
+        else:
+            return lang_type.get_int_type(), runtime.py_runtime_obj_len(codegen, builder, args[0])
 
 
 def get_build_in(name):
@@ -65,4 +70,4 @@ def get_build_in(name):
 
     if name in build_in_funcs:
         return build_in_funcs[name]()  # Create an instance of the build-in class
-    return get_build_in_name(name) # Not implemented
+    return get_build_in_name(name)  # Not implemented

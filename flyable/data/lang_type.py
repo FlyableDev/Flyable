@@ -196,10 +196,13 @@ class LangType:
 
     def get_content(self):
         result = copy.copy(self)
-        result.__dims.pop()
-        if self.is_primitive():
-            self.__type = LangType.Type.PYTHON  # A container can only contain python object object
-        return result
+
+        if len(result.__dims) > 0:
+            result.__dims.pop()
+            if result.is_primitive():
+                result.__type = LangType.Type.PYTHON  # A container can only contain python object object
+            return result
+        return get_python_obj_type()
 
     def add_hint(self, hint):
         self.__hints.append(hint)

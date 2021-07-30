@@ -25,3 +25,22 @@ def py_runtime_get_excp(code_gen, builder):
     get_excp_func = code_gen.get_or_create_func("PyErr_Occurred", code_type.get_py_obj_ptr(code_gen), [],
                                                 gen.Linkage.EXTERNAL)
     return builder.call(get_excp_func, [])
+
+
+def raise_exception(visitor, type, value):
+    py_runtime_set_excp(visitor, type, value)
+
+
+def raise_index_error(visitor):
+    raise_func = visitor.get_code_gen().get_or_create_func("flyable_raise_index_error", code_type.get_void(), [],
+                                                           gen.Linkage.EXTERNAL)
+    visitor.get_builder().call(raise_func, [])
+
+
+def handle_raised_excp(visitor):
+    found_block = visitor.get_except_block()
+    if found_block is None:
+        func_type = visitor.get_func().get_return_type()
+        visitor.get_builder().ret_null()
+    else:
+        visitor.get_builder().br(found_block)

@@ -37,6 +37,14 @@ def get_py_obj_ptr(code_gen):
     return get_py_obj(code_gen).get_ptr_to()
 
 
+def get_list_obj(code_gen):
+    return CodeType(CodeType.CodePrimitive.STRUCT, code_gen.get_py_list_struct().get_id())
+
+
+def get_list_obj_ptr(code_gen):
+    return get_list_obj(code_gen).get_ptr_to()
+
+
 def get_float():
     return CodeType(CodeType.CodePrimitive.FLOAT)
 

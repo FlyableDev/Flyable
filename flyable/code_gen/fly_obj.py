@@ -16,7 +16,7 @@ def get_obj_attribute_start_index():
 
 
 def get_py_obj_type_ptr(builder, obj):
-    return builder.gep(obj, builder.const_int32(0), builder.const_int32(3))
+    return builder.gep(obj, builder.const_int32(0), builder.const_int32(1))
 
 
 def get_py_obj_type(builder, obj):
@@ -30,7 +30,7 @@ def allocate_flyable_instance(visitor, lang_class):
     value = runtime.malloc_call(visitor.get_code_gen(), visitor.get_builder(), alloc_size)
     value = visitor.get_builder().ptr_cast(value, ptr_type)
 
-    # Set the ref counter to 1
+    # Set the ref counter to 0
     ref_ptr = ref_counter.get_ref_counter_ptr(visitor, lang_type, value)
     visitor.get_builder().store(visitor.get_builder().const_int64(100), ref_ptr)
 
@@ -40,10 +40,4 @@ def allocate_flyable_instance(visitor, lang_class):
     none_value = visitor.get_builder().load(none_value)
     visitor.get_builder().store(none_value, type_ptr)
 
-    # Set next and previous ref
-    new_ref_args = [code_type.get_py_obj_ptr(visitor.get_code_gen())]
-    new_ref = visitor.get_code_gen().get_or_create_func("_PyTraceMalloc_NewReference", code_type.get_void(),
-                                                        new_ref_args, gen.Linkage.EXTERNAL)
-    python_value = visitor.get_builder().ptr_cast(value, code_type.get_py_obj_ptr(visitor.get_code_gen()))
-    visitor.get_builder().call(new_ref, [python_value])
     return value

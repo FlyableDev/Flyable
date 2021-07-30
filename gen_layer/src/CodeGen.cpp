@@ -401,6 +401,14 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 }
                 break;
 
+                case 14:
+                {
+                    llvm::Value* left = values[current->readInt32()];
+                    llvm::Value* right = values[current->readInt32()];
+                    values[current->readInt32()] = mBuilder.CreateSRem(left,right);
+                }
+                break;
+
                 case 100:
                 {
                     llvm::Value* value = values[current->readInt32()];
@@ -445,6 +453,18 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 break;
 
                 case 153:
+                {
+                    llvm::Type* type = readType(*current);
+                    llvm::Value* element = values[current->readInt32()];
+                    int indicesCount = current->readInt32();
+                    std::vector<llvm::Value*> indices(indicesCount);
+                    for(int i = 0;i < indicesCount;++i)
+                        indices[i] = values[current->readInt32()];
+                    values[current->readInt32()] = mBuilder.CreateGEP(type,element,llvm::ArrayRef<llvm::Value*>(indices));
+                }
+                break;
+
+                case 170:
                 {
                     llvm::Function* funcToCall = mFuncs[current->readInt32()];
                     std::vector<llvm::Value*> args(current->readInt32());
@@ -590,6 +610,12 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                     mBuilder.CreateRetVoid();
                 break;
 
+                case 2002:
+                {
+                    values[current->readInt32()] = mBuilder.CreateRet(getNull(func->getType()));
+                }
+                break;
+
                 case 3000:
                 {
                     int id = current->readInt32();
@@ -699,4 +725,28 @@ bool CodeGen::isDecimalType(llvm::Value* value)
 bool CodeGen::isDecimalType(llvm::Type* type)
 {
     return type == llvm::Type::getFloatTy(mContext) || type == llvm::Type::getDoubleTy(mContext);
+}
+
+llvm::Constant* CodeGen::getNull(llvm::Type* type)
+{
+    if(type == llvm::Type::getDoubleTy(mContext))
+    {
+        const double nullDouble=0;
+        return llvm::ConstantFP::get(mContext,llvm::APFloat(nullDouble));
+    }
+    else if(type == llvm::Type::getFloatTy(mContext))
+    {
+        const float nullFloat=0;
+        return llvm::ConstantFP::get(mContext,llvm::APFloat(nullFloat));
+    }
+    else if(type == llvm::Type::getInt64Ty(mContext))
+        return llvm::ConstantInt::get(mContext,llvm::APInt(64,0));
+    else if(type == llvm::Type::getInt32Ty(mContext))
+        return llvm::ConstantInt::get(mContext,llvm::APInt(32,0));
+    else if(type == llvm::Type::getInt16Ty(mContext))
+        return llvm::ConstantInt::get(mContext,llvm::APInt(16,0));
+    else if(type == llvm::Type::getInt1Ty(mContext))
+        return llvm::ConstantInt::get(mContext,llvm::APInt(1,0));
+
+    return llvm::ConstantPointerNull::get((llvm::PointerType*) type); //we consider it should return a pointer type
 }

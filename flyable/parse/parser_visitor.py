@@ -315,7 +315,6 @@ class ParserVisitor(NodeVisitor):
         else:
             NotImplementedError("Call func node not supported")
 
-        # A call from an existing variable, current module or build-in
         if self.__last_type is None or self.__last_type.is_module():
             build_in_func = build.get_build_in(name_call)
             if build_in_func is not None and self.__last_type is None:  # Build-in func call
@@ -986,6 +985,14 @@ class ParserVisitor(NodeVisitor):
 
     def get_current_node(self):
         return self.__current_node
+
+    def get_func(self):
+        return self.__func
+
+    def get_except_block(self):
+        if len(self.__exception_blocks) > 0:
+            return self.__exception_blocks[-1]
+        return None
 
     def __generate_entry_block_var(self, code_type):
         current_block = self.__builder.get_current_block()

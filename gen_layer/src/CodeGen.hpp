@@ -74,6 +74,7 @@ private:
     void printType(llvm::Type* type);
     bool isDecimalType(llvm::Value* value);
     bool isDecimalType(llvm::Type* type);
+    llvm::Constant* getNull(llvm::Type* type);
 
     std::vector<llvm::StructType*>mStructTypes;
     std::vector<llvm::GlobalVariable*>mGlobalVars;

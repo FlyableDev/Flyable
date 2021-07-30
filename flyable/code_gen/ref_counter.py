@@ -10,7 +10,7 @@ def get_ref_counter_ptr(visitor, value_type, value):
     builder = visitor.get_builder()
     if not value_type.is_primitive() and not value_type.is_none():
         zero = builder.const_int32(0)
-        gep = builder.const_int32(2)
+        gep = builder.const_int32(0)
         return builder.gep(value, zero, gep)
     return None
 

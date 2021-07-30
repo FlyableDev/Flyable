@@ -99,6 +99,12 @@ class CodeBuilder:
         self.__writer.add_int32(v2)
         return self.__gen_value()
 
+    def mod(self, v1, v2):
+        self.__writer.add_int32(14)
+        self.__writer.add_int32(v1)
+        self.__writer.add_int32(v2)
+        return self.__gen_value()
+
     def store(self, value, store):
         self.__writer.add_int32(100)
         self.__writer.add_int32(value)
@@ -132,8 +138,17 @@ class CodeBuilder:
         self.__writer.add_int32(second_index)
         return self.__gen_value()
 
-    def call(self, func, args):
+    def gep2(self, value, type, array_indices):
         self.__writer.add_int32(153)
+        type.write_to_code(self.__writer)
+        self.__writer.add_int32(value)
+        self.__writer.add_int32(len(array_indices))
+        for index in array_indices:
+            self.__writer.add_int32(index)
+        return self.__gen_value()
+
+    def call(self, func, args):
+        self.__writer.add_int32(170)
         self.__writer.add_int32(func.get_id())
         self.__writer.add_int32(len(args))
         for e in args:
@@ -211,6 +226,11 @@ class CodeBuilder:
 
     def ret_void(self):
         self.__writer.add_int32(2001)
+        self.__current_block.set_has_return(True)
+        self.__writer.lock()
+
+    def ret_null(self):
+        self.__writer.add_int32(2002)
         self.__current_block.set_has_return(True)
         self.__writer.lock()
 

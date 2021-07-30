@@ -239,15 +239,11 @@ class CodeGen:
         # Create the Python object struct
         self.__python_obj_struct = StructType("__flyable_py_obj")
         self.add_struct(self.__python_obj_struct)
-        self.__python_obj_struct.add_type(code_type.get_py_obj_ptr(self))  # ob_next
-        self.__python_obj_struct.add_type(code_type.get_py_obj_ptr(self))  # ob_prev
         self.__python_obj_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
         self.__python_obj_struct.add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
 
         #Create the Python list struct
         self.__python_list_struct = StructType("__flyable_py_obj_list")
-        self.__python_list_struct.add_type(code_type.get_int8_ptr())  # ob_next
-        self.__python_list_struct.add_type(code_type.get_int8_ptr())  # ob_prev
         self.__python_list_struct.add_type(code_type.get_int64())  # ob_refcnt
         self.__python_list_struct.add_type(code_type.get_int8_ptr())  # ob_type
         self.__python_list_struct.add_type(code_type.get_int64())  # ob_size
@@ -314,6 +310,9 @@ class CodeGen:
 
     def get_py_obj_struct(self):
         return self.__python_obj_struct
+
+    def get_py_list_struct(self):
+        return self.__python_list_struct
 
     def get_or_create_func(self, name, return_type, args_type=[], link=Linkage.INTERNAL):
         # Get case
@@ -470,3 +469,15 @@ class CodeGen:
         elif type_to.is_obj():
             return builder.ptr_cast(type_to.get_id())
         raise ValueError("Impossible to convert the type")
+
+    def get_null_from_type(self, builder, type):
+        if type.is_int():
+            return builder.const_int64(0)
+        elif type.is_dec():
+            return builder.const_float64(0.0)
+        elif type.is_bool():
+            return builder.const_int1(False)
+        else:
+            return builder.const_null(type.to_code_type(self.__data))
+
+
