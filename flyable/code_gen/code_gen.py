@@ -234,6 +234,7 @@ class CodeGen:
         self.__build_in_module = None
         self.__python_obj_struct = None
         self.__python_list_struct = None
+        self.__python_func_struct = None
 
     def setup(self):
         # Create the Python object struct
@@ -242,7 +243,7 @@ class CodeGen:
         self.__python_obj_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
         self.__python_obj_struct.add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
 
-        #Create the Python list struct
+        # Create the Python list struct
         self.__python_list_struct = StructType("__flyable_py_obj_list")
         self.__python_list_struct.add_type(code_type.get_int64())  # ob_refcnt
         self.__python_list_struct.add_type(code_type.get_int8_ptr())  # ob_type
@@ -250,6 +251,14 @@ class CodeGen:
         self.__python_list_struct.add_type(code_type.get_int8_ptr().get_ptr_to())  # ob_item
         self.__python_list_struct.add_type(code_type.get_int64())  # allocated
         self.add_struct(self.__python_list_struct)
+
+        # Create the Python function struct
+        self.__python_func_struct = StructType("__flyable_py_obj_func")
+        self.__python_func_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
+        self.__python_func_struct.add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
+        for i in range(12):
+            self.__python_func_struct.add_type(code_type.get_py_obj_ptr(self))
+        self.__python_func_struct.add_type(code_type.get_int8_ptr())
 
 
         self.__true_var = self.add_global_var(
