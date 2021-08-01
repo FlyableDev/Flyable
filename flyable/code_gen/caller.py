@@ -13,6 +13,7 @@ import flyable.data.lang_type as lang_type
 import flyable.code_gen.runtime as runtime
 import flyable.parse.shortcut as shortcut
 import copy
+import flyable.code_gen.function as function
 
 
 def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False):
@@ -32,8 +33,7 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
         called_impl = adapter.adapt_func(called_func, args_type, visitor.get_data(), visitor.get_parser())
         return called_impl.get_return_type(), visitor.get_builder().call(called_impl.get_code_func(), args)
     elif obj_type.is_python_obj() or obj_type.is_collection():
-
-        # Maybe there is a shortcut available
+        # Maybe there is a shortcut available to skip the pyhthon call
         if obj_type.is_list():
             found_shortcut = shortcut.get_obj_call_shortcuts(obj_type, func_name)
             if found_shortcut is not None:
@@ -65,7 +65,6 @@ def generate_python_method_call(visitor, name, obj, args):
     attr_str = visitor.get_builder().global_var(visitor.get_code_gen().get_or_insert_str(name))
     attr_str = visitor.get_builder().load(attr_str)
     attr_obj = visitor.get_builder().call(get_attr_func, [obj, attr_str])
-    excp.py_runtime_print_error(visitor.get_code_gen(), visitor.get_builder())
     return generate_python_call(visitor, attr_obj, args)
 
 
@@ -73,17 +72,17 @@ def generate_python_method_call(visitor, name, obj, args):
 def generate_python_call(visitor, callable, args):
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
 
-    # TODO : Relying on vectorcall is probably faster than calling PyObject_Call
+    result = function.call_py_func(visitor, callable, args)
 
-    call_funcs_args = [code_type.get_py_obj_ptr(visitor.get_code_gen())] * 3
-    call_func = code_gen.get_or_create_func("PyObject_Call", code_type.get_py_obj_ptr(code_gen), call_funcs_args,
-                                            gen.Linkage.EXTERNAL)
+    # call_funcs_args = [code_type.get_py_obj_ptr(visitor.get_code_gen())] * 3
+    # call_func = code_gen.get_or_create_func("PyObject_Call", code_type.get_py_obj_ptr(code_gen), call_funcs_args,
+    #                                        gen.Linkage.EXTERNAL)
 
-    arg_list = tuple_call.python_tuple_new(code_gen, builder, builder.const_int64(len(args)))
-    for i, e in enumerate(args):
-        tuple_call.python_tuple_set_unsafe(code_gen, builder, arg_list, builder.const_int64(i), e)
-    result = builder.call(call_func, [callable, arg_list, builder.const_null(code_type.get_py_obj_ptr(code_gen))])
+    # arg_list = tuple_call.python_tuple_new(code_gen, builder, builder.const_int64(len(args)))
+    # for i, e in enumerate(args):
+    #    tuple_call.python_tuple_set_unsafe(code_gen, builder, arg_list, builder.const_int64(i), e)
+    # result = builder.call(call_func, [callable, arg_list, builder.const_null(code_type.get_py_obj_ptr(code_gen))])
 
-    excp.py_runtime_print_error(visitor.get_code_gen(), visitor.get_builder())
+    # excp.py_runtime_print_error(visitor.get_code_gen(), visitor.get_builder())
 
     return result

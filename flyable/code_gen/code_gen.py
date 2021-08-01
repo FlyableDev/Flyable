@@ -258,14 +258,16 @@ class CodeGen:
         self.__python_func_struct.add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
         for i in range(12):
             self.__python_func_struct.add_type(code_type.get_py_obj_ptr(self))
-        self.__python_func_struct.add_type(code_type.get_int8_ptr())
-
+        self.__python_func_struct.add_type(code_type.get_int8_ptr())  # vectorcall
+        self.add_struct(self.__python_func_struct)
 
         self.__true_var = self.add_global_var(
             GlobalVar("@Flyable@_True", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__false_var = self.add_global_var(
             GlobalVar("@Flyable@_False", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__none_var = self.add_global_var(GlobalVar("Py_None", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
+        self.__py_func_type_var = self.add_global_var(
+            GlobalVar("PyFunction_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
         self.__method_type = self.add_global_var(
             GlobalVar("PyMethod_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
 
@@ -305,6 +307,12 @@ class CodeGen:
         """
         return self.__none_var
 
+    def get_py_func_type(self):
+        """
+        Return the global variable containing the PyFunctionObject python type
+        """
+        return self.__py_func_type_var
+
     def get_method_type(self):
         """
         return the global variable containing the Python method type
@@ -322,6 +330,9 @@ class CodeGen:
 
     def get_py_list_struct(self):
         return self.__python_list_struct
+
+    def get_py_func_struct(self):
+        return self.__python_func_struct
 
     def get_or_create_func(self, name, return_type, args_type=[], link=Linkage.INTERNAL):
         # Get case
@@ -488,5 +499,3 @@ class CodeGen:
             return builder.const_int1(False)
         else:
             return builder.const_null(type.to_code_type(self.__data))
-
-

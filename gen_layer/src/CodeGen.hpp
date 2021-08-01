@@ -53,6 +53,8 @@ enum TypePrimitive
     DOUBLE = 6,
     VOID = 7,
     STRUCT = 8,
+    FUNC = 9,
+    ARRAY = 10
 };
 
 class CodeGen

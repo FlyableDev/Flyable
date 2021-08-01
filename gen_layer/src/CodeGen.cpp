@@ -262,6 +262,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
         while(!current->atEnd())
         {
             int opcode = current->readInt32();
+
             switch(opcode)
             {
 
@@ -478,6 +479,22 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 }
                 break;
 
+                case 171:
+                {
+                    llvm::Value* funcToCall = values[current->readInt32()];
+                    std::vector<llvm::Value*> args(current->readInt32());
+                    for(size_t i = 0;i < args.size();++i)
+                    {
+                        int id = current->readInt32();
+                        args[i] = values[id];
+                    }
+
+                    llvm::PointerType* ptrType = (llvm::PointerType*) funcToCall->getType();
+                    llvm::FunctionType* funcType = (llvm::FunctionType*) ptrType->getElementType();
+                    values[current->readInt32()] = mBuilder.CreateCall(funcType,funcToCall,llvm::ArrayRef<llvm::Value*>(args));
+                }
+                break;
+
                 case 1000:
                 {
                     long long constVal = current->readInt64();
@@ -688,6 +705,22 @@ llvm::Type* CodeGen::readType(FormatReader& reader)
     else if(type == TypePrimitive::STRUCT)
     {
         result = mStructTypes[id];
+    }
+    else if(type == TypePrimitive::FUNC)
+    {
+        llvm::Type* returnType = readType(reader);
+        int argsCount = reader.readInt32();
+        std::vector<llvm::Type*> args(argsCount);
+        for(int i = 0;i < argsCount;++i)
+            args[i] = readType(reader);
+         llvm::FunctionType* funcResult = llvm::FunctionType::get(returnType,llvm::ArrayRef<llvm::Type*>(args),false);
+         result = funcResult;
+    }
+    else if(type == TypePrimitive::ARRAY)
+    {
+        llvm::Type* arrayType = readType(reader);
+        int lenght = reader.readInt32();
+        result = llvm::ArrayType::get(arrayType,lenght);
     }
     else
         std::cout<<"Unknown primitive type with type # "<<type<<std::endl;

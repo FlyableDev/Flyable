@@ -4,6 +4,6 @@
 
 void flyable_raise_index_error();
 
-
+void flyable_raise_callable_error();
 
 #endif // EXCEPTION_H_INCLUDED

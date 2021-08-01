@@ -155,6 +155,14 @@ class CodeBuilder:
             self.__writer.add_int32(e)
         return self.__gen_value()
 
+    def call_ptr(self, ptr, args):
+        self.__writer.add_int32(171)
+        self.__writer.add_int32(ptr)
+        self.__writer.add_int32(len(args))
+        for e in args:
+            self.__writer.add_int32(e)
+        return self.__gen_value()
+
     def const_int64(self, value):
         self.__writer.add_int32(1000)
         self.__writer.add_int64(value)

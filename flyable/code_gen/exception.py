@@ -37,6 +37,12 @@ def raise_index_error(visitor):
     visitor.get_builder().call(raise_func, [])
 
 
+def raise_callable_error(visitor):
+    raise_func = visitor.get_code_gen().get_or_create_func("flyable_raise_callable_error", code_type.get_void(), [],
+                                                           gen.Linkage.EXTERNAL)
+    visitor.get_builder().call(raise_func, [])
+
+
 def handle_raised_excp(visitor):
     found_block = visitor.get_except_block()
     if found_block is None:

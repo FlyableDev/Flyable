@@ -1,4 +1,5 @@
 import enum
+import copy
 
 
 def get_void():
@@ -53,6 +54,25 @@ def get_double():
     return CodeType(CodeType.CodePrimitive.DOUBLE)
 
 
+def get_func(return_type, args):
+    result = CodeType(CodeType.CodePrimitive.FUNC)
+    result.set_func_return_type(return_type)
+    result.set_func_args(args)
+    return result
+
+
+def get_array_of(type, size):
+    result = CodeType(CodeType.CodePrimitive.ARRAY)
+    result.set_array_type(type)
+    result.set_array_size(size)
+    return result
+
+
+def get_vector_call_func(code_gen):
+    args = [get_py_obj_ptr(code_gen), get_py_obj_ptr(code_gen).get_ptr_to(), get_int64(), get_py_obj_ptr(code_gen)]
+    return get_func(get_py_obj_ptr(code_gen), args)
+
+
 class CodeType:
     """
     CodeType represents a type that can be describe in low-level machine code.
@@ -69,17 +89,20 @@ class CodeType:
         DOUBLE = 6,
         VOID = 7,
         STRUCT = 8,
+        FUNC = 9,
+        ARRAY = 10
 
     def __init__(self, type=CodePrimitive.VOID, id=0):
         self.__type = type
         self.__ptr_level = 0
         self.__struct_id = id
+        self.__func_args = []
+        self.__func_return_type = None
+        self.__array_type = None
+        self.__array_size = 0
 
     def get_ptr_to(self):
-        result = CodeType()
-        result.__type = self.__type
-        result.__ptr_level = self.__ptr_level
-        result.__struct_id = self.__struct_id
+        result = copy.copy(self)
         result.__ptr_level += 1
         return result
 
@@ -94,10 +117,31 @@ class CodeType:
             if self.__type == CodeType.CodePrimitive.INT64:
                 return builder
 
+    def set_func_args(self, args):
+        self.__func_args = args
+
+    def set_func_return_type(self, return_type):
+        self.__func_return_type = return_type
+
+    def set_array_type(self, array_type):
+        self.__array_type = array_type
+
+    def set_array_size(self, size):
+        self.__array_size = size
+
     def write_to_code(self, writer):
         writer.add_int32(int(self.__type))
         writer.add_int32(int(self.__ptr_level))
         writer.add_int32(int(self.__struct_id))
+
+        if self.__type == CodeType.CodePrimitive.FUNC:
+            self.__func_return_type.write_to_code(writer)
+            writer.add_int32(len(self.__func_args))
+            for arg in self.__func_args:
+                arg.write_to_code(writer)
+        elif self.__type == CodeType.CodePrimitive.ARRAY:
+            self.__array_type.write_to_code(writer)
+            writer.add_int32(self.__array_size)
 
     def __eq__(self, other):
         return self.__type == other.__type \
@@ -113,7 +157,9 @@ class CodeType:
             CodeType.CodePrimitive.INT32: "int32",
             CodeType.CodePrimitive.FLOAT: "float",
             CodeType.CodePrimitive.DOUBLE: "double",
-            CodeType.CodePrimitive.STRUCT: "struct"
+            CodeType.CodePrimitive.STRUCT: "struct",
+            CodeType.CodePrimitive.FUNC: "func",
+            CodeType.CodePrimitive.ARRAY: "array[" + str(self.__array_size) + " x " + str(self.__array_type) + "]"
         }
 
         result = str_types[self.__type]

@@ -234,7 +234,7 @@ class ParserVisitor(NodeVisitor):
                 self.__builder.store(self.__assign_value, self.__builder.global_var(new_global_var))
                 self.__last_become_assign()
             else:
-                alloca_value = self.__generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen))
+                alloca_value = self.generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen))
                 found_var.set_code_gen_value(alloca_value)
                 self.__builder.store(self.__assign_value, alloca_value)
                 self.__last_value = found_var.get_code_gen_value()
@@ -454,7 +454,7 @@ class ParserVisitor(NodeVisitor):
         false_type, false_value = self.__visit_node(node.orelse)
 
         common_type = lang_type.get_type_common(self.__data, true_type, false_type)
-        new_var = self.__generate_entry_block_var(common_type.to_code_type(self.__code_gen))
+        new_var = self.generate_entry_block_var(common_type.to_code_type(self.__code_gen))
 
         self.__builder.set_insert_block(true_cond)
         true_value = self.__code_gen.convert_type(self.__builder, true_type, true_value, common_type)
@@ -510,7 +510,7 @@ class ParserVisitor(NodeVisitor):
         name = node.target.id
         iter_type, iter_value = self.__visit_node(node.iter)
         new_var = self.__func.get_context().add_var(name, iter_type)
-        alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
+        alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
         new_var.set_code_gen_value(alloca_value)
         iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value], [iter_type])
         self.__builder.br(block_for)
@@ -609,7 +609,7 @@ class ParserVisitor(NodeVisitor):
         target_name = node.target.id
         iter_type, iter_value = self.__visit_node(node.iter)
         target_var = self.__func.get_context().add_var(target_name, iter_type)
-        alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
+        alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
         target_var.set_code_gen_value(alloca_value)
         self.__last_type, self.__last_value = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
                                                               [iter_type])
@@ -627,7 +627,7 @@ class ParserVisitor(NodeVisitor):
             name = e.target.id
             iter_type, iter_value = self.__visit_node(e.iter)
             new_var = self.__func.get_context().add_var(name, iter_type)
-            alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
+            alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
             new_var.set_code_gen_value(alloca_value)
             iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
                                                       [iter_type])
@@ -726,7 +726,7 @@ class ParserVisitor(NodeVisitor):
             name = e.target.id
             iter_type, iter_value = self.__visit_node(e.iter)
             new_var = self.__func.get_context().add_var(name, iter_type)
-            alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
+            alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
             new_var.set_code_gen_value(alloca_value)
             iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
                                                       [iter_type])
@@ -796,7 +796,7 @@ class ParserVisitor(NodeVisitor):
             name = e.target.id
             iter_type, iter_value = self.__visit_node(e.iter)
             new_var = self.__func.get_context().add_var(name, iter_type)
-            alloca_value = self.__generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
+            alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
             new_var.set_code_gen_value(alloca_value)
             iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
                                                       [iter_type])
@@ -932,7 +932,7 @@ class ParserVisitor(NodeVisitor):
                 self.__code_gen.add_global_var(new_global_var)
                 module_store = self.__builder.global_var(new_global_var)
             else:
-                new_var_value = self.__generate_entry_block_var(module_code_type)
+                new_var_value = self.generate_entry_block_var(module_code_type)
                 new_var.set_code_gen_value(new_var_value)
                 module_store = new_var_value
             self.__builder.store(content, module_store)
@@ -960,7 +960,7 @@ class ParserVisitor(NodeVisitor):
                 self.__code_gen.add_global_var(new_global_var)
                 module_store = self.__builder.global_var(new_global_var)
             else:
-                new_var_value = self.__generate_entry_block_var(module_code_type)
+                new_var_value = self.generate_entry_block_var(module_code_type)
                 new_var.set_code_gen_value(new_var_value)
                 module_store = new_var_value
             self.__builder.store(content, module_store)
@@ -994,7 +994,7 @@ class ParserVisitor(NodeVisitor):
             return self.__exception_blocks[-1]
         return None
 
-    def __generate_entry_block_var(self, code_type):
+    def generate_entry_block_var(self, code_type):
         current_block = self.__builder.get_current_block()
         self.__builder.set_insert_block(self.__entry_block)
         new_alloca = self.__builder.alloca(code_type)
