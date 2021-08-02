@@ -12,7 +12,7 @@ def get_obj_attribute_start_index():
     """
     Return the gep index for flyable object attribute
     """
-    return 4
+    return 2
 
 
 def get_py_obj_type_ptr(builder, obj):

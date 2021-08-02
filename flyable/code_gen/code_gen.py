@@ -235,6 +235,7 @@ class CodeGen:
         self.__python_obj_struct = None
         self.__python_list_struct = None
         self.__python_func_struct = None
+        self.__python_type_struct = None
 
     def setup(self):
         # Create the Python object struct
@@ -260,6 +261,14 @@ class CodeGen:
             self.__python_func_struct.add_type(code_type.get_py_obj_ptr(self))
         self.__python_func_struct.add_type(code_type.get_int8_ptr())  # vectorcall
         self.add_struct(self.__python_func_struct)
+
+        # Create the python type object struct
+        self.__python_type_struct = StructType("__flyable_py_type")
+        self.__python_type_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
+        self.__python_type_struct.add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
+        for i in range(17):
+            self.__python_type_struct.add_type(code_type.get_py_obj_ptr(self))
+        self.add_struct(self.__python_type_struct)
 
         self.__true_var = self.add_global_var(
             GlobalVar("@Flyable@_True", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
@@ -334,6 +343,12 @@ class CodeGen:
     def get_py_func_struct(self):
         return self.__python_func_struct
 
+    def get_python_type(self):
+        """
+        return the global variable containing the Python type struct
+        """
+        return self.__python_type_struct
+
     def get_or_create_func(self, name, return_type, args_type=[], link=Linkage.INTERNAL):
         # Get case
         if name in self.__funcs:
@@ -381,8 +396,6 @@ class CodeGen:
 
     def setup_struct(self):
         for _class in self.__data.classes_iter():
-            _class.get_struct().add_type(code_type.get_py_obj_ptr(self))  # ob_next
-            _class.get_struct().add_type(code_type.get_py_obj_ptr(self))  # ob_prev
             _class.get_struct().add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
             _class.get_struct().add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
             for attribute in _class.attributes_iter():

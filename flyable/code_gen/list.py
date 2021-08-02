@@ -39,6 +39,7 @@ def python_list_append(visitor, list, item_type, item):
     builder = visitor.get_builder()
     code_gen = visitor.get_code_gen()
 
+
     ref_counter.ref_incr(visitor, item_type, item)
 
     item = runtime.value_to_pyobj(code_gen, builder, item, item_type)
@@ -61,16 +62,16 @@ def python_list_append(visitor, list, item_type, item):
     resize_args_types = [code_type.get_list_obj_ptr(code_gen), code_type.get_int64()]
     resize_func = code_gen.get_or_create_func("python_list_resize", code_type.get_int32(), resize_args_types,
                                               gen.Linkage.EXTERNAL)
+
     builder.call(resize_func, [list, new_size])
     builder.br(continue_block)
 
     builder.set_insert_block(continue_block)
     content = builder.load(python_list_get_content_ptr(visitor, list))
-    content = builder.ptr_cast(content, item_type.to_code_type(code_gen).get_ptr_to())
-    item_ptr = builder.gep2(content, item_type.to_code_type(code_gen), [size])
+    content = builder.ptr_cast(content, code_type.get_py_obj_ptr(code_gen).get_ptr_to())
+    item_ptr = builder.gep2(content, code_type.get_py_obj_ptr(code_gen), [size])
     builder.store(item, item_ptr)  # Set the item in the buffer
     builder.store(new_size, size_ptr)  # Set the new size in case it didn't enter the resize
-
 
 def python_list_capacity_ptr(visitor, list):
     code_gen = visitor.get_code_gen()
