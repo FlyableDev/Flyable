@@ -257,6 +257,11 @@ class CodeGen:
         self.__python_func_struct = StructType("__flyable_py_obj_func")
         self.__python_func_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
         self.__python_func_struct.add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
+        self.__python_func_struct.add_type(code_type.get_int8_ptr())  # tp_name
+        self.__python_func_struct.add_type(code_type.get_int64())  # tp_basicsize
+        self.__python_func_struct.add_type(code_type.get_int64())  # tp_itemsize
+        self.__python_func_struct.add_type(code_type.get_int8_ptr())  # tp_dealloc
+
         for i in range(12):
             self.__python_func_struct.add_type(code_type.get_py_obj_ptr(self))
         self.__python_func_struct.add_type(code_type.get_int8_ptr())  # vectorcall
@@ -266,8 +271,30 @@ class CodeGen:
         self.__python_type_struct = StructType("__flyable_py_type")
         self.__python_type_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
         self.__python_type_struct.add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
-        for i in range(17):
-            self.__python_type_struct.add_type(code_type.get_py_obj_ptr(self))
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_name
+        self.__python_type_struct.add_type(code_type.get_int64())  # tp_basicsize
+        self.__python_type_struct.add_type(code_type.get_int64())  # tp_itemsize
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_dealloc
+        self.__python_type_struct.add_type(code_type.get_int64())  # tp_vectorcall_offset
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # getattr
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # setattr
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_as_async
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_repr
+        self.__python_type_struct.add_type(code_type.get_py_obj_ptr(self))  # tp_as_number
+        self.__python_type_struct.add_type(code_type.get_py_obj_ptr(self))  # tp_as_sequence
+        self.__python_type_struct.add_type(code_type.get_py_obj_ptr(self))  # tp_as_mapping
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_hash
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_call
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_str
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_getattro
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_setattro
+        self.__python_type_struct.add_type(code_type.get_py_obj_ptr(self))  # tp_as_buffer
+        self.__python_type_struct.add_type(code_type.get_int32())  # tp_flags
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_doc
+        for i in range(25): self.__python_type_struct.add_type(code_type.get_int8_ptr())
+        self.__python_type_struct.add_type(code_type.get_int32())  # tp_version_tag
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_finalize
+        self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_vectorcall
         self.add_struct(self.__python_type_struct)
 
         self.__true_var = self.add_global_var(

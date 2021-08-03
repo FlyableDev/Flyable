@@ -14,6 +14,7 @@ import flyable.code_gen.runtime as runtime
 import flyable.parse.shortcut as shortcut
 import copy
 import flyable.code_gen.function as function
+import flyable.code_gen.fly_obj as fly_obj
 
 
 def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False):
@@ -72,17 +73,34 @@ def generate_python_method_call(visitor, name, obj, args):
 def generate_python_call(visitor, callable, args):
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
 
-    #result = function.call_py_func(visitor, callable, args)
-    result = function.call_py_func_tp_call(visitor, callable, args)
-    # call_funcs_args = [code_type.get_py_obj_ptr(visitor.get_code_gen())] * 3
-    # call_func = code_gen.get_or_create_func("PyObject_Call", code_type.get_py_obj_ptr(code_gen), call_funcs_args,
-    #                                        gen.Linkage.EXTERNAL)
+    call_result_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
 
-    # arg_list = tuple_call.python_tuple_new(code_gen, builder, builder.const_int64(len(args)))
-    # for i, e in enumerate(args):
-    #    tuple_call.python_tuple_set_unsafe(code_gen, builder, arg_list, builder.const_int64(i), e)
-    # result = builder.call(call_func, [callable, arg_list, builder.const_null(code_type.get_py_obj_ptr(code_gen))])
+    vector_call_block = builder.create_block()
+    tp_call_block = builder.create_block()
+    continue_block = builder.create_block()
 
-    # excp.py_runtime_print_error(visitor.get_code_gen(), visitor.get_builder())
+    callable_type = fly_obj.get_py_obj_type(visitor.get_builder(), callable)
 
+    tp_flag = function.py_obj_type_get_tp_flag_ptr(visitor, callable_type)
+    tp_flag = builder.load(tp_flag)
+
+    can_vec = builder._and(tp_flag, builder.const_int32(2048))  # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
+    can_vec = builder.int_cast(can_vec, code_type.get_int1())
+    builder.cond_br(can_vec, vector_call_block, tp_call_block)
+
+    builder.set_insert_block(vector_call_block)
+    vec_result = function.call_py_func_vec_call(visitor, callable, args)
+    builder.store(vec_result, call_result_var)
+    builder.br(continue_block)
+
+    builder.set_insert_block(tp_call_block)
+    tp_result = function.call_py_func_tp_call(visitor, callable, args)
+    builder.store(tp_result, call_result_var)
+    builder.br(continue_block)
+
+    builder.set_insert_block(continue_block)
+
+    result = builder.load(call_result_var)
+    excp.py_runtime_print_error(code_gen, builder)
+    #excp.check_excp(visitor, result)
     return result

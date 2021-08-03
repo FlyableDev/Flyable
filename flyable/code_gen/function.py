@@ -11,17 +11,10 @@ def check_py_obj_is_func_type(visitor, func_to_call):
     return visitor.get_builder().eq(obj_type, func_type)
 
 
-def call_py_func(visitor, func_to_call, args):
+def call_py_func_vec_call(visitor, func_to_call, args):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
-    valid_type_block = visitor.get_builder().create_block()
-    invalid_type_block = visitor.get_builder().create_block()
-    # is_func = check_py_obj_is_func_type(visitor, func_to_call)
-    is_func = builder.const_int1(True)
 
-    visitor.get_builder().cond_br(is_func, valid_type_block, invalid_type_block)
-
-    builder.set_insert_block(valid_type_block)
     vec_call = py_obj_func_get_vectorcall_ptr(visitor, func_to_call)
     vec_call = builder.load(vec_call)
     vec_call = builder.ptr_cast(vec_call, code_type.get_vector_call_func(visitor.get_code_gen()).get_ptr_to())
@@ -41,15 +34,7 @@ def call_py_func(visitor, func_to_call, args):
     vec_args = [func_to_call, args_stack_memory, builder.const_int64(len(args)),
                 builder.const_null(code_type.get_py_obj_ptr(code_gen))]
 
-    result = builder.call_ptr(vec_call, vec_args)
-
-    builder.set_insert_block(invalid_type_block)
-    excp.raise_callable_error(visitor)
-    excp.handle_raised_excp(visitor)
-
-    builder.set_insert_block(valid_type_block)
-
-    return result
+    return builder.call_ptr(vec_call, vec_args)
 
 
 def call_py_func_tp_call(visitor, func_to_call, args):
@@ -90,5 +75,13 @@ def py_obj_type_get_tp_call(visitor, func_type):
     func_type = visitor.get_builder().ptr_cast(func_type,
                                                visitor.get_code_gen().get_python_type().to_code_type().get_ptr_to())
     gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(16)]
+    return visitor.get_builder().gep2(func_type, visitor.get_code_gen().get_python_type().to_code_type(),
+                                      gep_indices)
+
+
+def py_obj_type_get_tp_flag_ptr(visitor, func_type):
+    func_type = visitor.get_builder().ptr_cast(func_type,
+                                               visitor.get_code_gen().get_python_type().to_code_type().get_ptr_to())
+    gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(20)]
     return visitor.get_builder().gep2(func_type, visitor.get_code_gen().get_python_type().to_code_type(),
                                       gep_indices)

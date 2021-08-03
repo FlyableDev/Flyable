@@ -43,6 +43,23 @@ def raise_callable_error(visitor):
     visitor.get_builder().call(raise_func, [])
 
 
+def check_excp(visitor, value_to_check):
+    code_gen = visitor.get_code_gen()
+    builder = visitor.get_builder()
+    no_excp_block = builder.create_block()
+    excp_block = builder.create_block()
+
+    has_excp = builder.eq(value_to_check, builder.const_null(code_type.get_py_obj_ptr(code_gen)))
+
+    # If the value is null, it means there is an exception
+    builder.cond_br(has_excp, excp_block, no_excp_block)
+
+    builder.set_insert_block(excp_block)
+    handle_raised_excp(visitor)
+
+    builder.set_insert_block(no_excp_block)
+
+
 def handle_raised_excp(visitor):
     found_block = visitor.get_except_block()
     if found_block is None:
