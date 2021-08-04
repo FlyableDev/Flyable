@@ -502,22 +502,23 @@ class ParserVisitor(NodeVisitor):
             self.__builder.set_insert_block(block_continue)
 
     def visit_For(self, node: For) -> Any:
-        block_for = self.__builder.create_block()
-        block_for_in = self.__builder.create_block()
-        block_else = self.__builder.create_block() if node.orelse is not None else None
-        block_continue = self.__builder.create_block()
 
         name = node.target.id
         iter_type, iter_value = self.__visit_node(node.iter)
         new_var = self.__func.get_context().add_var(name, iter_type)
         alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
         new_var.set_code_gen_value(alloca_value)
-        iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value], [iter_type])
+        iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [])
+
+        block_for = self.__builder.create_block()
+        block_for_in = self.__builder.create_block()
+        block_else = self.__builder.create_block() if node.orelse is not None else None
+        block_continue = self.__builder.create_block()
+
         self.__builder.br(block_for)
         self.__builder.set_insert_block(block_for)
 
-        next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [iter_value],
-                                                [iterable_type])
+        next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
 
         self.__builder.store(next_value, new_var.get_code_gen_value())
 
