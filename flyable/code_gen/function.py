@@ -48,7 +48,8 @@ def call_py_func_tp_call(visitor, func_to_call, args):
     arg_list = tuple_call.python_tuple_new(code_gen, builder, builder.const_int64(len(args)))
     for i, e in enumerate(args):
         tuple_call.python_tuple_set_unsafe(code_gen, builder, arg_list, builder.const_int64(i), e)
-    kwargs = tuple_call.python_tuple_new(code_gen, builder, builder.const_int64(0))
+
+    kwargs = builder.const_null(code_type.get_py_obj_ptr(code_gen)) # Null kwargs
 
     func_to_call_type = fly_obj.get_py_obj_type(visitor.get_builder(), func_to_call)
 

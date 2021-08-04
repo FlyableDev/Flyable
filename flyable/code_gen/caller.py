@@ -43,9 +43,6 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
         # Python call
         py_args = copy.copy(args)
         py_args_type = copy.copy(args_type)
-        # For python objects we need to remove the first args
-        py_args.pop(0)
-        py_args_type.pop(0)
 
         for i, arg in enumerate(py_args):
             py_args[i] = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), arg, py_args_type[i])
@@ -57,6 +54,8 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
 
 def generate_python_method_call(visitor, name, obj, args):
     # Get the function first
+
+    #TODO : Remove the call to get_attr
 
     get_attr_args = [code_type.get_py_obj_ptr(visitor.get_code_gen()), code_type.get_py_obj_ptr(visitor.get_code_gen())]
     get_attr_func = visitor.get_code_gen().get_or_create_func("PyObject_GetAttr",
