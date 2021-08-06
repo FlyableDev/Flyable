@@ -45,7 +45,7 @@ class BuildInList(BuildInFunc):
     def parse(self, args_types, args, codegen, builder):
         if len(args_types) == 0:
             list_type = lang_type.get_list_of_python_obj_type()
-            return list_type, gen_list.instanciate_pyton_list(codegen, builder, builder.const_int64(0))
+            return list_type, gen_list.instanciate_python_list(codegen, builder, builder.const_int64(0))
 
 
 class BuildInLen(BuildInFunc):

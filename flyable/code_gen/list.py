@@ -10,7 +10,7 @@ import flyable.code_gen.runtime as runtime
 import flyable.code_gen.ref_counter as ref_counter
 
 
-def instanciate_pyton_list(code_gen, builder, len):
+def instanciate_python_list(code_gen, builder, len):
     """
     Generate the code to allocate a Python List
     """
@@ -20,10 +20,11 @@ def instanciate_pyton_list(code_gen, builder, len):
     return builder.call(new_list_func, [len])
 
 
-def python_list_set(code_gen, builder, list, index, item):
+def python_list_set(visitor, list, index, item):
     """
     Generate the code to set an element in a Python List
     """
+    builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     set_item_args_types = [code_type.get_py_obj_ptr(code_gen), code_type.get_int64(),
                            code_type.get_py_obj_ptr(code_gen)]
     set_item_func = code_gen.get_or_create_func("PyList_SetItem", code_type.get_int32(),
@@ -36,9 +37,7 @@ def python_list_append(visitor, list, item_type, item):
     Generate the code to set an element in a Python List
     """
 
-    builder = visitor.get_builder()
-    code_gen = visitor.get_code_gen()
-
+    builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
 
     ref_counter.ref_incr(visitor, item_type, item)
 
@@ -74,8 +73,7 @@ def python_list_append(visitor, list, item_type, item):
     builder.store(new_size, size_ptr)  # Set the new size in case it didn't enter the resize
 
 def python_list_capacity_ptr(visitor, list):
-    code_gen = visitor.get_code_gen()
-    builder = visitor.get_builder()
+    builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     list = builder.ptr_cast(list, code_type.get_list_obj_ptr(code_gen))
     return builder.gep(list, builder.const_int32(0), builder.const_int32(4))
 
@@ -86,8 +84,7 @@ def python_list_get_content_ptr(visitor, list):
 
 
 def python_list_array_get_item(visitor, list_type, list, index):
-    code_gen = visitor.get_code_gen()
-    builder = visitor.get_builder()
+    builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     valid_index_block = builder.create_block()
     wrong_index_block = builder.create_block()
     size = python_list_len(visitor, list)

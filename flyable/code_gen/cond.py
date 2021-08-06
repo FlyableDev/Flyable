@@ -27,8 +27,8 @@ def value_to_cond(visitor, value_type, value):
             error_str = "__bool__ should return bool, returned" + cond_type.to_str(code_gen.get_data())
             visitor.get_parser().throw_error(error_str, visitor.get_current_node().line_no, 0)
     elif value_type.is_list():
-        list_len = _list.python_list_len(code_gen, builder, value)
+        list_len = _list.python_list_len(visitor, value)
         return lang_type.get_int_type(), builder.gt(list_len, builder.const_int64(0))
     elif value_type.is_dict():
-        dict_len = _dict.python_dict_len(code_gen, builder, value)
+        dict_len = _dict.python_dict_len(visitor, value)
         return lang_type.get_bool_type(), builder.gt(dict_len, builder.const_int(0))

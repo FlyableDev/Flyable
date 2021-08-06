@@ -193,6 +193,11 @@ class ParserVisitor(NodeVisitor):
         self.__last_type = None
         self.__last_type, self.__last_value = self.__visit_node(node.body)
 
+    def visit_NamedExpr(self, node: NamedExpr) -> Any:
+        self.__assign_type, self.__assign_value = self.__visit_node(node.value)
+        self.__reset_last()
+        self.__last_type, self.__last_value = self.__visit_node(node.target)
+
     def visit_arg(self, node: arg) -> Any:
         pass
 
@@ -611,27 +616,26 @@ class ParserVisitor(NodeVisitor):
                                                               [iter_type])
 
     def visit_ListComp(self, node: ListComp) -> Any:
-        result_array = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder, self.__builder.const_int64(0))
+        result_array = gen_list.instanciate_python_list(self.__code_gen, self.__builder, self.__builder.const_int64(0))
 
         block_continue = self.__builder.create_block()
         prev_for_block = None
 
         for i, e in enumerate(node.generators):
-            block_for = self.__builder.create_block()
-            block_for_in = self.__builder.create_block()
-
             name = e.target.id
             iter_type, iter_value = self.__visit_node(e.iter)
             new_var = self.__func.get_context().add_var(name, iter_type)
             alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
             new_var.set_code_gen_value(alloca_value)
-            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
-                                                      [iter_type])
+            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [])
+
+            block_for = self.__builder.create_block()
+            block_for_in = self.__builder.create_block()
+
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
-            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [iter_value],
-                                                    [iterable_type])
+            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
 
             self.__builder.store(next_value, new_var.get_code_gen_value())
 
@@ -659,7 +663,7 @@ class ParserVisitor(NodeVisitor):
             if i == len(node.generators) - 1:
                 elt_type, elt_value = self.__visit_node(node.elt)
                 obj_to_list = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
-                gen_list.python_list_append(self.__code_gen, self.__builder, result_array, obj_to_list)
+                gen_list.python_list_append(self, result_array, lang_type.get_python_obj_type(), obj_to_list)
                 self.__builder.br(block_for)
 
             prev_for_block = block_for
@@ -679,14 +683,14 @@ class ParserVisitor(NodeVisitor):
 
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
-        array = gen_list.instanciate_pyton_list(self.__code_gen, self.__builder,
+        array = gen_list.instanciate_python_list(self.__code_gen, self.__builder,
                                                 self.__builder.const_int64(len(elts_values)))
         self.__last_value = array
 
         for i, e in enumerate(elts_values):
             py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
             index = self.__builder.const_int64(i)
-            gen_list.python_list_set(self.__code_gen, self.__builder, self.__last_value, index, py_obj)
+            gen_list.python_list_set(self, self.__last_value, index, py_obj)
 
     def visit_Tuple(self, node: Tuple) -> Any:
         elts_types = []
@@ -710,27 +714,26 @@ class ParserVisitor(NodeVisitor):
 
     def visit_SetComp(self, node: SetComp) -> Any:
         null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
-        result_set = gen_set.instanciate_pyton_set(self.__code_gen, self.__builder, null_value)
+        result_set = gen_set.instanciate_python_set(self, null_value)
 
         block_continue = self.__builder.create_block()
         prev_for_block = None
 
         for i, e in enumerate(node.generators):
-            block_for = self.__builder.create_block()
-            block_for_in = self.__builder.create_block()
-
             name = e.target.id
             iter_type, iter_value = self.__visit_node(e.iter)
             new_var = self.__func.get_context().add_var(name, iter_type)
             alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
             new_var.set_code_gen_value(alloca_value)
-            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
-                                                      [iter_type])
+            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [])
+
+            block_for = self.__builder.create_block()
+            block_for_in = self.__builder.create_block()
+
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
-            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [iter_value],
-                                                    [iterable_type])
+            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
 
             self.__builder.store(next_value, new_var.get_code_gen_value())
 
@@ -758,7 +761,7 @@ class ParserVisitor(NodeVisitor):
             if i == len(node.generators) - 1:
                 elt_type, elt_value = self.__visit_node(node.elt)
                 obj_to_set = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
-                gen_set.python_set_add(self.__code_gen, self.__builder, result_set, obj_to_set)
+                gen_set.python_set_add(self, result_set, obj_to_set)
                 self.__builder.br(block_for)
 
             prev_for_block = block_for
@@ -771,36 +774,35 @@ class ParserVisitor(NodeVisitor):
         set_type = lang_type.get_set_of_python_obj_type()
         set_type.add_dim(LangType.Dimension.SET)
         null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
-        new_set = gen_set.instanciate_pyton_set(self.__code_gen, self.__builder, null_value)
+        new_set = gen_set.instanciate_python_set(self, null_value)
         for e in node.elts:
             type, value = self.__visit_node(e)
             py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, value, type)
-            gen_set.python_set_add(self.__code_gen, self.__builder, new_set, py_obj)
+            gen_set.python_set_add(self, new_set, py_obj)
         self.__last_value = new_set
         self.__last_type = set_type
 
     def visit_DictComp(self, node: DictComp) -> Any:
-        result_dict = gen_dict.python_dict_new(self.__code_gen, self.__builder)
+        result_dict = gen_dict.python_dict_new(self)
 
         block_continue = self.__builder.create_block()
         prev_for_block = None
 
         for i, e in enumerate(node.generators):
-            block_for = self.__builder.create_block()
-            block_for_in = self.__builder.create_block()
-
             name = e.target.id
             iter_type, iter_value = self.__visit_node(e.iter)
             new_var = self.__func.get_context().add_var(name, iter_type)
             alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
             new_var.set_code_gen_value(alloca_value)
-            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
-                                                      [iter_type])
+            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [])
+
+            block_for = self.__builder.create_block()
+            block_for_in = self.__builder.create_block()
+
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
-            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [iter_value],
-                                                    [iterable_type])
+            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
 
             self.__builder.store(next_value, new_var.get_code_gen_value())
 
@@ -830,7 +832,7 @@ class ParserVisitor(NodeVisitor):
                 value_type, value_value = self.__visit_node(node.value)
                 obj_key = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
                 obj_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
-                gen_dict.python_dict_set_item(self.__code_gen, self.__builder, result_dict, obj_key, obj_value)
+                gen_dict.python_dict_set_item(self, result_dict, obj_key, obj_value)
                 self.__builder.br(block_for)
 
             prev_for_block = block_for
@@ -841,11 +843,11 @@ class ParserVisitor(NodeVisitor):
         self.__last_value = result_dict
 
     def visit_Dict(self, node: Dict) -> Any:
-        new_dict = gen_dict.python_dict_new(self.__code_gen, self.__builder)
+        new_dict = gen_dict.python_dict_new(self)
         for i, e in enumerate(node.values):
             key_type, key_value = self.__visit_node(node.keys[i])
             value_type, value_value = self.__visit_node(node.values[i])
-            gen_dict.python_dict_set_item(self.__code_gen, self.__builder, new_dict, key_value, value_value)
+            gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
             self.__last_value = None
         self.__last_value = new_dict
         self.__last_type = lang_type.get_python_obj_type()
@@ -905,6 +907,24 @@ class ParserVisitor(NodeVisitor):
         self.__last_type, self.__last_value = self.__visit_node(node.exc)
         if node.cause is not None:
             self.__visit_node(node.cause)
+
+    def visit_Assert(self, node: Assert) -> Any:
+        test_type, test_value = self.__visit_node(node.test)
+        test_type, test_value = cond.value_to_cond(self, test_type, test_value)
+
+        block_raise = self.__builder.create_block()
+        block_continue = self.__builder.create_block()
+
+        self.__builder.cond_br(test_value, block_continue, block_raise)
+
+        self.__builder.set_insert_block(block_raise)
+        self.__func.set_can_raise(True)
+        msg_type, msg_value = self.__visit_node(node.msg)
+        #TODO: implement raise_assert_error and change raise_index_error for raise_assert_error
+        excp.raise_index_error(self)
+        excp.handle_raised_excp(self)
+
+        self.__builder.set_insert_block(block_continue)
 
     def visit_Import(self, node: Import) -> Any:
         for e in node.names:
