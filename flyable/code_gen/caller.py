@@ -77,12 +77,12 @@ def generate_python_call(visitor, obj, func_to_call, args):
     builder.cond_br(can_vec, vector_call_block, tp_call_block)
 
     builder.set_insert_block(vector_call_block)
-    vec_result = function.call_py_func_vec_call(visitor, obj, args)
+    vec_result = function.call_py_func_vec_call(visitor, func_to_call, args)
     builder.store(vec_result, call_result_var)
     builder.br(continue_block)
 
     builder.set_insert_block(tp_call_block)
-    tp_result = function.call_py_func_tp_call(visitor, obj, args)
+    tp_result = function.call_py_func_tp_call(visitor, func_to_call, args)
     builder.store(tp_result, call_result_var)
     builder.br(continue_block)
 

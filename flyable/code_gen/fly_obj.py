@@ -15,6 +15,7 @@ def py_obj_get_attr(visitor, obj, name):
     # get attr : replicate https://github.com/python/cpython/blob/main/Objects/object.c#L903
     # First need to call get_attro, then the get_attr if get_attro is null
 
+    """"
     attr_found_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
 
     get_attro_block = builder.create_block()
@@ -56,6 +57,14 @@ def py_obj_get_attr(visitor, obj, name):
 
     builder.set_insert_block(continue_block)
     return builder.load(attr_found_var)
+    """
+
+    attribute_py_str = builder.global_var(code_gen.get_or_insert_str(name))
+    attribute_py_str = builder.load(attribute_py_str)
+    func_get = code_gen.get_or_create_func("PyObject_GetAttr", code_type.get_py_obj_ptr(code_gen),
+                                           [code_type.get_py_obj_ptr(code_gen)] * 2, gen.Linkage.EXTERNAL)
+
+    return builder.call(func_get, [obj, attribute_py_str])
 
 
 def get_obj_attribute_start_index():
