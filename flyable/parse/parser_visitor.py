@@ -222,7 +222,7 @@ class ParserVisitor(NodeVisitor):
             module = self.__builder.load(module)
             str_content = self.__code_gen.get_or_insert_str(node.id)
             str_content = self.__builder.load(self.__builder.global_var(str_content))
-            self.__last_value = runtime.py_runtime_get_attr(self.__code_gen, self.__builder, module, str_content)
+            self.__last_value = fly_obj.py_obj_get_attr(self, module, str_content)
         elif isinstance(node.ctx, Store):  # not found so declaring a variable
             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
             if self.__func.get_parent_func().is_global():
@@ -245,19 +245,17 @@ class ParserVisitor(NodeVisitor):
     def visit_Attribute(self, node: Attribute) -> Any:
         self.__reset_last()
         self.__last_type, self.__last_value = self.__visit_node(node.value)
+        str_value = node.attr
 
         if self.__last_type.is_python_obj():  # Python obj attribute. Type is unknown
             self.__last_type = lang_type.get_python_obj_type()
-            str_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.attr))
-            str_value = self.__builder.load(str_value)
             if isinstance(node.ctx, ast.Store):
                 py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, self.__assign_value,
                                                 self.__assign_type)
                 runtime.py_runtime_set_attr(self.__code_gen, self.__builder, self.__last_value, str_value, py_obj)
                 self.__last_become_assign()
             else:
-                self.__last_value = runtime.py_runtime_get_attr(self.__code_gen, self.__builder, self.__last_value,
-                                                                str_value)
+                self.__last_value = fly_obj.py_obj_get_attr(self, self.__last_value, str_value)
         elif self.__last_type.is_obj():  # Flyable obj. The attribute type might be known. GEP access for more speed
             attr = self.__data.get_class(self.__last_type.get_id()).get_attribute(node.attr)
             if attr is not None:  # We found the attribute
@@ -363,8 +361,7 @@ class ParserVisitor(NodeVisitor):
                     self.__parser.throw_error("'" + name_call + "' unrecognized", node.lineno, node.end_col_offset)
         elif self.__last_type.is_python_obj() or self.__last_type.is_collection():  # Python call object
             self.__last_type, self.__last_value = caller.call_obj(self, name_call, self.__last_value, self.__last_type,
-                                                                  [self.__last_value] + args,
-                                                                  [self.__last_type] + args_types)
+                                                                  args, args_types)
         elif self.__last_type.is_obj():
             _class = self.__data.get_class(self.__last_type.get_id())
             func_to_call = _class.get_func(name_call)
@@ -372,10 +369,8 @@ class ParserVisitor(NodeVisitor):
                 str_error = "Not method '" + name_call + "' found"
                 self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
             else:
-                method_args = [self.__last_value] + args
-                method_args_types = [self.__last_type] + args_types
                 self.__last_type, self.__last_value = caller.call_obj(self, name_call, self.__last_value,
-                                                                      self.__last_type, method_args, method_args_types)
+                                                                      self.__last_type, args, args_types)
         else:
             str_error = "Call unrecognized with " + self.__last_type.to_str(self.__data)
             self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)

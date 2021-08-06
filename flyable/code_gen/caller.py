@@ -42,10 +42,9 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
 
         # Python call
         py_args = copy.copy(args)
-        py_args_type = copy.copy(args_type)
 
         for i, arg in enumerate(py_args):
-            py_args[i] = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), arg, py_args_type[i])
+            py_args[i] = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), arg, args_type[i])
 
         return lang_type.get_python_obj_type(), generate_python_method_call(visitor, func_name, obj, py_args)
     else:
@@ -53,23 +52,13 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
 
 
 def generate_python_method_call(visitor, name, obj, args):
-    # Get the function first
-
-    #TODO : Remove the call to get_attr
-
-    get_attr_args = [code_type.get_py_obj_ptr(visitor.get_code_gen()), code_type.get_py_obj_ptr(visitor.get_code_gen())]
-    get_attr_func = visitor.get_code_gen().get_or_create_func("PyObject_GetAttr",
-                                                              code_type.get_py_obj_ptr(visitor.get_code_gen()),
-                                                              get_attr_args, gen.Linkage.EXTERNAL)
-
-    attr_str = visitor.get_builder().global_var(visitor.get_code_gen().get_or_insert_str(name))
-    attr_str = visitor.get_builder().load(attr_str)
-    attr_obj = visitor.get_builder().call(get_attr_func, [obj, attr_str])
-    return generate_python_call(visitor, attr_obj, args)
+    # the found attribute is the callable function
+    found_attr = fly_obj.py_obj_get_attr(visitor, obj, name)
+    return generate_python_call(visitor, obj, found_attr, args)
 
 
 # https://docs.python.org/3/c-api/method.html
-def generate_python_call(visitor, callable, args):
+def generate_python_call(visitor, obj, func_to_call, args):
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
 
     call_result_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
@@ -78,7 +67,7 @@ def generate_python_call(visitor, callable, args):
     tp_call_block = builder.create_block()
     continue_block = builder.create_block()
 
-    callable_type = fly_obj.get_py_obj_type(visitor.get_builder(), callable)
+    callable_type = fly_obj.get_py_obj_type(visitor.get_builder(), func_to_call)
 
     tp_flag = function.py_obj_type_get_tp_flag_ptr(visitor, callable_type)
     tp_flag = builder.load(tp_flag)
@@ -88,12 +77,12 @@ def generate_python_call(visitor, callable, args):
     builder.cond_br(can_vec, vector_call_block, tp_call_block)
 
     builder.set_insert_block(vector_call_block)
-    vec_result = function.call_py_func_vec_call(visitor, callable, args)
+    vec_result = function.call_py_func_vec_call(visitor, obj, args)
     builder.store(vec_result, call_result_var)
     builder.br(continue_block)
 
     builder.set_insert_block(tp_call_block)
-    tp_result = function.call_py_func_tp_call(visitor, callable, args)
+    tp_result = function.call_py_func_tp_call(visitor, obj, args)
     builder.store(tp_result, call_result_var)
     builder.br(continue_block)
 
@@ -101,5 +90,5 @@ def generate_python_call(visitor, callable, args):
 
     result = builder.load(call_result_var)
     excp.py_runtime_print_error(code_gen, builder)
-    #excp.check_excp(visitor, result)
+    # excp.check_excp(visitor, result)
     return result
