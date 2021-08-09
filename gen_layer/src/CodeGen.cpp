@@ -482,6 +482,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 case 171:
                 {
                     llvm::Value* funcToCall = values[current->readInt32()];
+                    llvm::CallingConv::ID conv = readConv(*current);
                     std::vector<llvm::Value*> args(current->readInt32());
                     for(size_t i = 0;i < args.size();++i)
                     {
@@ -491,7 +492,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
 
                     llvm::PointerType* ptrType = (llvm::PointerType*) funcToCall->getType();
                     llvm::FunctionType* funcType = (llvm::FunctionType*) ptrType->getElementType();
-                    values[current->readInt32()] = mBuilder.CreateCall(funcType,funcToCall,llvm::ArrayRef<llvm::Value*>(args));
+                    llvm::CallInst* callInst = mBuilder.CreateCall(funcType,funcToCall,llvm::ArrayRef<llvm::Value*>(args));
+                    callInst->setCallingConv(conv);
+                    values[current->readInt32()] = callInst;
                 }
                 break;
 
@@ -729,6 +732,15 @@ llvm::Type* CodeGen::readType(FormatReader& reader)
         result = result->getPointerTo();
 
     return result;
+}
+
+llvm::CallingConv::ID CodeGen::readConv(FormatReader& reader)
+{
+    int conv = reader.readInt32();
+    if(conv == 1)
+        return llvm::CallingConv::C;
+    else
+        return llvm::CallingConv::Fast;
 }
 
 llvm::GlobalValue::LinkageTypes CodeGen::readLinkage(FormatReader& reader)

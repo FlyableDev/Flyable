@@ -8,14 +8,18 @@ module to handle flyable object info
 """
 
 
-def py_obj_get_attr(visitor, obj, name):
+def py_obj_get_attr(visitor, obj, name, obj_type = None):
+    """
+    Obtain the attribute of an object by calling get_attr or get_attro.
+    If a type is supplied it will avoid loading the type again
+    """
+
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
     # get attr : replicate https://github.com/python/cpython/blob/main/Objects/object.c#L903
     # First need to call get_attro, then the get_attr if get_attro is null
 
-    """"
     attr_found_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
 
     get_attro_block = builder.create_block()
@@ -23,8 +27,9 @@ def py_obj_get_attr(visitor, obj, name):
     continue_block = builder.create_block()
 
     # Get the function first
-    obj_type = get_py_obj_type(visitor.get_builder(), obj)
-    obj_type = builder.ptr_cast(obj_type, code_gen.get_python_type().to_code_type().get_ptr_to())
+    if obj_type is None:
+        obj_type = get_py_obj_type(visitor.get_builder(), obj)
+        obj_type = builder.ptr_cast(obj_type, code_gen.get_python_type().to_code_type().get_ptr_to())
 
     get_attro = get_py_obj_type_getattro_ptr(visitor, obj_type)
     get_attro = builder.load(get_attro)
@@ -57,14 +62,15 @@ def py_obj_get_attr(visitor, obj, name):
 
     builder.set_insert_block(continue_block)
     return builder.load(attr_found_var)
-    """
 
+    """
     attribute_py_str = builder.global_var(code_gen.get_or_insert_str(name))
     attribute_py_str = builder.load(attribute_py_str)
     func_get = code_gen.get_or_create_func("PyObject_GetAttr", code_type.get_py_obj_ptr(code_gen),
                                            [code_type.get_py_obj_ptr(code_gen)] * 2, gen.Linkage.EXTERNAL)
 
     return builder.call(func_get, [obj, attribute_py_str])
+    """
 
 
 def get_obj_attribute_start_index():
@@ -84,12 +90,12 @@ def get_py_obj_type(builder, obj):
 
 def get_py_obj_type_getattr_ptr(visitor, obj):
     builder = visitor.get_builder()
-    return visitor.get_builder().gep(obj, builder.const_int32(0), builder.const_int32(7))
+    return visitor.get_builder().gep(obj, builder.const_int32(0), builder.const_int32(8))
 
 
 def get_py_obj_type_getattro_ptr(visitor, obj):
     builder = visitor.get_builder()
-    return visitor.get_builder().gep(obj, builder.const_int32(0), builder.const_int32(17))
+    return visitor.get_builder().gep(obj, builder.const_int32(0), builder.const_int32(18))
 
 
 def allocate_flyable_instance(visitor, lang_class):

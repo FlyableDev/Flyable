@@ -26,7 +26,7 @@ class ShortcutListCallAppend(ShortcutObjCall):
         return False
 
     def parse(self, visitor, caller_type, caller_value, args_type, args):
-        gen_list.python_list_append(visitor, caller_value, args_type[1], args[1])
+        gen_list.python_list_append(visitor, caller_value, args_type[0], args[0])
         return lang_type.get_none_type(), visitor.get_builder().const_int32(0)
 
 
@@ -38,7 +38,7 @@ class ShortcutListCallGet(ShortcutObjCall):
         return False
 
     def parse(self, visitor, caller_type, caller_value, args_type, args):
-        item = gen_list.python_list_array_get_item(visitor, caller_type, caller_value, args[1])
+        item = gen_list.python_list_array_get_item(visitor, caller_type, caller_value, args[0])
         return caller_type.get_content(), item
 
 

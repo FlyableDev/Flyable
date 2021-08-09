@@ -343,9 +343,6 @@ class ParserVisitor(NodeVisitor):
                     self.__last_value = fly_obj.allocate_flyable_instance(self, content)
 
                     # Call the constructor
-                    args_types = [self.__last_type] + args_types
-                    args = [self.__last_value] + args
-                    args_call = [content.get_lang_type()] + args_types  # Add the self argument
                     caller.call_obj(self, "__init__", self.__last_value, self.__last_type, args, args_types, True)
 
                 elif isinstance(content, lang_func.LangFunc):
@@ -387,7 +384,7 @@ class ParserVisitor(NodeVisitor):
             self.__parser.throw_error("'[]' can't be used on a primitive type", node.lineno, node.end_col_offset)
         else:
             self.__last_type, self.__last_value = caller.call_obj(self, "__getitem__", value, value_type,
-                                                                  [value, index_value], [value_type, index_type])
+                                                                  [index_value], [index_type])
 
     def visit_Break(self, node: Break) -> Any:
         if len(self.__out_blocks) > 0:
@@ -397,6 +394,7 @@ class ParserVisitor(NodeVisitor):
 
     def visit_Return(self, node: Return) -> Any:
         return_type, return_value = self.__visit_node(node.value)
+
         if self.__func.get_return_type().is_unknown():
             self.__func.set_return_type(return_type)
             if node.value is None:
@@ -540,10 +538,12 @@ class ParserVisitor(NodeVisitor):
 
         if node.orelse is not None:
             self.__builder.set_insert_block(block_else)
+            excp.py_runtime_clear_error(self.__code_gen, self.__builder)
             self.visit(node.orelse)
             self.__builder.br(block_continue)
 
         self.__builder.set_insert_block(block_continue)
+        excp.py_runtime_clear_error(self.__code_gen, self.__builder)
 
     def visit_While(self, node: While) -> Any:
         block_cond = self.__builder.create_block()

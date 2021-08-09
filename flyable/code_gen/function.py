@@ -84,6 +84,6 @@ def py_obj_type_get_tp_call(visitor, func_type):
 def py_obj_type_get_tp_flag_ptr(visitor, func_type):
     func_type = visitor.get_builder().ptr_cast(func_type,
                                                visitor.get_code_gen().get_python_type().to_code_type().get_ptr_to())
-    gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(20)]
+    gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(21)]
     return visitor.get_builder().gep2(func_type, visitor.get_code_gen().get_python_type().to_code_type(),
                                       gep_indices)

@@ -31,10 +31,10 @@ def bin_op(visitor, op, type_left, value_left, type_right, value_right):
             value_right = visitor.get_builder().int_cast(value_left, type_right.to_code_type(visitor.get_code_gen()))
 
     if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
-        args_types = [type_left, type_right]
-        args = [value_left, value_right]
+        args_types = [type_right]
+        args = [value_right]
 
-        if type_left.is_primitive(): # For a python call with a left primitive we need it to be an object
+        if type_left.is_primitive():  # For a python call with a left primitive we need it to be an object
             value_left = runtime.value_to_pyobj(visitor.get_code_gen(), builder, value_left, type_left)
             type_left = lang_type.get_python_obj_type()
 
@@ -65,8 +65,8 @@ def bin_op(visitor, op, type_left, value_left, type_right, value_right):
 def cond_op(visitor, op, type_left, first_value, type_right, second_value):
     builder = visitor.get_builder()
     if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
-        args_types = [type_left, type_right]
-        args = [first_value, second_value]
+        args_types = [type_right]
+        args = [second_value]
         return caller.call_obj(visitor, parse_op.get_op_func_call(op), first_value, type_left, args, args_types)
     elif isinstance(op, ast.And):
         return lang_type.get_bool_type(), builder.op_and(first_value, second_value)
@@ -182,14 +182,14 @@ def bool_op(visitor, op, left_type, left_value, right_type, right_value):
 
 def bool_op_and(visitor, left_type, left_value, right_type, right_value):
     if left_type.is_obj() or left_type.is_python_obj() or left_type.is_collection():
-        args_types = [left_type, right_type]
-        args = [left_value, right_value]
+        args_types = [right_type]
+        args = [right_value]
         return caller.call_obj(visitor, "__and__", left_value, left_type, args, args_types)
     elif left_type.is_primitive():
         return lang_type.get_bool_type(), visitor.get_builder()._and(left_value, right_value)
     elif left_type.is_obj() or left_type.is_python_obj() or left_type.is_list() or left_type.is_dict():
-        types = [left_type, right_type]
-        values = [left_value, right_value]
+        types = [right_type]
+        values = [right_value]
         return caller.call_obj(visitor, "__and__", left_value, left_type, values, types)
     else:
         raise NotImplementedError()
@@ -197,14 +197,14 @@ def bool_op_and(visitor, left_type, left_value, right_type, right_value):
 
 def bool_op_or(visitor, left_type, left_value, right_type, right_value):
     if left_type.is_obj() or left_type.is_python_obj() or left_type.is_collection():
-        args_types = [left_type, right_type]
-        args = [left_value, right_value]
+        args_types = [right_type]
+        args = [right_value]
         return caller.call_obj(visitor, "__or__", left_value, left_type, args, args_types)
     elif left_type.is_primitive():
         return lang_type.get_bool_type(), visitor.get_builder()._or(left_value, right_value)
     elif left_type.is_obj() or left_type.is_python_obj() or left_type.is_list() or left_type.is_dict():
-        types = [left_type, right_type]
-        values = [left_value, right_value]
+        types = [right_type]
+        values = [right_value]
         return caller.call_obj(visitor, "__or__", left_value, left_type, values, types)
     else:
         raise NotImplementedError()

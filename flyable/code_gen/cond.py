@@ -15,8 +15,7 @@ def value_to_cond(visitor, value_type, value):
     elif value_type.is_dec():
         return lang_type.get_bool_type(), builder.int_cast(value, code_type.get_int1())
     elif value_type.is_obj() or value_type.is_python_obj():
-        cond_type, cond_value = caller.call_obj(visitor, "__bool__", value, value_type, [value],
-                                                [value_type])
+        cond_type, cond_value = caller.call_obj(visitor, "__bool__", value, value_type, [], [])
         if cond_type.is_python_obj():
             true_var = builder.global_var(code_gen.get_true())
             true_var = builder.load(true_var)

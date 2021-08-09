@@ -20,6 +20,7 @@
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IR/CallingConv.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/IR/Verifier.h"
@@ -72,6 +73,8 @@ private:
     void readGlobalVars(FormatReader& reader);
     void readFuncs(FormatReader& reader);
     void readBody(llvm::Function* func,std::vector<llvm::Value*>&values,std::vector<FormatReader> &readers,std::vector<std::string>& blockNames);
+    llvm::CallingConv::ID readConv(FormatReader& reader);
+
 
     void printType(llvm::Type* type);
     bool isDecimalType(llvm::Value* value);

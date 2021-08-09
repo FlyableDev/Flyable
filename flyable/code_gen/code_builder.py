@@ -1,3 +1,6 @@
+import flyable.code_gen.code_gen as gen
+
+
 class CodeBuilder:
     """
     CodeBuilder writes the data that will be passed to generate binary to send to the code generation native layer.
@@ -155,9 +158,13 @@ class CodeBuilder:
             self.__writer.add_int32(e)
         return self.__gen_value()
 
-    def call_ptr(self, ptr, args):
+    def call_ptr(self, ptr, args, call_conv=None):
         self.__writer.add_int32(171)
         self.__writer.add_int32(ptr)
+        if call_conv is None:
+            call_conv = gen.CallingConv.C
+        self.__writer.add_int32(call_conv)
+
         self.__writer.add_int32(len(args))
         for e in args:
             self.__writer.add_int32(e)

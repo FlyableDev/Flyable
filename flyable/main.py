@@ -31,7 +31,7 @@ def main():
 
         # Now link the code
         python_lib = "python39.lib" if platform.system() == "Windows" else "python3.9.a"
-        linker_args = ["gcc", "output.o", "libFlyableRuntime.a", python_lib]
+        linker_args = ["gcc", "-flto","output.o", "libFlyableRuntime.a", python_lib]
         p = Popen(linker_args, cwd="..\\build\\" + plat.get_platform_folder())
         p.wait()
         if p.returncode != 0: raise Exception("Linking error")

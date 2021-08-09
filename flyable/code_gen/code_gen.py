@@ -18,6 +18,11 @@ class Linkage(enum.IntEnum):
     EXTERNAL = 2
 
 
+class CallingConv(enum.IntEnum):
+    C = 1,
+    FAST = 2
+
+
 class StructType:
     """
     Represent a low-level structure defined by multiple CodeType
@@ -226,6 +231,7 @@ class CodeGen:
         self.__funcs = OrderedDict()
         self.__data = comp_data
         self.__global_strings = {}
+        self.__py_constants = {}  # Global variable containing python constants
 
         self.__true_var = None
         self.__false_var = None
@@ -235,7 +241,7 @@ class CodeGen:
         self.__python_obj_struct = None
         self.__python_list_struct = None
         self.__python_func_struct = None
-        self.__python_type_struct = None
+        self.__python_type_struct = OrderedDict()
 
     def setup(self):
         # Create the Python object struct
@@ -271,6 +277,7 @@ class CodeGen:
         self.__python_type_struct = StructType("__flyable_py_type")
         self.__python_type_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
         self.__python_type_struct.add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
+        self.__python_type_struct.add_type(code_type.get_int64())  # size_t ob_size
         self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_name
         self.__python_type_struct.add_type(code_type.get_int64())  # tp_basicsize
         self.__python_type_struct.add_type(code_type.get_int64())  # tp_itemsize
@@ -394,7 +401,7 @@ class CodeGen:
 
     def get_or_insert_str(self, value):
         if value is None:
-            raise NotImplementedError()
+            raise ValueError()
         if value in self.__global_strings:
             return self.__global_strings[value]
 
@@ -402,6 +409,22 @@ class CodeGen:
                             Linkage.INTERNAL)
         self.add_global_var(new_var)
         self.__global_strings[value] = new_var
+        return new_var
+
+    def get_or_insert_const(self, value):
+        try:
+            return self.__py_constants[value]
+        except KeyError:
+            pass
+
+        if not isinstance(value, int) and not isinstance(value, float):
+            raise ValueError("Const type " + str(type(value)) + " not expected")
+
+        var_type = code_type.get_int64()
+        name = "@flyable@const@" + str(len(self.__py_constants))
+        new_var = GlobalVar(name, code_type.get_py_obj_ptr(self), Linkage.INTERNAL)
+        self.add_global_var(new_var)
+        self.__py_constants[value] = new_var
         return new_var
 
     def add_struct(self, struct):
@@ -482,7 +505,6 @@ class CodeGen:
     def generate_main(self):
         """
         Generate Flyable program entry point.
-        For now it's the found main function. In the future it should be the global module function #0
         """
 
         # On Windows, an executable starts on the WinMain symbol
@@ -515,6 +537,17 @@ class CodeGen:
         # Set the build-in module
         build_in_module = gen_module.import_py_module(self, builder, "builtins")
         builder.store(build_in_module, builder.global_var(self.get_build_in_module()))
+
+        # Set the constant
+        for key in self.__py_constants.keys():
+            constant_var = builder.global_var(self.__py_constants[key])
+            if isinstance(key, int):
+                value_to_convert = builder.const_int64(key)
+                value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert, lang_type.get_int_type())
+            else:
+                value_to_convert = builder.const_float64(key)
+                value_to_assign = runtime.value_to_pyobj(self,builder, value_to_convert, lang_type.get_dec_type())
+            builder.store(value_to_assign, constant_var)
 
         main_func = self.__data.get_file(0).get_global_func().get_impl(1)
         return_value = builder.call(main_func.get_code_func(), [])
