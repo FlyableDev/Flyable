@@ -919,7 +919,9 @@ class ParserVisitor(NodeVisitor):
         self.__builder.set_insert_block(block_raise)
         self.__func.set_can_raise(True)
         msg_type, msg_value = self.__visit_node(node.msg)
-        # TODO: implement raise_assert_error and change raise_index_error for raise_assert_error
+
+        excp.raise_assert_error(self, runtime.value_to_pyobj(self.__code_gen, self.__builder, msg_value, msg_type))
+
         excp.raise_index_error(self)
         excp.handle_raised_excp(self)
 

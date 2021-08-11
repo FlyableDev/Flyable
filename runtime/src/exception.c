@@ -10,3 +10,8 @@ void flyable_raise_callable_error()
 {
     PyErr_SetString(PyExc_TypeError, "object is not callable");
 }
+
+void flyable_raise_assert_error(PyObject* obj)
+{
+    PyErr_SetObject(PyExc_AssertionError,obj);
+}
