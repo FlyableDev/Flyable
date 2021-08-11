@@ -3,6 +3,8 @@ import flyable.code_gen.exception as excp
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.tuple as tuple_call
+import flyable.code_gen.type as gen_type
+import flyable.code_gen.debug as debug
 
 
 def check_py_obj_is_func_type(visitor, func_to_call):
@@ -11,13 +13,20 @@ def check_py_obj_is_func_type(visitor, func_to_call):
     return visitor.get_builder().eq(obj_type, func_type)
 
 
-def call_py_func_vec_call(visitor, func_to_call, args):
+def call_py_func_vec_call(visitor, func_to_call, args, func_to_call_type=None):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
-    vec_call = py_obj_func_get_vectorcall_ptr(visitor, func_to_call)
+    if func_to_call_type is None:
+        func_to_call_type = fly_obj.get_py_obj_type(builder, func_to_call)
+
+    offset = builder.load(gen_type.py_object_type_get_vectorcall_offset_ptr(visitor, func_to_call_type))
+
+    func_to_call_i8_ptr = builder.ptr_cast(func_to_call, code_type.get_int8_ptr())
+    offset_result = builder.gep2(func_to_call_i8_ptr, code_type.get_int8(), [offset])
+    vec_call = builder.ptr_cast(offset_result,
+                                code_type.get_vector_call_func(visitor.get_code_gen()).get_ptr_to().get_ptr_to())
     vec_call = builder.load(vec_call)
-    vec_call = builder.ptr_cast(vec_call, code_type.get_vector_call_func(visitor.get_code_gen()).get_ptr_to())
 
     # Allocate memory for the args on the stack so it's much faster
     args_stack_memory = visitor.generate_entry_block_var(
@@ -31,8 +40,9 @@ def call_py_func_vec_call(visitor, func_to_call, args):
     # Cast the stack memory to simplify the type
     args_stack_memory = builder.ptr_cast(args_stack_memory, code_type.get_py_obj_ptr(code_gen).get_ptr_to())
 
-    vec_args = [func_to_call, args_stack_memory, builder.const_int64(len(args)),
-                builder.const_null(code_type.get_py_obj_ptr(code_gen))]
+    # nargs is the size of the arguments with the PY_VECTORCALL_ARGUMENTS_OFFSET
+    nargs = builder.const_int64(len(args))
+    vec_args = [func_to_call, args_stack_memory, nargs, builder.const_null(code_type.get_py_obj_ptr(code_gen))]
 
     return builder.call_ptr(vec_call, vec_args)
 
@@ -48,7 +58,7 @@ def call_py_func_tp_call(visitor, func_to_call, args):
     call_funcs_args = [code_type.get_py_obj_ptr(visitor.get_code_gen())] * 3
     arg_list = tuple_call.python_tuple_new(code_gen, builder, builder.const_int64(len(args)))
     for i, e in enumerate(args):
-        tuple_call.python_tuple_set_unsafe(code_gen, builder, arg_list, builder.const_int64(i), e)
+        tuple_call.python_tuple_set_unsafe(visitor, arg_list, i, e)
 
     kwargs = builder.const_null(code_type.get_py_obj_ptr(code_gen))  # Null kwargs
 

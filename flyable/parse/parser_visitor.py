@@ -684,7 +684,7 @@ class ParserVisitor(NodeVisitor):
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
         array = gen_list.instanciate_python_list(self.__code_gen, self.__builder,
-                                                self.__builder.const_int64(len(elts_values)))
+                                                 self.__builder.const_int64(len(elts_values)))
         self.__last_value = array
 
         for i, e in enumerate(elts_values):
@@ -709,8 +709,7 @@ class ParserVisitor(NodeVisitor):
 
         for i, e in enumerate(elts_values):
             py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
-            index = self.__builder.const_int64(i)
-            gen_tuple.python_tuple_set_unsafe(self.__code_gen, self.__builder, self.__last_value, index, py_obj)
+            gen_tuple.python_tuple_set_unsafe(self, self.__last_value, i, py_obj)
 
     def visit_SetComp(self, node: SetComp) -> Any:
         null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
@@ -920,7 +919,7 @@ class ParserVisitor(NodeVisitor):
         self.__builder.set_insert_block(block_raise)
         self.__func.set_can_raise(True)
         msg_type, msg_value = self.__visit_node(node.msg)
-        #TODO: implement raise_assert_error and change raise_index_error for raise_assert_error
+        # TODO: implement raise_assert_error and change raise_index_error for raise_assert_error
         excp.raise_index_error(self)
         excp.handle_raised_excp(self)
 

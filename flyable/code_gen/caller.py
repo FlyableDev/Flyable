@@ -8,6 +8,7 @@ import flyable.code_gen.code_type as code_type
 from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.exception as excp
+import flyable.code_gen.debug as debug
 import flyable.parse.adapter as adapter
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.runtime as runtime
@@ -70,11 +71,13 @@ def generate_python_call(visitor, obj, func_name, args):
     tp_flag = builder.load(tp_flag)
 
     can_vec = builder._and(tp_flag, builder.const_int32(2048))  # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
-    can_vec = builder.int_cast(can_vec, code_type.get_int1())
-    builder.cond_br(can_vec, vector_call_block, tp_call_block)
+    can_vec = builder.eq(can_vec, builder.const_int32(0))
+
+    # If it's non-zero then it has the feature
+    builder.cond_br(can_vec, tp_call_block, vector_call_block)
 
     builder.set_insert_block(vector_call_block)
-    vec_result = function.call_py_func_vec_call(visitor, func_to_call, args)
+    vec_result = function.call_py_func_vec_call(visitor, func_to_call, args, callable_type)
     builder.store(vec_result, call_result_var)
     builder.br(continue_block)
 

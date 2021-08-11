@@ -615,6 +615,30 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 }
                 break;
 
+                case 1013:
+                {
+                    llvm::Value* value = values[current->readInt32()];
+                    llvm::Type* type = readType(*current);
+                    values[current->readInt32()] = mBuilder.CreateIntToPtr(value,type);
+                }
+                break;
+
+                case 1014:
+                {
+                    llvm::Value* value = values[current->readInt32()];
+                    llvm::Type* type = readType(*current);
+                    values[current->readInt32()] = mBuilder.CreateBitCast(value,type);
+                }
+                break;
+
+                case 1015:
+                {
+                    llvm::Value* value = values[current->readInt32()];
+                    llvm::Type* type = readType(*current);
+                    values[current->readInt32()] = mBuilder.CreateZExt(value,type);
+                }
+                break;
+
                 case 1050:
                 {
                     llvm::Type* type = readType(*current);

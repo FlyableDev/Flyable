@@ -228,6 +228,24 @@ class CodeBuilder:
         type.write_to_code(self.__writer)
         return self.__gen_value()
 
+    def int_to_ptr(self, value, ptr_type):
+        self.__writer.add_int32(1013)
+        self.__writer.add_int32(value)
+        ptr_type.write_to_code(self.__writer)
+        return self.__gen_value()
+
+    def bit_cast(self, value, cast_type):
+        self.__writer.add_int32(1014)
+        self.__writer.add_int32(value)
+        cast_type.write_to_code(self.__writer)
+        return self.__gen_value()
+
+    def zext(self, value, cast_type):
+        self.__writer.add_int32(1015)
+        self.__writer.add_int32(value)
+        cast_type.write_to_code(self.__writer)
+        return self.__gen_value()
+
     def alloca(self, type):
         self.__writer.add_int32(1050)
         type.write_to_code(self.__writer)

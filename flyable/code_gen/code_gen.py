@@ -240,6 +240,7 @@ class CodeGen:
         self.__build_in_module = None
         self.__python_obj_struct = None
         self.__python_list_struct = None
+        self.__python_tuple_struct = None
         self.__python_func_struct = None
         self.__python_type_struct = OrderedDict()
 
@@ -247,8 +248,12 @@ class CodeGen:
         # Create the Python object struct
         self.__python_obj_struct = StructType("__flyable_py_obj")
         self.add_struct(self.__python_obj_struct)
+
+        self.__python_type_struct = StructType("__flyable_py_type")
+        self.add_struct(self.__python_type_struct)
+
         self.__python_obj_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
-        self.__python_obj_struct.add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
+        self.__python_obj_struct.add_type(self.get_python_type().to_code_type().get_ptr_to())  # PyTypeObject * ob_type
 
         # Create the Python list struct
         self.__python_list_struct = StructType("__flyable_py_obj_list")
@@ -258,6 +263,14 @@ class CodeGen:
         self.__python_list_struct.add_type(code_type.get_int8_ptr().get_ptr_to())  # ob_item
         self.__python_list_struct.add_type(code_type.get_int64())  # allocated
         self.add_struct(self.__python_list_struct)
+
+        # Create the Python tuple struct
+        self.__python_tuple_struct = StructType("__flyable_py_obj_tuple")
+        self.__python_tuple_struct.add_type(code_type.get_int64())  # ob_refcnt
+        self.__python_tuple_struct.add_type(code_type.get_int8_ptr())  # ob_type
+        self.__python_tuple_struct.add_type(code_type.get_int64())  # ob_size
+        self.__python_tuple_struct.add_type(code_type.get_py_obj_ptr(self))  # ob_item
+        self.add_struct(self.__python_tuple_struct)
 
         # Create the Python function struct
         self.__python_func_struct = StructType("__flyable_py_obj_func")
@@ -274,9 +287,8 @@ class CodeGen:
         self.add_struct(self.__python_func_struct)
 
         # Create the python type object struct
-        self.__python_type_struct = StructType("__flyable_py_type")
         self.__python_type_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
-        self.__python_type_struct.add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
+        self.__python_type_struct.add_type(self.get_python_type().to_code_type().get_ptr_to())  # PyTypeObject * ob_type
         self.__python_type_struct.add_type(code_type.get_int64())  # size_t ob_size
         self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_name
         self.__python_type_struct.add_type(code_type.get_int64())  # tp_basicsize
@@ -302,7 +314,6 @@ class CodeGen:
         self.__python_type_struct.add_type(code_type.get_int32())  # tp_version_tag
         self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_finalize
         self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_vectorcall
-        self.add_struct(self.__python_type_struct)
 
         self.__true_var = self.add_global_var(
             GlobalVar("@Flyable@_True", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
@@ -373,6 +384,9 @@ class CodeGen:
 
     def get_py_list_struct(self):
         return self.__python_list_struct
+
+    def get_py_tuple_struct(self):
+        return self.__python_tuple_struct
 
     def get_py_func_struct(self):
         return self.__python_func_struct
@@ -546,7 +560,7 @@ class CodeGen:
                 value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert, lang_type.get_int_type())
             else:
                 value_to_convert = builder.const_float64(key)
-                value_to_assign = runtime.value_to_pyobj(self,builder, value_to_convert, lang_type.get_dec_type())
+                value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert, lang_type.get_dec_type())
             builder.store(value_to_assign, constant_var)
 
         main_func = self.__data.get_file(0).get_global_func().get_impl(1)
