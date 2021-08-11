@@ -5,6 +5,8 @@ import flyable.code_gen.code_gen as gen
 import flyable.code_gen.tuple as tuple_call
 import flyable.code_gen.type as gen_type
 import flyable.code_gen.debug as debug
+import flyable.code_gen.ref_counter as ref_counter
+import flyable.data.lang_type as lang_type
 
 
 def check_py_obj_is_func_type(visitor, func_to_call):
@@ -73,6 +75,8 @@ def call_py_func_tp_call(visitor, func_to_call, args):
     tp_args = [func_to_call, arg_list, kwargs]
 
     result = builder.call_ptr(ty_call_ptr, tp_args)
+
+    ref_counter.ref_decr(visitor, lang_type.get_list_of_python_obj_type(), arg_list)
 
     return result
 

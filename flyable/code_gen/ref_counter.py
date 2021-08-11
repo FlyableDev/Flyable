@@ -5,6 +5,8 @@ import flyable.data.lang_type as lang_type
 import flyable.code_gen.fly_obj as fly_obj
 import flyable.code_gen.type as gen_type
 import flyable.code_gen.code_type as code_type
+import flyable.code_gen.debug as debug
+import flyable.code_gen.exception as excp
 
 
 def get_ref_counter_ptr(visitor, value_type, value):
@@ -48,15 +50,16 @@ def ref_decr(visitor, value_type, value):
         dealloc_block = builder.create_block()
         continue_block = builder.create_block()
         ref_count = builder.load(ref_ptr)
-        need_to_dealloc = builder.eq(ref_count, builder.const_int64(0))
-        builder.cond_br(need_to_dealloc, need_to_dealloc, continue_block)
+        need_to_dealloc = builder.eq(ref_count, builder.const_int64(1))
+        builder.cond_br(need_to_dealloc, dealloc_block, continue_block)
 
         builder.set_insert_block(dealloc_block)
         obj_type = fly_obj.get_py_obj_type(visitor.get_builder(), value)
         dealloc_ptr = gen_type.py_object_type_get_dealloc_ptr(visitor, obj_type)
-        dealloc_type = code_type.get_func(code_type.get_void(), code_type.get_py_obj_ptr(code_gen))
+        dealloc_type = code_type.get_func(code_type.get_void(), [code_type.get_py_obj_ptr(code_gen)]).get_ptr_to().get_ptr_to()
         dealloc_ptr = builder.ptr_cast(dealloc_ptr, dealloc_type)
-        builder.ptr_call(dealloc_ptr, value)
+        dealloc_ptr = builder.load(dealloc_ptr)
+        builder.call_ptr(dealloc_ptr, [value])
         builder.br(continue_block)
         builder.set_insert_block(continue_block)
 

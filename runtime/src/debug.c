@@ -31,7 +31,7 @@ void flyable_debug_show_vec(PyObject* obj,PyObject* call)
 
 void flyable_debug_print_int64(long long value)
 {
-    printf("%d", (int) value);
+    printf("%d\n", (int) value);
 }
 
 void flyable_debug_print_ptr(void* ptr)
