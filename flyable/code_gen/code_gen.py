@@ -11,6 +11,7 @@ import flyable.data.lang_type as lang_type
 import flyable.code_gen.module as gen_module
 from collections import OrderedDict
 import enum
+import flyable.code_gen.ref_counter as ref_counter
 
 
 class Linkage(enum.IntEnum):
