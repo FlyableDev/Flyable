@@ -37,7 +37,7 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
     elif obj_type.is_python_obj() or obj_type.is_collection():
         # Maybe there is a shortcut available to skip the python call
         if obj_type.is_list():
-            found_shortcut = shortcut.get_obj_call_shortcuts(obj_type, func_name)
+            found_shortcut = shortcut.get_obj_call_shortcuts(obj_type, args_type, func_name)
             if found_shortcut is not None:
                 return found_shortcut.parse(visitor, obj_type, obj, args_type, args)
 
@@ -46,7 +46,6 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
 
         for i, arg in enumerate(py_args):
             py_args[i] = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), arg, args_type[i])
-
         return lang_type.get_python_obj_type(), generate_python_call(visitor, obj, func_name, py_args)
     else:
         raise ValueError("Type un-callable: " + obj_type.to_str(visitor.get_data()) + " for method " + func_name)

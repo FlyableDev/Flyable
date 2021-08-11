@@ -1,5 +1,6 @@
 import flyable.code_gen.list as gen_list
 import flyable.data.lang_type as lang_type
+import flyable.code_gen.caller as gen_call
 
 """
 Shortcut is a module to generate code that aims to bypass call to the interpreter
@@ -11,7 +12,7 @@ class ShortcutObjCall:
     def __init__(self):
         pass
 
-    def type_test(self, type):
+    def type_test(self, caller_type, args_type):
         return False
 
     def parse(self, visitor, caller_type, caller_value, args_type, args):
@@ -20,8 +21,8 @@ class ShortcutObjCall:
 
 class ShortcutListCallAppend(ShortcutObjCall):
 
-    def type_test(self, type):
-        if type.is_list():
+    def type_test(self, caller_type, args_type):
+        if caller_type.is_list() and len(args_type) == 1 and args_type[0].is_int():
             return True
         return False
 
@@ -32,8 +33,8 @@ class ShortcutListCallAppend(ShortcutObjCall):
 
 class ShortcutListCallGet(ShortcutObjCall):
 
-    def type_test(self, type):
-        if type.is_list():
+    def type_test(self, caller_type, args_type):
+        if caller_type.is_list() and len(args_type) == 1 and args_type[0].is_int():
             return True
         return False
 
@@ -42,7 +43,7 @@ class ShortcutListCallGet(ShortcutObjCall):
         return caller_type.get_content(), item
 
 
-def get_obj_call_shortcuts(type_to_test, name):
+def get_obj_call_shortcuts(type_to_test, args_to_test, name):
     shortcuts = {
         "append": [ShortcutListCallAppend()],
         "__getitem__": [ShortcutListCallGet()]
@@ -51,7 +52,7 @@ def get_obj_call_shortcuts(type_to_test, name):
     try:
         list_shortcuts = shortcuts[name]
         for e in list_shortcuts:
-            if e.type_test(type_to_test):
+            if e.type_test(type_to_test, args_to_test):
                 return e
     except KeyError:
         return None

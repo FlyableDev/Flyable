@@ -30,6 +30,7 @@ import flyable.code_gen.cond as cond
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.fly_obj as fly_obj
 import flyable.code_gen.module as gen_module
+import flyable.code_gen.slice as gen_slice
 
 
 class ParserVisitMode(enum.IntEnum):
@@ -385,6 +386,22 @@ class ParserVisitor(NodeVisitor):
         else:
             self.__last_type, self.__last_value = caller.call_obj(self, "__getitem__", value, value_type,
                                                                   [index_value], [index_type])
+
+    def visit_Slice(self, node: Slice) -> Any:
+        lower_type, lower_value = self.__visit_node(node.lower)
+        upper_type, upper_value = self.__visit_node(node.upper)
+        if node.step is not None:
+            step_type, step_value = self.__visit_node(node.step)
+
+        lower_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, lower_value, lower_type)
+        upper_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, upper_value, upper_type)
+        if node.step is not None:
+            step_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, step_value, step_type)
+        else:
+            step_obj = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+
+        self.__last_type = lang_type.get_python_obj_type()
+        self.__last_value = gen_slice.py_slice_new(self, lower_obj, upper_obj, step_obj)
 
     def visit_Break(self, node: Break) -> Any:
         if len(self.__out_blocks) > 0:
