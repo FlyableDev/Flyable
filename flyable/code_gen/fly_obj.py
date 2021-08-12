@@ -8,7 +8,7 @@ module to handle flyable object info
 """
 
 
-def py_obj_get_attr(visitor, obj, name, obj_type = None):
+def py_obj_get_attr(visitor, obj, name, obj_type=None):
     """
     Obtain the attribute of an object by calling get_attr or get_attro.
     If a type is supplied it will avoid loading the type again
@@ -63,14 +63,19 @@ def py_obj_get_attr(visitor, obj, name, obj_type = None):
     builder.set_insert_block(continue_block)
     return builder.load(attr_found_var)
 
-    """
-    attribute_py_str = builder.global_var(code_gen.get_or_insert_str(name))
-    attribute_py_str = builder.load(attribute_py_str)
-    func_get = code_gen.get_or_create_func("PyObject_GetAttr", code_type.get_py_obj_ptr(code_gen),
-                                           [code_type.get_py_obj_ptr(code_gen)] * 2, gen.Linkage.EXTERNAL)
 
-    return builder.call(func_get, [obj, attribute_py_str])
-    """
+def py_obj_del_attr(visitor, obj, name):
+    code_gen = visitor.get_code_gen()
+    builder = visitor.get_builder()
+
+    func = code_gen.get_or_create_func("PyObject_DelAttr", code_type.get_int32(),
+                                       [code_type.get_py_obj_ptr(code_gen)] * 2, gen.Linkage.EXTERNAL)
+
+    str_name = code_gen.get_or_insert_str(name)
+    str_name = builder.global_var(str_name)
+    str_name = builder.load(str_name)
+    obj = builder.ptr_cast(obj, code_type.get_py_obj_ptr(code_gen))
+    builder.call(func, [obj, str_name])
 
 
 def get_obj_attribute_start_index():

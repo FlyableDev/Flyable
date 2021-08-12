@@ -260,6 +260,8 @@ class ParserVisitor(NodeVisitor):
                                                 self.__assign_type)
                 runtime.py_runtime_set_attr(self.__code_gen, self.__builder, self.__last_value, str_value, py_obj)
                 self.__last_become_assign()
+            elif isinstance(node.ctx, ast.Del):
+                fly_obj.py_obj_del_attr(self, self.__last_value, str_value)
             else:
                 self.__last_value = fly_obj.py_obj_get_attr(self, self.__last_value, str_value)
         elif self.__last_type.is_obj():  # Flyable obj. The attribute type might be known. GEP access for more speed
@@ -381,11 +383,23 @@ class ParserVisitor(NodeVisitor):
     def visit_Subscript(self, node: Subscript) -> Any:
         value_type, value = self.__visit_node(node.value)
         index_type, index_value = self.__visit_node(node.slice)
+
+        args_types = [index_type]
+        args = [index_value]
+
+        if isinstance(node.ctx, ast.Store):
+            func_name = "__setitem__"
+            args_types += self.__assign_type
+            args += self.__assign_value
+        elif isinstance(node.ctx, ast.Del):
+            func_name = "__delitem__"
+        else:  # load
+            func_name = "__getitem__"
+
         if value_type.is_primitive():
             self.__parser.throw_error("'[]' can't be used on a primitive type", node.lineno, node.end_col_offset)
         else:
-            self.__last_type, self.__last_value = caller.call_obj(self, "__getitem__", value, value_type,
-                                                                  [index_value], [index_type])
+            self.__last_type, self.__last_value = caller.call_obj(self, func_name, value, value_type, args, args_types)
 
     def visit_Slice(self, node: Slice) -> Any:
         lower_type, lower_value = self.__visit_node(node.lower)
@@ -402,6 +416,10 @@ class ParserVisitor(NodeVisitor):
 
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_value = gen_slice.py_slice_new(self, lower_obj, upper_obj, step_obj)
+
+    def visit_Delete(self, node: Delete) -> Any:
+        for target in node.targets:
+            self.__visit_node(target)
 
     def visit_Break(self, node: Break) -> Any:
         if len(self.__out_blocks) > 0:
