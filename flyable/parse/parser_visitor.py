@@ -514,32 +514,33 @@ class ParserVisitor(NodeVisitor):
         block_go = self.__builder.create_block()
         block_continue = self.__builder.create_block()
 
-        cond_type, cond_value = self.__visit_node(node.test)
-        cond_type, cond_value = cond.value_to_cond(self, cond_type, cond_value)
-        self.__builder.cond_br(cond_value, block_go, block_continue)
-
-        self.__builder.set_insert_block(block_go)
-        self.__visit_node(node.body)
-        if self.__builder.get_current_block().needs_end():
-            self.__builder.br(block_continue)
-
-        self.__builder.set_insert_block(block_continue)
-
         # If there is relevant info
         has_other_block = node.orelse is not None or (isinstance(node.orelse, list) and len(node.orelse) > 0)
         if has_other_block:
             other_block = self.__builder.create_block()
+
+        cond_type, cond_value = self.__visit_node(node.test)
+        cond_type, cond_value = cond.value_to_cond(self, cond_type, cond_value)
+
+        if has_other_block:
+            self.__builder.cond_br(cond_value, block_go, other_block)
+        else:
+            self.__builder.cond_br(cond_value, block_go, block_continue)
+
+        self.__builder.set_insert_block(block_go)
+        self.__visit_node(node.body)
+        self.__builder.br(block_continue)
+
+        if has_other_block:
+            self.__builder.set_insert_block(other_block)
             if isinstance(node.orelse, ast.If):  # elif handle
                 self.__visit_node(node.orelse)
-                if self.__builder.get_current_block().needs_end():
-                    self.__builder.br(other_block)
+                self.__builder.br(block_continue)
             else:  # Else statement
                 self.__visit_node(node.orelse)
-                if self.__builder.get_current_block().needs_end():
-                    self.__builder.br(other_block)
-            self.__builder.set_insert_block(other_block)
-        else:
-            self.__builder.set_insert_block(block_continue)
+                self.__builder.br(block_continue)
+
+        self.__builder.set_insert_block(block_continue)
 
     def visit_For(self, node: For) -> Any:
 
