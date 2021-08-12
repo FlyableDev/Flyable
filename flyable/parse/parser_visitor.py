@@ -131,6 +131,13 @@ class ParserVisitor(NodeVisitor):
 
         self.__reset_last()
 
+    def visit_AnnAssign(self, node: AnnAssign) -> Any:
+        if node.value is not None:
+            self.__assign_type, self.__assign_value = self.__visit_node(node.value)
+            self.__reset_last()
+            self.__last_type, self.__last_value = self.__visit_node(node.target)
+            self.__reset_last()
+
     def visit_BinOp(self, node: BinOp) -> Any:
         left_type, left_value = self.__visit_node(node.left)
         self.__last_type = None
