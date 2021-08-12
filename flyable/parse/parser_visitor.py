@@ -881,6 +881,10 @@ class ParserVisitor(NodeVisitor):
         for i, e in enumerate(node.values):
             key_type, key_value = self.__visit_node(node.keys[i])
             value_type, value_value = self.__visit_node(node.values[i])
+
+            key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
+            value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
+
             gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
             self.__last_value = None
         self.__last_value = new_dict
