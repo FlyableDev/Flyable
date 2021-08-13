@@ -56,7 +56,8 @@ def ref_decr(visitor, value_type, value):
         builder.set_insert_block(dealloc_block)
         obj_type = fly_obj.get_py_obj_type(visitor.get_builder(), value)
         dealloc_ptr = gen_type.py_object_type_get_dealloc_ptr(visitor, obj_type)
-        dealloc_type = code_type.get_func(code_type.get_void(), [code_type.get_py_obj_ptr(code_gen)]).get_ptr_to().get_ptr_to()
+        dealloc_type = code_type.get_func(code_type.get_void(),
+                                          [code_type.get_py_obj_ptr(code_gen)]).get_ptr_to().get_ptr_to()
         dealloc_ptr = builder.ptr_cast(dealloc_ptr, dealloc_type)
         dealloc_ptr = builder.load(dealloc_ptr)
         builder.call_ptr(dealloc_ptr, [value])
@@ -66,3 +67,8 @@ def ref_decr(visitor, value_type, value):
 
 def ref_decr_nullable(visitor, value_type, value):
     pass
+
+
+def ref_decr_multiple(visitor, types, values):
+    for i, value in enumerate(values):
+        ref_decr(visitor, types[i], values[i])
