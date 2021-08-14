@@ -26,17 +26,6 @@ class BuildInFunc:
         pass
 
 
-class BuildInPrint(BuildInFunc):
-
-    def __init__(self):
-        super().__init__()
-
-    def parse(self, args_types, args, codegen, builder):
-        obj_to_send = runtime.value_to_pyobj(codegen, builder, args[0], args_types[0])
-        runtime.py_runtime_object_print(codegen, builder, obj_to_send)
-        return lang_type.get_none_type(), builder.const_int32(0)
-
-
 class BuildInList(BuildInFunc):
 
     def __init__(self):
@@ -63,7 +52,6 @@ class BuildInLen(BuildInFunc):
 def get_build_in(name):
     name = str(name)
     build_in_funcs = {
-        "print": BuildInPrint,
         "list": BuildInList,
         "len": BuildInLen,
     }
