@@ -71,5 +71,15 @@ Memory management hint
 """
 
 
+def is_incremented_type(lang_type):
+    """
+    Return if the type contains the TypeHintRefIncr hints
+    """
+    return get_lang_type_contained_hint_type(lang_type, TypeHintRefIncr) is not None
+
+
 class TypeHintRefIncr(TypeHint):
+    """
+    Hint that indicates that the type comes from an incremented source and will need to be decremented
+    """
     pass
