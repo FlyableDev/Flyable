@@ -83,3 +83,15 @@ class TypeHintRefIncr(TypeHint):
     Hint that indicates that the type comes from an incremented source and will need to be decremented
     """
     pass
+
+
+class TypeHintRefCount(TypeHint):
+    """
+    Hint that indicates how many counts there is on the item when the counts is known
+    """
+
+    def __init__(self, count):
+        self.__count = count
+
+    def get_count(self):
+        return self.__count

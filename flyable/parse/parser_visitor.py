@@ -389,6 +389,8 @@ class ParserVisitor(NodeVisitor):
             str_error = "Call unrecognized with " + self.__last_type.to_str(self.__data)
             self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
 
+        ref_counter.ref_decr_multiple_incr(self, args_types, args)
+
     def visit_Subscript(self, node: Subscript) -> Any:
         value_type, value = self.__visit_node(node.value)
         index_type, index_value = self.__visit_node(node.slice)
@@ -438,6 +440,9 @@ class ParserVisitor(NodeVisitor):
 
     def visit_Return(self, node: Return) -> Any:
         return_type, return_value = self.__visit_node(node.value)
+
+        if not hint.is_incremented_type(return_type):  # Need to increment if we return to be consistent to CPython
+            ref_counter.ref_incr(self, return_type, return_value)
 
         if self.__func.get_return_type().is_unknown():
             self.__func.set_return_type(return_type)

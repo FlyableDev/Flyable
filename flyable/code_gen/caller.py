@@ -16,6 +16,7 @@ import flyable.parse.shortcut as shortcut
 import copy
 import flyable.code_gen.function as function
 import flyable.code_gen.fly_obj as fly_obj
+import flyable.data.type_hint as hint
 
 
 def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False):
@@ -33,7 +34,9 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
         if called_func is None and optional:
             return None, None
         called_impl = adapter.adapt_func(called_func, [obj_type] + args_type, visitor.get_data(), visitor.get_parser())
-        return called_impl.get_return_type(), visitor.get_builder().call(called_impl.get_code_func(), [obj] + args)
+        return_type = called_impl.get_return_type()
+        return_type.add_hint(hint.TypeHintRefIncr())
+        return return_type, visitor.get_builder().call(called_impl.get_code_func(), [obj] + args)
     elif obj_type.is_python_obj() or obj_type.is_collection():
         # Maybe there is a shortcut available to skip the python call
         if obj_type.is_list():
@@ -46,7 +49,9 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
 
         for i, arg in enumerate(py_args):
             py_args[i] = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), arg, args_type[i])
-        return lang_type.get_python_obj_type(), generate_python_call(visitor, obj, func_name, py_args)
+        return_type = lang_type.get_python_obj_type()
+        return_type.add_hint(hint.TypeHintRefIncr())
+        return return_type, generate_python_call(visitor, obj, func_name, py_args)
     else:
         raise ValueError("Type un-callable: " + obj_type.to_str(visitor.get_data()) + " for method " + func_name)
 

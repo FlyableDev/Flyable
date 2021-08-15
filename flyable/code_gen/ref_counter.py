@@ -5,6 +5,7 @@ import flyable.data.lang_type as lang_type
 import flyable.code_gen.fly_obj as fly_obj
 import flyable.code_gen.type as gen_type
 import flyable.code_gen.code_type as code_type
+import flyable.data.type_hint as hint
 import flyable.code_gen.debug as debug
 import flyable.code_gen.exception as excp
 
@@ -72,3 +73,9 @@ def ref_decr_nullable(visitor, value_type, value):
 def ref_decr_multiple(visitor, types, values):
     for i, value in enumerate(values):
         ref_decr(visitor, types[i], values[i])
+
+
+def ref_decr_multiple_incr(visitor, types, values):
+    for i, value in enumerate(values):
+        if hint.is_incremented_type(types[i]):
+            ref_decr(visitor, types[i], values[i])
