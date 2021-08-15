@@ -7,6 +7,7 @@ class Variable:
         self.__id = id
         self.__name = ""
         self.__type = type.LangType()
+        self.__is_initialized = False
         self.__in_use = True
         self.__code_gen_value = None
         self.__is_arg = False
@@ -50,3 +51,9 @@ class Variable:
 
     def is_used(self):
         return self.__in_use
+
+    def set_initialized(self, init):
+        self.__is_initialized = init
+
+    def is_initialized(self):
+        return self.__is_initialized

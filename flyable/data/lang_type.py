@@ -207,6 +207,9 @@ class LangType:
     def add_hint(self, hint):
         self.__hints.append(hint)
 
+    def remove_hint(self, index):
+        self.__hints.pop(index)
+
     def get_hint(self, index):
         if isinstance(index, int):
             return self.__hints[index]

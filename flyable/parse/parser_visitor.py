@@ -62,6 +62,8 @@ class ParserVisitor(NodeVisitor):
         self.__builder: CodeBuilder = func_impl.get_code_func().get_builder()
         self.__builder.set_insert_block(self.__entry_block)
 
+        self.__setup_default_args()
+
         # Setup argument as var
         for i, var in enumerate(self.__func.get_context().vars_iter()):
             if var.is_arg():
@@ -1072,6 +1074,19 @@ class ParserVisitor(NodeVisitor):
     def __last_become_assign(self):
         self.__last_value = self.__assign_value
         self.__last_type = self.__assign_type
+
+    def __setup_default_args(self):
+        if isinstance(self.__func.get_parent_func().get_node(), ast.FunctionDef):  #
+            args_count = self.__func.get_parent_func().get_args_count()
+            default_args = self.__func.get_parent_func().get_node().args.defaults
+            current = 0
+            for i in range(args_count - len(default_args), args_count):
+                arg_type, arg_value = self.__visit_node(default_args[current])
+                new_var = self.__func.get_context().add_var(self.__func.get_parent_func().get_arg(i).arg, arg_type)
+                new_var_alloca = self.generate_entry_block_var(arg_type.to_code_type(self.__code_gen))
+                self.__builder.store(arg_value, new_var_alloca)
+                new_var.set_code_gen_value(new_var_alloca)
+                current += 1
 
     def __find_active_var(self, name):
         result = self.__func.get_context().find_active_var(name)

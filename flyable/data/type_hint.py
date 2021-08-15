@@ -9,6 +9,14 @@ def get_lang_type_contained_hint_type(lang_type, hint_type):
     return None
 
 
+def remove_hint_type(lang_type, hint_type):
+    for i, hint in enumerate(lang_type.get_hints()):
+        if isinstance(hint, hint_type):
+            lang_type.remove_hint(i)
+            return True
+    return False
+
+
 class TypeHintConstValue(TypeHint):
 
     def __init__(self, value):
@@ -56,3 +64,12 @@ class TypeHintConstLen(TypeHint):
 
     def get_count(self):
         return self.__count
+
+
+"""
+Memory management hint
+"""
+
+
+class TypeHintRefIncr(TypeHint):
+    pass
