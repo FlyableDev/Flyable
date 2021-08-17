@@ -79,3 +79,8 @@ def ref_decr_multiple_incr(visitor, types, values):
     for i, value in enumerate(values):
         if hint.is_incremented_type(types[i]):
             ref_decr(visitor, types[i], values[i])
+
+
+def ref_decr_incr(visitor, type, value):
+    if hint.is_incremented_type(type):
+        ref_decr(visitor, type, value)

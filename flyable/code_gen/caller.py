@@ -39,10 +39,9 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
         return return_type, visitor.get_builder().call(called_impl.get_code_func(), [obj] + args)
     elif obj_type.is_python_obj() or obj_type.is_collection():
         # Maybe there is a shortcut available to skip the python call
-        if obj_type.is_list():
-            found_shortcut = shortcut.get_obj_call_shortcuts(obj_type, args_type, func_name)
-            if found_shortcut is not None:
-                return found_shortcut.parse(visitor, obj_type, obj, args_type, args)
+        found_shortcut = shortcut.get_obj_call_shortcuts(obj_type, args_type, func_name)
+        if found_shortcut is not None:
+            return found_shortcut.parse(visitor, obj_type, obj, copy.copy(args_type), copy.copy(args))
 
         # Python call
         py_args = copy.copy(args)

@@ -17,6 +17,11 @@ def remove_hint_type(lang_type, hint_type):
     return False
 
 
+"""
+Const value hints
+"""
+
+
 class TypeHintConstValue(TypeHint):
 
     def __init__(self, value):
@@ -46,12 +51,30 @@ class TypeHintConstStr(TypeHintConstValue):
         super().__init__(value)
 
 
+"""
+Type hints
+"""
+
+
+def is_python_type(lang_type, class_path):
+    if lang_type.is_python_obj():
+        found_hint = get_lang_type_contained_hint_type(lang_type, TypeHintPythonType)
+        if found_hint is not None:
+            return found_hint.get_class_path() == class_path
+    return False
+
+
 class TypeHintPythonType(TypeHint):
     """
     Hint representing the Python type represented.
     Used to cache functions
     """
-    pass
+
+    def __init__(self, class_path):
+        self.__class_path = class_path
+
+    def get_class_path(self):
+        return self.__class_path
 
 
 class TypeHintConstLen(TypeHint):

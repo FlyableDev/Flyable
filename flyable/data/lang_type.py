@@ -2,6 +2,7 @@ import copy
 from enum import Enum
 from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_type as code_type
+import flyable.data.type_hint as hint
 
 
 def to_code_type(code_gen, type):
@@ -58,8 +59,16 @@ def get_bool_type():
     return LangType(LangType.Type.BOOLEAN)
 
 
-def get_python_obj_type():
-    return LangType(LangType.Type.PYTHON)
+def get_python_obj_type(obj_hint=None):
+    result = LangType(LangType.Type.PYTHON)
+
+    if isinstance(obj_hint, list):
+        for e in obj_hint:
+            result.add_hint(e)
+    elif isinstance(obj_hint, hint.TypeHint):
+        result.add_hint(obj_hint)
+
+    return result
 
 
 def get_obj_type(id):
@@ -195,17 +204,24 @@ class LangType:
         return self.__dims[-1]
 
     def get_content(self):
-        result = copy.copy(self)
+        result = copy.deepcopy(self)
 
         if len(result.__dims) > 0:
             result.__dims.pop()
             if result.is_primitive():
+                if result.is_int():
+                    result.add_hint(hint.TypeHintPythonType("builtins.int"))
+                elif result.is_dec():
+                    result.add_hint(hint.TypeHintPythonType("builtins.float"))
                 result.__type = LangType.Type.PYTHON  # A container can only contain python object object
             return result
         return get_python_obj_type()
 
-    def add_hint(self, hint):
-        self.__hints.append(hint)
+    def add_hint(self, new_hint):
+        if isinstance(new_hint, hint.TypeHint):
+            self.__hints.append(new_hint)
+        else:
+            raise ValueError(str(type(new_hint)) + " instead of HintType")
 
     def remove_hint(self, index):
         self.__hints.pop(index)
@@ -221,7 +237,7 @@ class LangType:
             return result
 
     def get_hints(self):
-        return copy.copy(self.__hints)
+        return copy.deepcopy(self.__hints)
 
     def __eq__(self, other):
         return self.__type == other.__type

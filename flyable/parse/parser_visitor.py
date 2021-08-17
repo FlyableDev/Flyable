@@ -51,6 +51,7 @@ class ParserVisitor(NodeVisitor):
         self.__parser = parser
         self.__data: comp_data.CompData = parser.get_data()
         self.__current_node = None
+        self.__reset_visit = False
 
         self.__assign_depth = 0
 
@@ -75,8 +76,11 @@ class ParserVisitor(NodeVisitor):
 
     def parse(self):
         self.__last_type = None
-        self.visit(self.__func.get_parent_func().get_node().body)
-        self.__parse_over()
+        self.__reset_visit = True
+        while self.__reset_visit:
+            self.__reset_visit = False
+            self.visit(self.__func.get_parent_func().get_node().body)
+            self.__parse_over()
 
     def __parse_over(self):
         # When parsing is done we can put the final br of the entry block
@@ -147,10 +151,13 @@ class ParserVisitor(NodeVisitor):
         self.__visit_node(node.op)
         self.__last_type, self.__last_value = op_call.bin_op(self, node.op, left_type, left_value, right_type,
                                                              right_value)
+        ref_counter.ref_decr_multiple_incr(self, [left_type, right_type], [left_value, right_value])
 
     def visit_UnaryOp(self, node: UnaryOp) -> Any:
         value_type, value = self.__visit_node(node.operand)
+
         self.__last_type, self.__last_value = op_call.unary_op(self, value_type, value, node.op)
+        ref_counter.ref_decr_incr(self, value_type, value)
 
     def visit_BoolOp(self, node: BoolOp) -> Any:
         types = []
@@ -163,8 +170,11 @@ class ParserVisitor(NodeVisitor):
         current_type = types[0]
         current_value = values[0]
         for i in range(1, len(types)):
+            type_buffer, value_buffer = current_type, current_value
             current_type, current_value = op_call.bool_op(self, node.op, current_type, current_value, types[i],
                                                           values[i])
+            ref_counter.ref_decr_incr(self, type_buffer, value_buffer)
+
         self.__last_type, self.__last_value = current_type, current_value
 
     def visit_Compare(self, node: Compare) -> Any:
@@ -411,6 +421,8 @@ class ParserVisitor(NodeVisitor):
             self.__parser.throw_error("'[]' can't be used on a primitive type", node.lineno, node.end_col_offset)
         else:
             self.__last_type, self.__last_value = caller.call_obj(self, func_name, value, value_type, args, args_types)
+
+        ref_counter.ref_decr_multiple_incr(self, args_types, args)
 
     def visit_Slice(self, node: Slice) -> Any:
         lower_type, lower_value = self.__visit_node(node.lower)
@@ -725,17 +737,24 @@ class ParserVisitor(NodeVisitor):
     def visit_List(self, node: List) -> Any:
         elts_types = []
         elts_values = []
+        common_type = None
         for e in node.elts:
             type, value = self.__visit_node(e)
             elts_types.append(type)
             elts_values.append(value)
             self.__last_value = None
+            if common_type is None:
+                common_type = type
+            else:
+                common_type = lang_type.get_type_common(self.__data, common_type, type)
 
-        self.__last_type = lang_type.get_python_obj_type()
-        self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
+
         array = gen_list.instanciate_python_list(self.__code_gen, self.__builder,
                                                  self.__builder.const_int64(len(elts_values)))
         self.__last_value = array
+
+        self.__last_type = copy.deepcopy(common_type)
+        self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
 
         for i, e in enumerate(elts_values):
             py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
@@ -987,7 +1006,7 @@ class ParserVisitor(NodeVisitor):
             file = self.__data.get_file(e.name)
             if file is None:  # Python module
                 module_type = lang_type.get_python_obj_type()  # A Python module
-                content = gen_module.import_py_module(self.__code_gen, self.__builder, var_name)
+                content = gen_module.import_py_module(self.__code_gen, self.__builder, e.name)
             else:  # Flyable module
                 module_type = lang_type.get_module_type(file.get_id())
                 content = self.__builder.const_int32(file.get_id())
