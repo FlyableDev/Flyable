@@ -10,8 +10,7 @@ Flyable is a Python compiler that generates efficient native code. It uses diffe
 Flyable is licensed under the GNU Affero General Public License v3.0 .
 
 # Build
-
-...
+Make sure that you have downloaded the GCC compiler and you have an active CPython installation setup on your machine and follow [this tutorial](https://flyabledev.github.io/FlyableDoc/#/get-started?id=_2-hello-world) to learn how to compile, link and run a Python script with Flyable. Alternatively, you can read the code in the main.py file to see how we do this.
 
 # How does it get faster ?
 Flyable does multiple things to generate efficient code but most of the performance gains come from the following:
