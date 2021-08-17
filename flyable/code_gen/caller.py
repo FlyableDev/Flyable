@@ -17,6 +17,7 @@ import copy
 import flyable.code_gen.function as function
 import flyable.code_gen.fly_obj as fly_obj
 import flyable.data.type_hint as hint
+import flyable.code_gen.number as num
 
 
 def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False):
@@ -39,9 +40,16 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
         return return_type, visitor.get_builder().call(called_impl.get_code_func(), [obj] + args)
     elif obj_type.is_python_obj() or obj_type.is_collection():
         # Maybe there is a shortcut available to skip the python call
+
         found_shortcut = shortcut.get_obj_call_shortcuts(obj_type, args_type, func_name)
         if found_shortcut is not None:
             return found_shortcut.parse(visitor, obj_type, obj, copy.copy(args_type), copy.copy(args))
+
+        # Special case where the call is a binary number protocol
+        if num.is_number_protocol_func(func_name) and num.is_type_impl_number_protocol(visitor, obj_type):
+            instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
+            return lang_type.get_python_obj_type(), num.call_number_protocol(visitor, func_name, obj_type, obj,
+                                                                             instance_type, args_type,args)
 
         # Python call
         py_args = copy.copy(args)

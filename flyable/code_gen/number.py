@@ -1,26 +1,44 @@
 import flyable.code_gen.type as gen_type
 import flyable.data.type_hint as hint
 import flyable.code_gen.runtime as runtime
+import flyable.code_gen.debug as debug
 import flyable.code_gen.fly_obj as fly_obj
 import flyable.code_gen.code_type as code_type
+import flyable.code_gen.type as gen_type
+import flyable.code_gen.ref_counter as ref_counter
+import flyable.data.lang_type as lang_type
 
 """
 Module related to the python number protocol
 """
 
 
-def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args):
+def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_types, args):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
+    num_call_args = []
+
+    for i, e in enumerate(args):
+        num_call_args.append(runtime.value_to_pyobj(code_gen, builder, args[i], args_types[i]))
+
     slot = builder.const_int64(get_number_slot_from_func_name(func_name))
 
-    if is_number_binary_func() and len(args) == 1:  # Binary func only take on arg
-        func_to_call = builder.gep(instance_type, slot)
+    as_number = gen_type.py_object_type_get_tp_as_number_ptr(visitor, instance_type)
+    as_number = builder.load(as_number)
+    as_number = builder.ptr_cast(as_number, code_type.get_int8_ptr().get_ptr_to())
+
+    if is_number_binary_func(func_name) and len(args) == 1:  # Binary func only take on arg
+        func_to_call = builder.gep2(as_number, code_type.get_int8_ptr(), [slot])
+        func_to_call = builder.load(func_to_call)
         func_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2)
         func_type = func_type.get_ptr_to()
         func_to_call = builder.ptr_cast(func_to_call, func_type)
-        return builder.call_ptr(func_to_call, [obj] + args)
+
+        for e in num_call_args:
+            ref_counter.ref_decr(visitor, lang_type.get_python_obj_type(), e)
+
+        return builder.call_ptr(func_to_call, [obj] + num_call_args)
 
 
 def is_py_obj_impl_number_protocol(visitor, obj_type, obj, instance_type=None):
@@ -43,6 +61,10 @@ def is_type_impl_number_protocol(visitor, lang_type):
     if hint.is_python_type(lang_type, "builtins.int") or hint.is_python_type(lang_type, "builtins.float"):
         return True
     return False
+
+
+def is_number_protocol_func(func_name):
+    return is_number_binary_func(func_name)
 
 
 def is_number_binary_func(func_name):
