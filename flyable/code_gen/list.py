@@ -8,6 +8,7 @@ import flyable.code_gen.code_gen as gen
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.runtime as runtime
 import flyable.code_gen.ref_counter as ref_counter
+import flyable.data.type_hint as hint
 
 
 def instanciate_python_list(code_gen, builder, len):
@@ -39,9 +40,10 @@ def python_list_append(visitor, list, item_type, item):
 
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
 
-    ref_counter.ref_incr(visitor, item_type, item)
+    item_type, item = runtime.value_to_pyobj(code_gen, builder, item, item_type)
 
-    item = runtime.value_to_pyobj(code_gen, builder, item, item_type)
+    if not hint.is_incremented_type(item_type):
+        ref_counter.ref_incr(visitor, item_type, item)
 
     new_alloca_block = builder.create_block()
     continue_block = builder.create_block()

@@ -48,14 +48,17 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
         # Special case where the call is a binary number protocol
         if num.is_number_protocol_func(func_name) and num.is_type_impl_number_protocol(visitor, obj_type):
             instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
-            return lang_type.get_python_obj_type(), num.call_number_protocol(visitor, func_name, obj_type, obj,
-                                                                             instance_type, args_type,args)
+            return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), num.call_number_protocol(visitor, func_name,
+                                                                                                   obj_type, obj,
+                                                                                                   instance_type,
+                                                                                                   args_type, args)
 
         # Python call
         py_args = copy.copy(args)
 
         for i, arg in enumerate(py_args):
-            py_args[i] = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), arg, args_type[i])
+            args_type[i], py_args[i] = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), arg,
+                                                              args_type[i])
         return_type = lang_type.get_python_obj_type()
         return_type.add_hint(hint.TypeHintRefIncr())
         return return_type, generate_python_call(visitor, obj, func_name, py_args)

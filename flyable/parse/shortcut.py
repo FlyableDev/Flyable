@@ -24,53 +24,6 @@ class ShortcutObjCall:
 
 
 """
-Int type shortcuts
-"""
-
-
-class ShortcutIntCallAdd(ShortcutObjCall):
-
-    def type_test(self, caller_type, args_type):
-        if hint.is_python_type(caller_type, "builtins.int") and len(args_type) == 1:
-            return True
-        return False
-
-    def parse(self, visitor, caller_type, caller_value, args_type, args):
-        code_gen = visitor.get_code_gen()
-        builder = visitor.get_builder()
-
-        func = code_gen.get_or_create_func("long_add", code_type.get_py_obj_ptr(code_gen),
-                                           [code_type.get_py_obj_ptr(code_gen)] * 2, gen.Linkage.EXTERNAL)
-
-        obj_to_add = runtime.value_to_pyobj(code_gen, builder, args[0], args_type[0])
-
-        caller_value = builder.ptr_cast(caller_value, code_type.get_py_obj_ptr(code_gen))
-        result = builder.call(func, [caller_value, builder.ptr_cast(obj_to_add, code_type.get_py_obj_ptr(code_gen))])
-        return lang_type.get_python_obj_type(hint.TypeHintPythonType("builtins.int")), result
-
-
-class ShortcutIntCallSub(ShortcutObjCall):
-
-    def type_test(self, caller_type, args_type):
-        if hint.is_python_type(caller_type, "builtins.int") and len(args_type) == 1:
-            return True
-        return False
-
-    def parse(self, visitor, caller_type, caller_value, args_type, args):
-        code_gen = visitor.get_code_gen()
-        builder = visitor.get_builder()
-
-        func = code_gen.get_or_create_func("long_sub", code_type.get_py_obj_ptr(code_gen),
-                                           [code_type.get_py_obj_ptr(code_gen)] * 2, gen.Linkage.EXTERNAL)
-
-        obj_to_sub = runtime.value_to_pyobj(code_gen, builder, args[0], args_type[0])
-
-        caller_value = builder.ptr_cast(caller_value, code_type.get_py_obj_ptr(code_gen))
-        result = builder.call(func, [caller_value, builder.ptr_cast(obj_to_sub, code_type.get_py_obj_ptr(code_gen))])
-        return lang_type.get_python_obj_type(hint.TypeHintPythonType("builtins.int")), result
-
-
-"""
 List shortcuts
 """
 
@@ -90,7 +43,6 @@ class ShortcutListCallAppend(ShortcutObjCall):
 class ShortcutListCallGet(ShortcutObjCall):
 
     def type_test(self, caller_type, args_type):
-        print(caller_type)
         if caller_type.is_list() and len(args_type) == 1 and args_type[0].is_int():
             return True
         return False
@@ -103,8 +55,6 @@ class ShortcutListCallGet(ShortcutObjCall):
 def get_obj_call_shortcuts(type_to_test, args_to_test, name):
     shortcuts = {
         "append": [ShortcutListCallAppend()],
-        "__add__": [ShortcutIntCallAdd()],
-        "__sub__": [ShortcutIntCallSub()],
         "__getitem__": [ShortcutListCallGet()]
     }
 

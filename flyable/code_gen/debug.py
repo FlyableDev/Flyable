@@ -37,13 +37,12 @@ def flyable_debug_show_vec(visitor, callable, ptr):
     builder.call(func_call, [callable, ptr])
 
 
-def flyable_debug_print_int64(visitor, value):
-    code_gen = visitor.get_code_gen()
-    builder = visitor.get_builder()
+def flyable_debug_print_int64(code_gen, builder, value):
     func_name = "flyable_debug_print_int64"
     func_call = code_gen.get_or_create_func(func_name, code_type.get_void(), [code_type.get_int64()],
                                             gen.Linkage.EXTERNAL)
     builder.call(func_call, [value])
+
 
 def flyable_debug_print_ptr(visitor, value):
     code_gen = visitor.get_code_gen()

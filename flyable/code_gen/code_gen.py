@@ -544,10 +544,11 @@ class CodeGen:
 
         # Initialize all global vars
         # Set True global var
-        true_value = runtime.value_to_pyobj(self, builder, builder.const_int1(1), lang_type.get_bool_type())
+        true_type, true_value = runtime.value_to_pyobj(self, builder, builder.const_int1(1), lang_type.get_bool_type())
         builder.store(true_value, builder.global_var(self.get_true()))
         # Set False global var
-        false_value = runtime.value_to_pyobj(self, builder, builder.const_int1(0), lang_type.get_bool_type())
+        false_type, false_value = runtime.value_to_pyobj(self, builder, builder.const_int1(0),
+                                                         lang_type.get_bool_type())
         builder.store(false_value, builder.global_var(self.get_false()))
         # Set the build-in module
         build_in_module = gen_module.import_py_module(self, builder, "builtins")
@@ -558,10 +559,10 @@ class CodeGen:
             constant_var = builder.global_var(self.__py_constants[key])
             if isinstance(key, int):
                 value_to_convert = builder.const_int64(key)
-                value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert, lang_type.get_int_type())
+                type_to_assign,value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert, lang_type.get_int_type())
             else:
                 value_to_convert = builder.const_float64(key)
-                value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert, lang_type.get_dec_type())
+                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert, lang_type.get_dec_type())
             builder.store(value_to_assign, constant_var)
 
         main_func = self.__data.get_file(0).get_global_func().get_impl(1)
@@ -573,7 +574,7 @@ class CodeGen:
 
     def convert_type(self, builder, type_from, value, type_to):
         if type_to.is_python_obj():
-            return runtime.value_to_pyobj(self, builder, value, type_from)
+            return runtime.value_to_pyobj(self, builder, value, type_from)[1]
         elif type_to.is_obj():
             return builder.ptr_cast(type_to.get_id())
         raise ValueError("Impossible to convert the type")

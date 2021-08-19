@@ -121,6 +121,11 @@ class ParserVisitor(NodeVisitor):
 
         if len(targets) == 1:  # Normal assign
             self.__assign_type, self.__assign_value = self.__visit_node(node.value)
+
+            if not hint.is_incremented_type(self.__assign_type):
+                ref_counter.ref_incr(self, self.__assign_type, self.__assign_value)
+            hint.remove_hint_type(self.__assign_type, hint.TypeHintRefIncr)
+
             self.__reset_last()
             self.__last_type, self.__last_value = self.__visit_node(node.targets)
         else:  # Mult assign
@@ -128,6 +133,11 @@ class ParserVisitor(NodeVisitor):
                 for i, e in enumerate(targets):
                     self.__reset_last()
                     self.__assign_type, self.__assign_value = self.__visit_node(values[i])
+
+                    if not hint.is_incremented_type(self.__assign_type):
+                        ref_counter.ref_incr(self, self.__assign_type, self.__assign_value)
+                    hint.remove_hint_type(self.__assign_type, hint.TypeHintRefIncr)
+
                     self.__reset_last()
                     value_type, value = self.__visit_node(targets[i])
             elif len(targets) > 1 and len(values) == 1:  # unpack
@@ -141,6 +151,11 @@ class ParserVisitor(NodeVisitor):
         if node.value is not None:
             self.__assign_type, self.__assign_value = self.__visit_node(node.value)
             self.__reset_last()
+
+            if not hint.is_incremented_type(self.__assign_type):
+                ref_counter.ref_incr(self, self.__assign_type, self.__assign_value)
+            hint.remove_hint_type(self.__assign_type, hint.TypeHintRefIncr)
+
             self.__last_type, self.__last_value = self.__visit_node(node.target)
             self.__reset_last()
 
@@ -275,8 +290,8 @@ class ParserVisitor(NodeVisitor):
         if self.__last_type.is_python_obj():  # Python obj attribute. Type is unknown
             self.__last_type = lang_type.get_python_obj_type()
             if isinstance(node.ctx, ast.Store):
-                py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, self.__assign_value,
-                                                self.__assign_type)
+                _, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, self.__assign_value,
+                                                   self.__assign_type)
                 runtime.py_runtime_set_attr(self.__code_gen, self.__builder, self.__last_value, str_value, py_obj)
                 self.__last_become_assign()
             elif isinstance(node.ctx, ast.Del):
@@ -399,6 +414,7 @@ class ParserVisitor(NodeVisitor):
             str_error = "Call unrecognized with " + self.__last_type.to_str(self.__data)
             self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
 
+        self.__last_type.add_hint(hint.TypeHintRefIncr())
         ref_counter.ref_decr_multiple_incr(self, args_types, args)
 
     def visit_Subscript(self, node: Subscript) -> Any:
@@ -545,6 +561,8 @@ class ParserVisitor(NodeVisitor):
             self.__builder.cond_br(cond_value, block_go, other_block)
         else:
             self.__builder.cond_br(cond_value, block_go, block_continue)
+
+        ref_counter.ref_decr_incr(self, cond_type, cond_value)
 
         self.__builder.set_insert_block(block_go)
         self.__visit_node(node.body)
@@ -748,7 +766,6 @@ class ParserVisitor(NodeVisitor):
             else:
                 common_type = lang_type.get_type_common(self.__data, common_type, type)
 
-
         array = gen_list.instanciate_python_list(self.__code_gen, self.__builder,
                                                  self.__builder.const_int64(len(elts_values)))
         self.__last_value = array
@@ -757,7 +774,7 @@ class ParserVisitor(NodeVisitor):
         self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
 
         for i, e in enumerate(elts_values):
-            py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
+            py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
             index = self.__builder.const_int64(i)
             gen_list.python_list_set(self, self.__last_value, index, py_obj)
 

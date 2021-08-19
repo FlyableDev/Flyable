@@ -5,6 +5,7 @@ import flyable.data.lang_type as lang_type
 import flyable.code_gen.caller as caller
 import flyable.parse.op as parse_op
 import flyable.code_gen.runtime as runtime
+import flyable.code_gen.ref_counter as ref_counter
 
 
 def bin_op(visitor, op, type_left, value_left, type_right, value_right):
@@ -35,10 +36,12 @@ def bin_op(visitor, op, type_left, value_left, type_right, value_right):
         args = [value_right]
 
         if type_left.is_primitive():  # For a python call with a left primitive we need it to be an object
-            value_left = runtime.value_to_pyobj(visitor.get_code_gen(), builder, value_left, type_left)
-            type_left = lang_type.get_python_obj_type()
+            type_left, value_left = runtime.value_to_pyobj(visitor.get_code_gen(), builder, value_left, type_left)
 
-        return caller.call_obj(visitor, parse_op.get_op_func_call(op), value_left, type_left, args, args_types)
+        result = caller.call_obj(visitor, parse_op.get_op_func_call(op), value_left, type_left, args, args_types)
+        ref_counter.ref_decr_incr(visitor, type_left, value_left)
+        ref_counter.ref_decr_incr(visitor, type_right, value_right)
+        return result
     elif isinstance(op, ast.Add):
         return type_left, builder.add(value_left, value_right)
     elif isinstance(op, ast.Sub):

@@ -18,9 +18,12 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     builder = visitor.get_builder()
 
     num_call_args = []
+    num_call_args_types = []
 
     for i, e in enumerate(args):
-        num_call_args.append(runtime.value_to_pyobj(code_gen, builder, args[i], args_types[i]))
+        new_type, new_value = runtime.value_to_pyobj(code_gen, builder, args[i], args_types[i])
+        num_call_args.append(new_value)
+        num_call_args_types.append(new_type)
 
     slot = builder.const_int64(get_number_slot_from_func_name(func_name))
 

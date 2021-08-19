@@ -13,6 +13,7 @@ def remove_hint_type(lang_type, hint_type):
     for i, hint in enumerate(lang_type.get_hints()):
         if isinstance(hint, hint_type):
             lang_type.remove_hint(i)
+            remove_hint_type(lang_type, hint_type)
             return True
     return False
 

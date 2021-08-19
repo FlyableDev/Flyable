@@ -3,6 +3,7 @@ from flyable.code_gen.code_gen import CodeFunc
 import flyable.code_gen.code_type as code_type
 from flyable.code_gen.code_gen import *
 import flyable.data.type_hint as type_hint
+import flyable.code_gen.debug as debug
 
 """
 Module to call runtimes functions
@@ -47,6 +48,8 @@ def py_runtime_object_print(code_gen, builder, obj):
 
 
 def value_to_pyobj(code_gen, builder, value, value_type):
+    result_type = lang_type.get_python_obj_type()
+
     if value_type.is_int():
 
         int_const_hint = type_hint.get_lang_type_contained_hint_type(value_type, type_hint.TypeHintConstInt)
@@ -54,30 +57,34 @@ def value_to_pyobj(code_gen, builder, value, value_type):
         if int_const_hint is None:
             py_func = code_gen.get_or_create_func("PyLong_FromLongLong", code_type.get_py_obj_ptr(code_gen),
                                                   [CodeType(CodeType.CodePrimitive.INT64)], Linkage.EXTERNAL)
-            return builder.call(py_func, [value])
+            result_type.add_hint(type_hint.TypeHintRefIncr())
+            return result_type, builder.call(py_func, [value])
         else:
-            return builder.load(builder.global_var(code_gen.get_or_insert_const(int_const_hint.get_value())))
+            return result_type, builder.load(
+                builder.global_var(code_gen.get_or_insert_const(int_const_hint.get_value())))
     elif value_type.is_dec():
-
         dec_const_hint = type_hint.get_lang_type_contained_hint_type(value_type, type_hint.TypeHintConstDec)
         if dec_const_hint is None:
+            result_type.add_hint(type_hint.TypeHintRefIncr())
             py_func = code_gen.get_or_create_func("PyFloat_FromDouble", code_type.get_py_obj_ptr(code_gen),
                                                   [code_type.get_double()], Linkage.EXTERNAL)
-            return builder.call(py_func, [value])
+            return result_type, builder.call(py_func, [value])
         else:
-            return builder.load(builder.global_var(code_gen.get_or_insert_const(dec_const_hint.get_value())))
+            return result_type, builder.load(
+                builder.global_var(code_gen.get_or_insert_const(dec_const_hint.get_value())))
     elif value_type.is_bool():
         # TODO : Directly use the global var to avoid the func call
         py_func = code_gen.get_or_create_func("PyBool_FromLong", code_type.get_py_obj_ptr(code_gen),
                                               [code_type.get_int1()], Linkage.EXTERNAL)
-        return builder.call(py_func, [value])
+        result_type.add_hint(type_hint.TypeHintRefIncr())
+        return result_type, builder.call(py_func, [value])
     elif value_type.is_obj():
-        # Make sure the object is of python objet ptr so the signature works
-        return builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
+        # Make sure the object is of python objet ptr to keep consistent types
+        return result_type, builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
     elif value_type.is_none():
-        return builder.load(builder.global_var(code_gen.get_none()))
+        return result_type, builder.load(builder.global_var(code_gen.get_none()))
 
-    return value
+    return result_type, value
 
 
 def py_runtime_obj_len(code_gen, builder, value):
