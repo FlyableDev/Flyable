@@ -110,9 +110,9 @@ def allocate_flyable_instance(visitor, lang_class):
     value = runtime.malloc_call(visitor.get_code_gen(), visitor.get_builder(), alloc_size)
     value = visitor.get_builder().ptr_cast(value, ptr_type)
 
-    # Set the ref counter to 0
+    # Set the ref counter to 1
     ref_ptr = ref_counter.get_ref_counter_ptr(visitor, lang_type, value)
-    visitor.get_builder().store(visitor.get_builder().const_int64(100), ref_ptr)
+    visitor.get_builder().store(visitor.get_builder().const_int64(1), ref_ptr)
 
     # Set the type of
     type_ptr = get_py_obj_type_ptr(visitor.get_builder(), value)

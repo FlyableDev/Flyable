@@ -478,15 +478,17 @@ class CodeGen:
         impl.set_code_func(new_func)
         return new_func
 
-    def fill_not_terminated_block(self, func):
+    def fill_not_terminated_block(self, visitor):
         """
         Some blocks of code can end without any return. We need to generate
         the code so they can return nullified value
         """
+        func = visitor.get_func().get_code_func()
         for block in func.blocks_iter():
             if not block.has_br_block() and not block.has_return():
                 func.get_builder().set_insert_block(block)
                 func_return_type = func.get_return_type()
+                ref_counter.decr_all_variables(visitor)
                 if func_return_type == CodeType():
                     func.get_builder().ret_void()
                 else:

@@ -32,7 +32,7 @@ def call_py_func_vec_call(visitor, func_to_call, args, func_to_call_type=None):
 
     # Allocate memory for the args on the stack so it's much faster
     args_stack_memory = visitor.generate_entry_block_var(
-        code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), len(args) + 1))
+        code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), len(args)))
 
     # Set the args into the stack memory
     for i, e in enumerate(args):

@@ -1,5 +1,8 @@
+import copy
+
 import flyable.data.lang_type as type
 import flyable.parse.context as context
+import flyable.data.type_hint as hint
 import enum
 
 
@@ -44,6 +47,8 @@ class LangFuncImpl:
         return self.__id
 
     def add_arg(self, arg):
+        arg = copy.deepcopy(arg)
+        hint.remove_hint_type(arg, hint.TypeHintRefIncr)
         self.__args.append(arg)
 
     def get_arg(self, index):
@@ -77,6 +82,8 @@ class LangFuncImpl:
         return self.__return_type
 
     def set_return_type(self, return_type):
+        return_type = copy.deepcopy(return_type)
+        hint.remove_hint_type(return_type, hint.TypeHintRefIncr)
         self.__return_type = return_type
 
     def set_code_func(self, func):

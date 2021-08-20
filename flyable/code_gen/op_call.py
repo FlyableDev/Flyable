@@ -70,6 +70,10 @@ def cond_op(visitor, op, type_left, first_value, type_right, second_value):
     if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
         args_types = [type_right]
         args = [second_value]
+
+        ref_counter.ref_decr_incr(visitor, type_left, first_value)
+        ref_counter.ref_decr_incr(visitor, type_right, second_value)
+
         return caller.call_obj(visitor, parse_op.get_op_func_call(op), first_value, type_left, args, args_types)
     elif isinstance(op, ast.And):
         return lang_type.get_bool_type(), builder.op_and(first_value, second_value)

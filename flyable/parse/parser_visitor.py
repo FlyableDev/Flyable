@@ -88,7 +88,7 @@ class ParserVisitor(NodeVisitor):
         self.__builder.br(self.__content_block)
 
         self.__func.get_code_func().set_return_type(self.__func.get_return_type().to_code_type(self.__code_gen))
-        self.__code_gen.fill_not_terminated_block(self.__func.get_code_func())
+        self.__code_gen.fill_not_terminated_block(self)
 
     def visit(self, node):
         self.__current_node = node
@@ -214,7 +214,7 @@ class ParserVisitor(NodeVisitor):
 
         if left_type.is_primitive():
             old_value = self.__builder.load(left_value)
-            new_value = op_call.bin_op(self, node.op, left_type, old_value, right_type, right_value)
+            new_type, new_value = op_call.bin_op(self, node.op, left_type, old_value, right_type, right_value)
             self.__builder.store(new_value, left_value)
         else:
             raise NotImplementedError()
@@ -249,13 +249,18 @@ class ParserVisitor(NodeVisitor):
                 self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
             else:
                 self.__last_value = found_var.get_code_gen_value()
+
+            # Args don't live inside an alloca so they don't need to be loaded
             if not found_var.is_arg():
                 if isinstance(node.ctx, Store):
+                    old_content = self.__builder.load(self.__last_value)
+                    ref_counter.ref_decr_nullable(self, found_var.get_type(), old_content)
                     self.__builder.store(self.__assign_value, self.__last_value)
                     self.__last_become_assign()
                 else:
                     self.__last_value = self.__builder.load(self.__last_value)
                     self.__last_type = found_var.get_type()
+
         elif build.get_build_in_name(node.id) is not None:  # An element in the build-in module
             self.__last_type = lang_type.get_python_obj_type()
             module = self.__builder.global_var(self.__code_gen.get_build_in_module())
@@ -274,7 +279,7 @@ class ParserVisitor(NodeVisitor):
                 self.__builder.store(self.__assign_value, self.__builder.global_var(new_global_var))
                 self.__last_become_assign()
             else:
-                alloca_value = self.generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen))
+                alloca_value = self.generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen), True)
                 found_var.set_code_gen_value(alloca_value)
                 self.__builder.store(self.__assign_value, alloca_value)
                 self.__last_value = found_var.get_code_gen_value()
@@ -377,6 +382,7 @@ class ParserVisitor(NodeVisitor):
                 if isinstance(content, lang_class.LangClass):
                     # New instance class call
                     self.__last_type = lang_type.get_obj_type(content.get_id())
+                    self.__last_type.add_hint(hint.TypeHintRefIncr())
                     self.__last_value = fly_obj.allocate_flyable_instance(self, content)
 
                     # Call the constructor
@@ -471,6 +477,8 @@ class ParserVisitor(NodeVisitor):
 
         if not hint.is_incremented_type(return_type):  # Need to increment if we return to be consistent to CPython
             ref_counter.ref_incr(self, return_type, return_value)
+
+        ref_counter.decr_all_variables(self)
 
         if self.__func.get_return_type().is_unknown():
             self.__func.set_return_type(return_type)
@@ -1101,10 +1109,12 @@ class ParserVisitor(NodeVisitor):
             return self.__exception_blocks[-1]
         return None
 
-    def generate_entry_block_var(self, code_type):
+    def generate_entry_block_var(self, code_type, need_to_be_nulled=False):
         current_block = self.__builder.get_current_block()
         self.__builder.set_insert_block(self.__entry_block)
         new_alloca = self.__builder.alloca(code_type)
+        if need_to_be_nulled:
+            self.__builder.store(self.__builder.const_null(code_type), new_alloca)
         self.__builder.set_insert_block(current_block)
         return new_alloca
 
