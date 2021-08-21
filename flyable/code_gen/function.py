@@ -76,6 +76,7 @@ def call_py_func_tp_call(visitor, func_to_call, args):
 
     result = builder.call_ptr(ty_call_ptr, tp_args)
 
+    ref_counter.ref_decr_multiple(visitor, [lang_type.get_python_obj_type()] * len(args), args)
     ref_counter.ref_decr(visitor, lang_type.get_list_of_python_obj_type(), arg_list)
 
     return result

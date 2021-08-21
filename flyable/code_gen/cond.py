@@ -3,6 +3,8 @@ import flyable.code_gen.dict as _dict
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.caller as caller
+import flyable.data.type_hint as hint
+import flyable.code_gen.ref_counter as ref_counter
 
 
 def value_to_cond(visitor, value_type, value):
@@ -55,11 +57,12 @@ def test_obj_true(visitor, value_type, value):
     cond_type, cond_value = caller.call_obj(visitor, "__bool__", value, value_type, [], [])
     if cond_type.is_python_obj():
         is_true_2 = builder.eq(cond_value, true_value)
+        ref_counter.ref_decr_incr(visitor, cond_type, cond_value)
         builder.cond_br(is_true_2, true_block, false_block)
     elif cond_type.is_bool() or cond_type.is_int():
         builder.cond_br(cond_value, true_block, false_block)
     else:
-        error_str = "__bool__ should return bool, returned" + cond_type.to_str(code_gen.get_data())
+        error_str = "__bool__ should return bool, returned '" + cond_type.to_str(code_gen.get_data()) + "' instead"
         visitor.get_parser().throw_error(error_str, visitor.get_current_node().line_no, 0)
 
     builder.set_insert_block(false_block)

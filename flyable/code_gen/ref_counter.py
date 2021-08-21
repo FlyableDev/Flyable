@@ -7,6 +7,7 @@ import flyable.code_gen.type as gen_type
 import flyable.code_gen.code_type as code_type
 import flyable.data.type_hint as hint
 import flyable.code_gen.caller as caller
+import flyable.code_gen.runtime as runtime
 import flyable.code_gen.debug as debug
 import flyable.code_gen.exception as excp
 
@@ -40,10 +41,11 @@ def ref_incr(visitor, value_type, value):
     Generate the code to increment the reference counter by one
     """
     builder = visitor.get_builder()
-    ref_ptr = get_ref_counter_ptr(visitor, value_type, value)
-    if ref_ptr is not None:
+    if is_ref_counting_type(value_type):
+        ref_ptr = get_ref_counter_ptr(visitor, value_type, value)
         ref_count = builder.load(ref_ptr)
         ref_count = builder.add(ref_count, builder.const_int64(1))
+        debug.flyable_debug_print_int64(visitor.get_code_gen(), visitor.get_builder(), ref_count)
         builder.store(ref_count, ref_ptr)
 
 
@@ -53,15 +55,19 @@ def ref_decr(visitor, value_type, value):
 
     if is_ref_counting_type(value_type):
         ref_ptr = get_ref_counter_ptr(visitor, value_type, value)
-        dealloc_block = builder.create_block()
-        continue_block = builder.create_block()
         ref_count = builder.load(ref_ptr)
+
+        dealloc_block = builder.create_block()
+        decrement_block = builder.create_block()
+        continue_block = builder.create_block()
+
         need_to_dealloc = builder.eq(ref_count, builder.const_int64(1))
-        builder.cond_br(need_to_dealloc, dealloc_block, continue_block)
+        builder.cond_br(need_to_dealloc, dealloc_block, decrement_block)
 
         builder.set_insert_block(dealloc_block)
         if value_type.is_obj():
             caller.call_obj(visitor, "__del__", value, value_type, [], [], True)
+            runtime.free_call(code_gen, builder, value)
         elif value_type.is_python_obj() or value_type.is_collection():
             obj_type = fly_obj.get_py_obj_type(visitor.get_builder(), value)
             dealloc_ptr = gen_type.py_object_type_get_dealloc_ptr(visitor, obj_type)
@@ -71,6 +77,12 @@ def ref_decr(visitor, value_type, value):
             dealloc_ptr = builder.load(dealloc_ptr)
             builder.call_ptr(dealloc_ptr, [value])
         builder.br(continue_block)
+
+        builder.set_insert_block(decrement_block)
+        new_ref_count = builder.sub(ref_count, builder.const_int64(1))
+        builder.store(new_ref_count, ref_ptr)
+        builder.br(continue_block)
+
         builder.set_insert_block(continue_block)
 
 

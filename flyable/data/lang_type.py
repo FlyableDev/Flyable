@@ -25,26 +25,31 @@ def get_type_common(data, primary_type, second_type=None):
     Return a type that can contains both types.
     Return none if no common types found
     """
+    result = None
     if isinstance(primary_type, list) and second_type is None:
-        current_type = primary_type[0]
+        # Support the case where there is more than two types to check
+        current_type = copy.deepcopy(primary_type[0])
         type_iter = next(iter(primary_type))
         for e in type_iter:
             current_type = get_type_common(data, current_type, e)
         return current_type
     else:
         if primary_type == second_type:
-            return primary_type
+            result = copy.deepcopy(primary_type)
+            result.clear_hints()
         elif primary_type.is_python_obj() or second_type.is_python_obj():
-            return get_python_obj_type()
+            result = get_python_obj_type()
         elif primary_type.is_obj() and second_type.is_obj():
-            return get_python_obj_type()
+            result = get_python_obj_type()
         elif primary_type.is_none() or second_type.is_none():
-            return get_python_obj_type()
+            result = get_python_obj_type()
         elif primary_type.is_primitive() or second_type.is_primitive():
             # If one of them is primitive but they are not equals, only a py object can represent both
-            return get_python_obj_type()
+            result = get_python_obj_type()
         else:
             raise NotImplementedError()
+
+    return result
 
 
 def get_int_type():
@@ -238,6 +243,9 @@ class LangType:
 
     def get_hints(self):
         return copy.deepcopy(self.__hints)
+
+    def clear_hints(self):
+        self.__hints.clear()
 
     def __eq__(self, other):
         return self.__type == other.__type

@@ -28,6 +28,13 @@ def malloc_call(code_gen, builder, value_size):
     return builder.call(malloc_func, [value_size])
 
 
+def free_call(code_gen, builder, memory_to_free):
+    free_func = code_gen.get_or_create_func("PyMem_Free", code_type.get_void(), [code_type.get_int8_ptr()],
+                                            Linkage.EXTERNAL)
+    memory_to_free = builder.ptr_cast(memory_to_free, code_type.get_int8_ptr())
+    return builder.call(free_func, [memory_to_free])
+
+
 def py_runtime_get_string(code_gen, builder, value):
     str_ptr = builder.ptr_cast(builder.global_str(value), code_type.get_int8_ptr())
     args_type = [code_type.get_int8_ptr(), code_type.get_int64()]
@@ -78,7 +85,7 @@ def value_to_pyobj(code_gen, builder, value, value_type):
                                               [code_type.get_int1()], Linkage.EXTERNAL)
         result_type.add_hint(type_hint.TypeHintRefIncr())
         return result_type, builder.call(py_func, [value])
-    elif value_type.is_obj():
+    elif value_type.is_obj() or value_type.is_collection():
         # Make sure the object is of python objet ptr to keep consistent types
         return result_type, builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
     elif value_type.is_none():

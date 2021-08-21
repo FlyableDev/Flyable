@@ -56,6 +56,7 @@ class ParserVisitor(NodeVisitor):
         self.__assign_depth = 0
 
         self.__out_blocks = []  # Hierarchy of blocks to jump when a context is over
+        self.__cond_blocks = []  # Hierarchy of current blocks that might not get executed
         self.__exception_blocks = []  # Hierarchy of blocks to jump when an exception occur to dispatch it
 
         self.__entry_block = func_impl.get_code_func().add_block()
@@ -202,6 +203,7 @@ class ParserVisitor(NodeVisitor):
             current_op = node.ops[e]
             last_type, last_value = op_call.cond_op(self, current_op, first_type, first_value, second_type,
                                                     second_value)
+            ref_counter.ref_decr_multiple_incr(self, [first_type, second_type], [first_value, second_value])
         self.__last_value = last_value
         self.__last_type = last_type
 
@@ -253,8 +255,14 @@ class ParserVisitor(NodeVisitor):
             # Args don't live inside an alloca so they don't need to be loaded
             if not found_var.is_arg():
                 if isinstance(node.ctx, Store):
+                    # Decrement the old content
                     old_content = self.__builder.load(self.__last_value)
                     ref_counter.ref_decr_nullable(self, found_var.get_type(), old_content)
+
+                    # The variable might have a new type
+                    found_var.set_type(lang_type.get_type_common(self.__data, found_var.get_type(), self.__assign_type))
+
+                    # Store the new content
                     self.__builder.store(self.__assign_value, self.__last_value)
                     self.__last_become_assign()
                 else:
@@ -562,14 +570,15 @@ class ParserVisitor(NodeVisitor):
         if has_other_block:
             other_block = self.__builder.create_block()
 
-        cond_type, cond_value = self.__visit_node(node.test)
-        cond_type, cond_value = cond.value_to_cond(self, cond_type, cond_value)
+        cond_type_test, cond_value_test = self.__visit_node(node.test)
+        cond_type, cond_value = cond.value_to_cond(self, cond_type_test, cond_value_test)
 
         if has_other_block:
             self.__builder.cond_br(cond_value, block_go, other_block)
         else:
             self.__builder.cond_br(cond_value, block_go, block_continue)
 
+        ref_counter.ref_decr_incr(self, cond_type_test, cond_value_test)
         ref_counter.ref_decr_incr(self, cond_type, cond_value)
 
         self.__builder.set_insert_block(block_go)
@@ -578,12 +587,8 @@ class ParserVisitor(NodeVisitor):
 
         if has_other_block:
             self.__builder.set_insert_block(other_block)
-            if isinstance(node.orelse, ast.If):  # elif handle
-                self.__visit_node(node.orelse)
-                self.__builder.br(block_continue)
-            else:  # Else statement
-                self.__visit_node(node.orelse)
-                self.__builder.br(block_continue)
+            self.__visit_node(node.orelse)
+            self.__builder.br(block_continue)
 
         self.__builder.set_insert_block(block_continue)
 
@@ -778,8 +783,13 @@ class ParserVisitor(NodeVisitor):
                                                  self.__builder.const_int64(len(elts_values)))
         self.__last_value = array
 
-        self.__last_type = copy.deepcopy(common_type)
-        self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
+        if self.__last_type is None:
+            self.__last_type = lang_type.get_list_of_python_obj_type()
+        else:
+            self.__last_type = copy.deepcopy(common_type)
+            self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
+
+        self.__last_type.add_hint(hint.TypeHintRefIncr())
 
         for i, e in enumerate(elts_values):
             py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
@@ -800,6 +810,7 @@ class ParserVisitor(NodeVisitor):
         new_tuple = gen_tuple.python_tuple_new(self.__code_gen, self.__builder,
                                                self.__builder.const_int64(len(elts_values)))
         self.__last_value = new_tuple
+        self.__last_type.add_hint(hint.TypeHintRefIncr())
 
         for i, e in enumerate(elts_values):
             py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
@@ -874,6 +885,7 @@ class ParserVisitor(NodeVisitor):
             gen_set.python_set_add(self, new_set, py_obj)
         self.__last_value = new_set
         self.__last_type = set_type
+        self.__last_type.add_hint(hint.TypeHintRefIncr())
 
     def visit_DictComp(self, node: DictComp) -> Any:
         result_dict = gen_dict.python_dict_new(self)
