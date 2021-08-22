@@ -573,13 +573,13 @@ class ParserVisitor(NodeVisitor):
         cond_type_test, cond_value_test = self.__visit_node(node.test)
         cond_type, cond_value = cond.value_to_cond(self, cond_type_test, cond_value_test)
 
+        ref_counter.ref_decr_incr(self, cond_type_test, cond_value_test)
+        ref_counter.ref_decr_incr(self, cond_type, cond_value)
+
         if has_other_block:
             self.__builder.cond_br(cond_value, block_go, other_block)
         else:
             self.__builder.cond_br(cond_value, block_go, block_continue)
-
-        ref_counter.ref_decr_incr(self, cond_type_test, cond_value_test)
-        ref_counter.ref_decr_incr(self, cond_type, cond_value)
 
         self.__builder.set_insert_block(block_go)
         self.__visit_node(node.body)

@@ -38,9 +38,12 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
         return_type = called_impl.get_return_type()
         return_type.add_hint(hint.TypeHintRefIncr())
         return return_type, visitor.get_builder().call(called_impl.get_code_func(), [obj] + args)
-    elif obj_type.is_python_obj() or obj_type.is_collection():
-        # Maybe there is a shortcut available to skip the python call
+    elif obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive():
 
+        # The caller can be a primitive, convert if it's the case
+        obj_type, obj = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), obj, obj_type)
+
+        # Maybe there is a shortcut available to skip the python call
         found_shortcut = shortcut.get_obj_call_shortcuts(obj_type, args_type, func_name)
         if found_shortcut is not None:
             return found_shortcut.parse(visitor, obj_type, obj, copy.copy(args_type), copy.copy(args))
@@ -77,10 +80,6 @@ def generate_python_call(visitor, obj, func_name, args):
 
     call_result_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
 
-    vector_call_block = builder.create_block()
-    tp_call_block = builder.create_block()
-    continue_block = builder.create_block()
-
     callable_type = fly_obj.get_py_obj_type(visitor.get_builder(), func_to_call)
 
     tp_flag = function.py_obj_type_get_tp_flag_ptr(visitor, callable_type)
@@ -89,12 +88,16 @@ def generate_python_call(visitor, obj, func_name, args):
     can_vec = builder._and(tp_flag, builder.const_int32(2048))  # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
     can_vec = builder.eq(can_vec, builder.const_int32(0))
 
+    vector_call_block = builder.create_block()
+    tp_call_block = builder.create_block()
+
     # If it's non-zero then it has the feature
     builder.cond_br(can_vec, tp_call_block, vector_call_block)
 
     builder.set_insert_block(vector_call_block)
     vec_result = function.call_py_func_vec_call(visitor, func_to_call, args, callable_type)
     builder.store(vec_result, call_result_var)
+    continue_block = builder.create_block()
     builder.br(continue_block)
 
     builder.set_insert_block(tp_call_block)

@@ -292,6 +292,9 @@ class CodeBuilder:
     def get_total_block(self):
         return self.__current_block
 
+    def get_writer(self):
+        return self.__writer
+
     def __gen_value(self):
         new_value = self.__func.increment_value()
         self.__writer.add_int32(new_value)

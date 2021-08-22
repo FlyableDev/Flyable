@@ -68,6 +68,11 @@ def bin_op(visitor, op, type_left, value_left, type_right, value_right):
 def cond_op(visitor, op, type_left, first_value, type_right, second_value):
     builder = visitor.get_builder()
     if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
+
+        """
+        If one of the two values is a python object then both objects need to be a python object
+        """
+
         args_types = [type_right]
         args = [second_value]
 

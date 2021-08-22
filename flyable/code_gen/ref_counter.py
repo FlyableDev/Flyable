@@ -59,7 +59,6 @@ def ref_decr(visitor, value_type, value):
 
         dealloc_block = builder.create_block()
         decrement_block = builder.create_block()
-        continue_block = builder.create_block()
 
         need_to_dealloc = builder.eq(ref_count, builder.const_int64(1))
         builder.cond_br(need_to_dealloc, dealloc_block, decrement_block)
@@ -76,6 +75,9 @@ def ref_decr(visitor, value_type, value):
             dealloc_ptr = builder.ptr_cast(dealloc_ptr, dealloc_type)
             dealloc_ptr = builder.load(dealloc_ptr)
             builder.call_ptr(dealloc_ptr, [value])
+
+        continue_block = builder.create_block()
+
         builder.br(continue_block)
 
         builder.set_insert_block(decrement_block)

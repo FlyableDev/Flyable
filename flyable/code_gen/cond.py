@@ -41,20 +41,19 @@ def test_obj_true(visitor, value_type, value):
     true_ptr = builder.global_var(code_gen.get_true())
     true_value = builder.load(true_ptr)
 
+    is_true = builder.eq(value, true_value)
     true_block = builder.create_block()
     test_true_with_call_block = builder.create_block()
-    false_block = builder.create_block()
-    continue_block = builder.create_block()
-
-    is_true = builder.eq(value, true_value)
     builder.cond_br(is_true, true_block, test_true_with_call_block)
 
     builder.set_insert_block(true_block)
     builder.store(builder.const_int1(True), result)
+    continue_block = builder.create_block()
     builder.br(continue_block)
 
     builder.set_insert_block(test_true_with_call_block)
     cond_type, cond_value = caller.call_obj(visitor, "__bool__", value, value_type, [], [])
+    false_block = builder.create_block()
     if cond_type.is_python_obj():
         is_true_2 = builder.eq(cond_value, true_value)
         ref_counter.ref_decr_incr(visitor, cond_type, cond_value)
