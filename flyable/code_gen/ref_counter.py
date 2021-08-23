@@ -45,7 +45,6 @@ def ref_incr(visitor, value_type, value):
         ref_ptr = get_ref_counter_ptr(visitor, value_type, value)
         ref_count = builder.load(ref_ptr)
         ref_count = builder.add(ref_count, builder.const_int64(1))
-        debug.flyable_debug_print_int64(visitor.get_code_gen(), visitor.get_builder(), ref_count)
         builder.store(ref_count, ref_ptr)
 
 

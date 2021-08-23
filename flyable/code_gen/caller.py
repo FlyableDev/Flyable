@@ -41,7 +41,8 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
     elif obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive():
 
         # The caller can be a primitive, convert if it's the case
-        obj_type, obj = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), obj, obj_type)
+        if obj_type.is_primitive():
+            obj_type, obj = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), obj, obj_type)
 
         # Maybe there is a shortcut available to skip the python call
         found_shortcut = shortcut.get_obj_call_shortcuts(obj_type, args_type, func_name)
@@ -106,6 +107,10 @@ def generate_python_call(visitor, obj, func_name, args):
     builder.br(continue_block)
 
     builder.set_insert_block(continue_block)
+
+    # UNSURE IF THE DECREMENT IS NEEDED HERE
+    import flyable.code_gen.ref_counter as ref_counter
+    ref_counter.ref_decr(visitor, lang_type.get_python_obj_type(), obj)
 
     result = builder.load(call_result_var)
     # excp.py_runtime_print_error(code_gen, builder)

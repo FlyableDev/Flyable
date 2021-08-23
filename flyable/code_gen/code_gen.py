@@ -197,6 +197,9 @@ class CodeFunc:
     def get_builder(self):
         return self.__builder
 
+    def clear_blocks(self):
+        self.__blocks.clear()
+
     def get_blocks_count(self):
         return len(self.__blocks)
 
@@ -483,6 +486,7 @@ class CodeGen:
         Some blocks of code can end without any return. We need to generate
         the code so they can return nullified value
         """
+        builder = visitor.get_builder()
         func = visitor.get_func().get_code_func()
         for block in func.blocks_iter():
             if not block.has_br_block() and not block.has_return():
@@ -491,6 +495,10 @@ class CodeGen:
                 ref_counter.decr_all_variables(visitor)
                 if func_return_type == CodeType():
                     func.get_builder().ret_void()
+                elif visitor.get_func().get_return_type() == lang_type.get_python_obj_type():
+                    none_value = builder.load(builder.global_var(self.get_none()))
+                    ref_counter.ref_incr(visitor, lang_type.get_python_obj_type(), none_value)
+                    builder.ret(none_value)
                 else:
                     func.get_builder().ret(func.get_builder().const_null(func_return_type))
 
@@ -561,10 +569,12 @@ class CodeGen:
             constant_var = builder.global_var(self.__py_constants[key])
             if isinstance(key, int):
                 value_to_convert = builder.const_int64(key)
-                type_to_assign,value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert, lang_type.get_int_type())
+                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert,
+                                                                         lang_type.get_int_type())
             else:
                 value_to_convert = builder.const_float64(key)
-                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert, lang_type.get_dec_type())
+                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert,
+                                                                         lang_type.get_dec_type())
             builder.store(value_to_assign, constant_var)
 
         main_func = self.__data.get_file(0).get_global_func().get_impl(1)

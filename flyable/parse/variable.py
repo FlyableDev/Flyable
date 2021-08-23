@@ -1,4 +1,8 @@
+import copy
+
 import flyable.data.lang_type as type
+import flyable.data.type_hint
+import flyable.data.type_hint as hint
 
 
 class Variable:
@@ -23,6 +27,8 @@ class Variable:
         return self.__name
 
     def set_type(self, type):
+        type = copy.deepcopy(type)
+        hint.remove_hint_type(type, hint.TypeHintRefIncr)
         self.__type = type
 
     def get_type(self):

@@ -79,6 +79,7 @@ class ParserVisitor(NodeVisitor):
         self.__last_type = None
         self.__reset_visit = True
         while self.__reset_visit:
+            self.__reset_info()
             self.__reset_visit = False
             self.visit(self.__func.get_parent_func().get_node().body)
             self.__parse_over()
@@ -147,8 +148,10 @@ class ParserVisitor(NodeVisitor):
                 self.__parser.throw_error("Incorrect amount of value to unpack", node.lineno, node.end_col_offset)
 
         self.__reset_last()
+        self.__assign_depth -= 1
 
     def visit_AnnAssign(self, node: AnnAssign) -> Any:
+        self.__assign_depth += 1
         if node.value is not None:
             self.__assign_type, self.__assign_value = self.__visit_node(node.value)
             self.__reset_last()
@@ -159,6 +162,8 @@ class ParserVisitor(NodeVisitor):
 
             self.__last_type, self.__last_value = self.__visit_node(node.target)
             self.__reset_last()
+
+        self.__assign_depth -= 1
 
     def visit_BinOp(self, node: BinOp) -> Any:
         left_type, left_value = self.__visit_node(node.left)
@@ -497,9 +502,12 @@ class ParserVisitor(NodeVisitor):
         elif return_type == self.__func.get_return_type():
             self.__builder.ret(return_value)
         else:
-            str_error = "Incompatible return type. Type " + self.__func.get_return_type().to_str(
-                self.__data) + " expected instead of " + return_type.to_str(self.__data)
-            self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
+            if not self.__func.get_return_type().is_python_obj():
+                # We need to re-visit the function since we change the return type
+                self.__func.set_return_type(lang_type.get_python_obj_type())
+                self.__reset_visit = True
+            conv_type, conv_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, return_value, return_type)
+            self.__builder.ret(conv_value)
 
     def visit_Constant(self, node: Constant) -> Any:
         if isinstance(node.value, bool):
@@ -1159,3 +1167,26 @@ class ParserVisitor(NodeVisitor):
                 impl = parent_func.get_impl(1)
                 result = impl.get_context().find_active_var(name)
         return result
+
+    def __reset_info(self):
+        self.__mode = ParserVisitMode.GENERAL
+        self.__assign_type: LangType = LangType()
+        self.__assign_value = None
+        self.__last_type: LangType = LangType()
+        self.__last_value = None
+        self.__current_node = None
+        self.__reset_visit = False
+
+        self.__assign_depth = 0
+
+        self.__out_blocks.clear()
+        self.__cond_blocks.clear()
+        self.__exception_blocks.clear()
+
+        self.__func.get_code_func().clear_blocks()
+        self.__entry_block = self.__func.get_code_func().add_block()
+
+        self.__builder.set_insert_block(self.__entry_block)
+
+        self.__content_block = self.__builder.create_block()
+        self.__builder.set_insert_block(self.__content_block)
