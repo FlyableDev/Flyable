@@ -241,6 +241,7 @@ class CodeGen:
         self.__false_var = None
         self.__none_var = None
         self.__method_type = None
+        self.__tuple_type = None
         self.__build_in_module = None
         self.__python_obj_struct = None
         self.__python_list_struct = None
@@ -329,6 +330,8 @@ class CodeGen:
             GlobalVar("PyFunction_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
         self.__method_type = self.add_global_var(
             GlobalVar("PyMethod_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
+        self.__tuple_type = self.add_global_var(
+            GlobalVar("PyTuple_Type", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
 
         self.__build_in_module = self.add_global_var(GlobalVar("__flyable@BuildIn@Module@",
                                                                code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
@@ -371,6 +374,9 @@ class CodeGen:
         Return the global variable containing the PyFunctionObject python type
         """
         return self.__py_func_type_var
+
+    def get_tuple_type(self):
+        return self.__tuple_type
 
     def get_method_type(self):
         """
@@ -564,6 +570,10 @@ class CodeGen:
         # Set the build-in module
         build_in_module = gen_module.import_py_module(self, builder, "builtins")
         builder.store(build_in_module, builder.global_var(self.get_build_in_module()))
+        # Set the tuple type
+        tuple_func_type = self.get_or_create_func("flyable_get_tuple_type", code_type.get_py_obj_ptr(self), [],
+                                                  Linkage.EXTERNAL)
+        builder.store(builder.call(tuple_func_type, []), builder.global_var(self.get_tuple_type()))
 
         # Set the constant
         for key in self.__py_constants.keys():

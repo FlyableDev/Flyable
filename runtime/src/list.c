@@ -47,3 +47,8 @@ int python_list_resize(PyListObject *self, Py_ssize_t newsize)
     self->allocated = new_allocated;
     return 0;
 }
+
+PyObject* flyable_get_tuple_type()
+{
+    return &PyTuple_Type;
+}

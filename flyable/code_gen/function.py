@@ -53,12 +53,9 @@ def call_py_func_tp_call(visitor, func_to_call, args):
     """
     Call a python function using the tp_call convention
     """
-
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
-
-    call_funcs_args = [code_type.get_py_obj_ptr(visitor.get_code_gen())] * 3
-    arg_list = tuple_call.python_tuple_new(code_gen, builder, builder.const_int64(len(args)))
+    arg_list = tuple_call.python_tuple_new_alloca(visitor, len(args))
     for i, e in enumerate(args):
         tuple_call.python_tuple_set_unsafe(visitor, arg_list, i, e)
 
@@ -76,8 +73,7 @@ def call_py_func_tp_call(visitor, func_to_call, args):
 
     result = builder.call_ptr(ty_call_ptr, tp_args)
 
-    # The decr of the list in cpython decrement all objects inside too
-    ref_counter.ref_decr(visitor, lang_type.get_list_of_python_obj_type(), arg_list)
+    ref_counter.ref_decr_multiple(visitor, [lang_type.get_python_obj_type()] * len(args), args)
 
     return result
 

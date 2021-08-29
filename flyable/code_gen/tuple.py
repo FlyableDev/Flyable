@@ -27,16 +27,20 @@ def python_tuple_new_alloca(visitor, size):
     """
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
-    tuple_result = visitor.generate_entry_block_var(code_gen.get_py_tuple_struct().to_code_type())
+    tuple_result = visitor.generate_entry_block_var(
+        code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), size + 10))
 
-    ref_counter.set_ref_count(visitor, tuple_result, builder.const_int64(0))
-    builder.store(builder.const_int64(1), python_tuple_get_size_ptr(visitor, tuple_result))
+    type_ptr = fly_obj.get_py_obj_type_ptr(builder, tuple_result)
+    type_ptr = builder.ptr_cast(type_ptr, code_type.get_py_obj_ptr(code_gen).get_ptr_to())
+    builder.store(builder.load(builder.global_var(code_gen.get_tuple_type())), type_ptr)
 
-    size_ptr = python_tuple_get_size_ptr(visitor,tuple_result)
-    builder.store(builder.const_int64(size_ptr), size_ptr)
+    tuple_result = builder.ptr_cast(tuple_result, code_gen.get_py_tuple_struct().to_code_type().get_ptr_to())
 
-    # type_ptr = fly_obj.get_py_obj_type_ptr(visitor.get_builder, tuple_result)
+    ref_counter.set_ref_count(visitor, tuple_result, builder.const_int64(5))
+    builder.store(builder.const_int64(size), python_tuple_get_size_ptr(visitor, tuple_result))
+
     tuple_result = builder.ptr_cast(tuple_result, code_type.get_py_obj_ptr(code_gen))
+
     return tuple_result
 
 
