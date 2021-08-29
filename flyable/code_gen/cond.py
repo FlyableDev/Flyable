@@ -54,7 +54,7 @@ def test_obj_true(visitor, value_type, value):
     builder.set_insert_block(test_true_with_call_block)
     cond_type, cond_value = caller.call_obj(visitor, "__bool__", value, value_type, [], [])
     false_block = builder.create_block()
-    if cond_type.is_python_obj():
+    if cond_type.is_python_obj() or cond_type.is_collection() or cond_type.is_obj():
         is_true_2 = builder.eq(cond_value, true_value)
         ref_counter.ref_decr_incr(visitor, cond_type, cond_value)
         builder.cond_br(is_true_2, true_block, false_block)

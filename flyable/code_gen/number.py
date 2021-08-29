@@ -38,8 +38,8 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
         func_type = func_type.get_ptr_to()
         func_to_call = builder.ptr_cast(func_to_call, func_type)
 
-        for e in num_call_args:
-            ref_counter.ref_decr(visitor, lang_type.get_python_obj_type(), e)
+        for i in range(len(num_call_args)):
+            ref_counter.ref_decr_incr(visitor, num_call_args_types[i], num_call_args[i])
 
         return builder.call_ptr(func_to_call, [obj] + num_call_args)
 

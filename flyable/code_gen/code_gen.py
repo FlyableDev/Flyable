@@ -323,7 +323,8 @@ class CodeGen:
             GlobalVar("@Flyable@_True", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__false_var = self.add_global_var(
             GlobalVar("@Flyable@_False", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
-        self.__none_var = self.add_global_var(GlobalVar("Py_None", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
+        self.__none_var = self.add_global_var(
+            GlobalVar("_Py_NoneStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
         self.__py_func_type_var = self.add_global_var(
             GlobalVar("PyFunction_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
         self.__method_type = self.add_global_var(
@@ -496,7 +497,7 @@ class CodeGen:
                 if func_return_type == CodeType():
                     func.get_builder().ret_void()
                 elif visitor.get_func().get_return_type() == lang_type.get_python_obj_type():
-                    none_value = builder.load(builder.global_var(self.get_none()))
+                    none_value = builder.global_var(self.get_none())
                     ref_counter.ref_incr(visitor, lang_type.get_python_obj_type(), none_value)
                     builder.ret(none_value)
                 else:

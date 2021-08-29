@@ -91,7 +91,7 @@ def value_to_pyobj(code_gen, builder, value, value_type):
             result_type.add_hint(type_hint.TypeHintRefIncr())
         return result_type, builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
     elif value_type.is_none():
-        none_value = builder.load(builder.global_var(code_gen.get_none()))
+        none_value = builder.global_var(code_gen.get_none())
         return result_type, none_value
 
     return result_type, value

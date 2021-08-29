@@ -34,13 +34,7 @@ def bin_op(visitor, op, type_left, value_left, type_right, value_right):
     if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
         args_types = [type_right]
         args = [value_right]
-
-        if type_left.is_primitive():  # For a python call with a left primitive we need it to be an object
-            type_left, value_left = runtime.value_to_pyobj(visitor.get_code_gen(), builder, value_left, type_left)
-
         result = caller.call_obj(visitor, parse_op.get_op_func_call(op), value_left, type_left, args, args_types)
-        ref_counter.ref_decr_incr(visitor, type_left, value_left)
-        ref_counter.ref_decr_incr(visitor, type_right, value_right)
         return result
     elif isinstance(op, ast.Add):
         return type_left, builder.add(value_left, value_right)
@@ -75,9 +69,6 @@ def cond_op(visitor, op, type_left, first_value, type_right, second_value):
 
         args_types = [type_right]
         args = [second_value]
-
-        ref_counter.ref_decr_incr(visitor, type_left, first_value)
-        ref_counter.ref_decr_incr(visitor, type_right, second_value)
 
         return caller.call_obj(visitor, parse_op.get_op_func_call(op), first_value, type_left, args, args_types)
     elif isinstance(op, ast.And):

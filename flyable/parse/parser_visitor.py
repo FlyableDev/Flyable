@@ -167,12 +167,13 @@ class ParserVisitor(NodeVisitor):
 
     def visit_BinOp(self, node: BinOp) -> Any:
         left_type, left_value = self.__visit_node(node.left)
-        self.__last_type = None
+        self.__reset_last()
         right_type, right_value = self.__visit_node(node.right)
         self.__visit_node(node.op)
         self.__last_type, self.__last_value = op_call.bin_op(self, node.op, left_type, left_value, right_type,
                                                              right_value)
-        ref_counter.ref_decr_multiple_incr(self, [left_type, right_type], [left_value, right_value])
+        ref_counter.ref_decr_incr(self, left_type, left_value)
+        ref_counter.ref_decr_incr(self, right_type, right_value)
 
     def visit_UnaryOp(self, node: UnaryOp) -> Any:
         value_type, value = self.__visit_node(node.operand)
@@ -227,12 +228,14 @@ class ParserVisitor(NodeVisitor):
             raise NotImplementedError()
 
     def visit_Expr(self, node: Expr) -> Any:
-        self.__last_type = None
-        self.__last_value = None
-        super().visit(node.value)
+        # Represent an expression with the return value unused
+        self.__reset_last()
+        self.__last_type, self.__last_value = self.__visit_node(node.value)
+
+        ref_counter.ref_decr_incr(self, self.__last_type, self.__last_value)
 
     def visit_Expression(self, node: Expression) -> Any:
-        self.__last_type = None
+        self.__reset_last()
         self.__last_type, self.__last_value = self.__visit_node(node.body)
 
     def visit_NamedExpr(self, node: NamedExpr) -> Any:
@@ -273,7 +276,6 @@ class ParserVisitor(NodeVisitor):
                 else:
                     self.__last_value = self.__builder.load(self.__last_value)
                     self.__last_type = found_var.get_type()
-
         elif build.get_build_in_name(node.id) is not None:  # An element in the build-in module
             self.__last_type = lang_type.get_python_obj_type()
             module = self.__builder.global_var(self.__code_gen.get_build_in_module())
@@ -490,6 +492,8 @@ class ParserVisitor(NodeVisitor):
 
         if not hint.is_incremented_type(return_type):  # Need to increment if we return to be consistent to CPython
             ref_counter.ref_incr(self, return_type, return_value)
+
+        return_type.clear_hints()
 
         ref_counter.decr_all_variables(self)
 

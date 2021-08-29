@@ -18,6 +18,7 @@ import flyable.code_gen.function as function
 import flyable.code_gen.fly_obj as fly_obj
 import flyable.data.type_hint as hint
 import flyable.code_gen.number as num
+import flyable.code_gen.ref_counter as ref_counter
 
 
 def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False):
@@ -40,34 +41,41 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
         return return_type, visitor.get_builder().call(called_impl.get_code_func(), [obj] + args)
     elif obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive():
 
+        did_caller_conversion = False
         # The caller can be a primitive, convert if it's the case
         if obj_type.is_primitive():
+            did_caller_conversion = True
             obj_type, obj = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), obj, obj_type)
 
         # Maybe there is a shortcut available to skip the python call
         found_shortcut = shortcut.get_obj_call_shortcuts(obj_type, args_type, func_name)
         if found_shortcut is not None:
-            return found_shortcut.parse(visitor, obj_type, obj, copy.copy(args_type), copy.copy(args))
-
+            result = found_shortcut.parse(visitor, obj_type, obj, copy.copy(args_type), copy.copy(args))
         # Special case where the call is a binary number protocol
-        if num.is_number_protocol_func(func_name) and num.is_type_impl_number_protocol(visitor, obj_type):
+        elif num.is_number_protocol_func(func_name) and num.is_type_impl_number_protocol(visitor, obj_type):
             instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
-            return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), num.call_number_protocol(visitor, func_name,
-                                                                                                   obj_type, obj,
-                                                                                                   instance_type,
-                                                                                                   args_type, args)
+            result = lang_type.get_python_obj_type(hint.TypeHintRefIncr()), num.call_number_protocol(visitor, func_name,
+                                                                                                     obj_type, obj,
+                                                                                                     instance_type,
+                                                                                                     args_type, args)
+        else:  # Python call
+            py_args = copy.copy(args)
+            args_type = copy.copy(args_type)
 
-        # Python call
-        py_args = copy.copy(args)
-        args_type = copy.copy(args_type)
+            for i, arg in enumerate(py_args):
+                args_type[i], py_args[i] = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), arg,
+                                                                  args_type[i])
 
-        for i, arg in enumerate(py_args):
-            args_type[i], py_args[i] = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), arg,
-                                                              args_type[i])
+            return_type = lang_type.get_python_obj_type()
+            return_type.add_hint(hint.TypeHintRefIncr())
+            result = return_type, generate_python_call(visitor, obj, func_name, py_args)
+            ref_counter.ref_decr_multiple_incr(visitor, args_type, py_args)
 
-        return_type = lang_type.get_python_obj_type()
-        return_type.add_hint(hint.TypeHintRefIncr())
-        return return_type, generate_python_call(visitor, obj, func_name, py_args)
+        if did_caller_conversion:
+            ref_counter.ref_decr_incr(visitor, obj_type, obj)
+
+        return result
+
     else:
         raise ValueError("Type un-callable: " + obj_type.to_str(visitor.get_data()) + " for method " + func_name)
 
