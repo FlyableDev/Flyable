@@ -608,20 +608,24 @@ class ParserVisitor(NodeVisitor):
 
         name = node.target.id
         iter_type, iter_value = self.__visit_node(node.iter)
+
+        if not hint.is_incremented_type(iter_type):
+            ref_counter.ref_incr(self, iter_type, iter_value)
+
         new_var = self.__func.get_context().add_var(name, iter_type)
         alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
         new_var.set_code_gen_value(alloca_value)
         iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [])
 
         block_for = self.__builder.create_block()
-        block_for_in = self.__builder.create_block()
-        block_else = self.__builder.create_block() if node.orelse is not None else None
-        block_continue = self.__builder.create_block()
 
         self.__builder.br(block_for)
         self.__builder.set_insert_block(block_for)
 
         next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
+
+        if not hint.is_incremented_type(next_type):
+            ref_counter.ref_incr(self, next_type, next_value)
 
         self.__builder.store(next_value, new_var.get_code_gen_value())
 
@@ -629,6 +633,9 @@ class ParserVisitor(NodeVisitor):
 
         test = self.__builder.eq(next_value, null_ptr)
 
+        block_continue = self.__builder.create_block()
+        block_for_in = self.__builder.create_block()
+        block_else = self.__builder.create_block() if node.orelse is not None else None
         if node.orelse is None:
             self.__builder.cond_br(test, block_continue, block_for_in)
         else:
@@ -638,7 +645,9 @@ class ParserVisitor(NodeVisitor):
         self.__builder.set_insert_block(block_for_in)
         self.__out_blocks.append(block_continue)  # In case of a break we want to jump after the for loop
         self.visit(node.body)
+        ref_counter.ref_decr(self, next_type, next_value)
         self.__out_blocks.pop()
+
         self.__builder.br(block_for)
 
         if node.orelse is not None:
@@ -648,6 +657,7 @@ class ParserVisitor(NodeVisitor):
             self.__builder.br(block_continue)
 
         self.__builder.set_insert_block(block_continue)
+        ref_counter.ref_decr(self, iter_type, iter_value)
         excp.py_runtime_clear_error(self.__code_gen, self.__builder)
 
     def visit_While(self, node: While) -> Any:
@@ -826,6 +836,7 @@ class ParserVisitor(NodeVisitor):
 
         for i, e in enumerate(elts_values):
             py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
+            ref_counter.ref_incr(self, lang_type.get_python_obj_type(), py_obj)
             gen_tuple.python_tuple_set_unsafe(self, self.__last_value, i, py_obj)
 
     def visit_SetComp(self, node: SetComp) -> Any:
@@ -1132,6 +1143,9 @@ class ParserVisitor(NodeVisitor):
         if len(self.__exception_blocks) > 0:
             return self.__exception_blocks[-1]
         return None
+
+    def get_entry_block(self):
+        return self.__entry_block
 
     def generate_entry_block_var(self, code_type, need_to_be_nulled=False):
         current_block = self.__builder.get_current_block()

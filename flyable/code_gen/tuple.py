@@ -27,8 +27,9 @@ def python_tuple_new_alloca(visitor, size):
     """
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
-    tuple_result = visitor.generate_entry_block_var(
-        code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), size + 10))
+    current_block = builder.get_current_block()
+    builder.set_insert_block(visitor.get_entry_block())
+    tuple_result = builder.alloca(code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), size + 10))
 
     type_ptr = fly_obj.get_py_obj_type_ptr(builder, tuple_result)
     type_ptr = builder.ptr_cast(type_ptr, code_type.get_py_obj_ptr(code_gen).get_ptr_to())
@@ -40,6 +41,8 @@ def python_tuple_new_alloca(visitor, size):
     builder.store(builder.const_int64(size), python_tuple_get_size_ptr(visitor, tuple_result))
 
     tuple_result = builder.ptr_cast(tuple_result, code_type.get_py_obj_ptr(code_gen))
+
+    builder.set_insert_block(current_block)
 
     return tuple_result
 
@@ -62,7 +65,6 @@ def python_tuple_set_unsafe(visitor, tuple, index, item):
     """
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
-    ref_counter.ref_incr(visitor, lang_type.get_python_obj_type(), item)
     tuple = builder.ptr_cast(tuple, code_gen.get_py_tuple_struct().to_code_type().get_ptr_to())
     content_type = code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), index + 1).get_ptr_to()
     content = builder.ptr_cast(python_tuple_get_content_ptr(visitor, tuple), content_type)
