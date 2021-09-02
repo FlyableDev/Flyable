@@ -19,9 +19,10 @@ import flyable.code_gen.fly_obj as fly_obj
 import flyable.data.type_hint as hint
 import flyable.code_gen.number as num
 import flyable.code_gen.ref_counter as ref_counter
+import flyable.code_gen.iterator as _iter
 
 
-def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False):
+def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False, protocol=True):
     """
     Call a method independent from the called type.
     There is 3 calls scenario:
@@ -58,6 +59,9 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False)
                                                                                                      obj_type, obj,
                                                                                                      instance_type,
                                                                                                      args_type, args)
+        elif protocol and _iter.is_iter_func_name(func_name) and len(args) == 0:  # Iter protocol
+            return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), _iter.call_iter_protocol(visitor, func_name,
+                                                                                                   obj)
         else:  # Python call
             py_args = copy.copy(args)
             args_type = copy.copy(args_type)

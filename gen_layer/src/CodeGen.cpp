@@ -270,6 +270,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 {
                     llvm::Value* left = values[current->readInt32()];
                     llvm::Value* right = values[current->readInt32()];
+
                     if(isDecimalType(left))
                         values[current->readInt32()] = mBuilder.CreateFAdd(left,right);
                     else

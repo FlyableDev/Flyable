@@ -31,6 +31,7 @@ import flyable.code_gen.code_gen as gen
 import flyable.code_gen.fly_obj as fly_obj
 import flyable.code_gen.module as gen_module
 import flyable.code_gen.slice as gen_slice
+import flyable.code_gen.debug as debug
 
 
 class ParserVisitMode(enum.IntEnum):
