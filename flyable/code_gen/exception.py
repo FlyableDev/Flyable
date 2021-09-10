@@ -47,7 +47,7 @@ def raise_assert_error(visitor, obj):
     args_type = [code_type.get_py_obj_ptr(visitor.get_code_gen())]
     raise_func = visitor.get_code_gen().get_or_create_func("flyable_raise_assert_error", code_type.get_void(),
                                                            args_type, gen.Linkage.EXTERNAL)
-    visitor.get_builder().call(raise_func,[obj])
+    visitor.get_builder().call(raise_func, [obj])
 
 
 def check_excp(visitor, value_to_check):

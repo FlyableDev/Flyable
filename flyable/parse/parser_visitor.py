@@ -318,6 +318,7 @@ class ParserVisitor(NodeVisitor):
             elif isinstance(node.ctx, ast.Del):
                 fly_obj.py_obj_del_attr(self, self.__last_value, str_value)
             else:
+                self.__last_type.add_hint(hint.TypeHintRefIncr())
                 self.__last_value = fly_obj.py_obj_get_attr(self, self.__last_value, str_value)
         elif self.__last_type.is_obj():  # Flyable obj. The attribute type might be known. GEP access for more speed
             attr = self.__data.get_class(self.__last_type.get_id()).get_attribute(node.attr)

@@ -15,7 +15,12 @@ def py_object_type_get_dealloc_ptr(visitor, type):
 
 def py_object_type_get_tp_as_number_ptr(visitor, type):
     builder = visitor.get_builder()
-    return visitor.get_builder().gep(type, builder.const_int32(0), builder.const_int32(12))
+    return builder.gep(type, builder.const_int32(0), builder.const_int32(12))
+
+
+def py_object_type_get_tp_richcompare_ptr(visitor, type):
+    builder = visitor.get_builder()
+    return builder.gep(type, builder.const_int32(0), builder.const_int32(24))
 
 
 def py_object_type_get_iter_next(visitor, type):

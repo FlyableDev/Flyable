@@ -20,6 +20,7 @@ import flyable.data.type_hint as hint
 import flyable.code_gen.number as num
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.iterator as _iter
+import flyable.code_gen.rich_compare as rich_compare
 
 
 def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False, protocol=True):
@@ -53,15 +54,21 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False,
         if found_shortcut is not None:
             result = found_shortcut.parse(visitor, obj_type, obj, copy.copy(args_type), copy.copy(args))
         # Special case where the call is a binary number protocol
-        elif num.is_number_protocol_func(func_name) and num.is_type_impl_number_protocol(visitor, obj_type):
+        elif protocol and num.is_number_protocol_func(func_name) and len(args) == 1:  # Number protocol
             instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
             result = lang_type.get_python_obj_type(hint.TypeHintRefIncr()), num.call_number_protocol(visitor, func_name,
                                                                                                      obj_type, obj,
                                                                                                      instance_type,
                                                                                                      args_type, args)
+            return result
         elif protocol and _iter.is_iter_func_name(func_name) and len(args) == 0:  # Iter protocol
             return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), _iter.call_iter_protocol(visitor, func_name,
                                                                                                    obj)
+        elif protocol and rich_compare.is_func_name_rich_compare(func_name) and len(args) == 1:  # Rich Compare protocol
+            instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
+            result = rich_compare.call_rich_compare_protocol(visitor, func_name, obj_type, obj, instance_type,
+                                                             args_type, args)
+            return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), result
         else:  # Python call
             py_args = copy.copy(args)
             args_type = copy.copy(args_type)
@@ -108,21 +115,17 @@ def generate_python_call(visitor, obj, func_name, args):
     builder.cond_br(can_vec, tp_call_block, vector_call_block)
 
     builder.set_insert_block(vector_call_block)
-    vec_result = function.call_py_func_vec_call(visitor, func_to_call, args, callable_type)
+    vec_result = function.call_py_func_vec_call(visitor, obj, func_to_call, args, callable_type)
     builder.store(vec_result, call_result_var)
     continue_block = builder.create_block()
     builder.br(continue_block)
 
     builder.set_insert_block(tp_call_block)
-    tp_result = function.call_py_func_tp_call(visitor, func_to_call, args)
+    tp_result = function.call_py_func_tp_call(visitor, obj, func_to_call, args)
     builder.store(tp_result, call_result_var)
     builder.br(continue_block)
 
     builder.set_insert_block(continue_block)
-
-    # UNSURE IF THE DECREMENT IS NEEDED HERE
-    import flyable.code_gen.ref_counter as ref_counter
-    ref_counter.ref_decr(visitor, lang_type.get_python_obj_type(), obj)
 
     result = builder.load(call_result_var)
     # excp.py_runtime_print_error(code_gen, builder)

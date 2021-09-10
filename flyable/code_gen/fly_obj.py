@@ -2,6 +2,8 @@ import flyable.code_gen.runtime as runtime
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
+import flyable.code_gen.debug as debug
+import flyable.data.lang_type as lang_type
 
 """
 module to handle flyable object info
@@ -21,7 +23,6 @@ def py_obj_get_attr(visitor, obj, name, obj_type=None):
     # First need to call get_attro, then the get_attr if get_attro is null
 
     attr_found_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
-
     get_attro_block = builder.create_block()
     get_attr_block = builder.create_block()
     continue_block = builder.create_block()
