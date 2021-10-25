@@ -46,6 +46,8 @@ def test_obj_true(visitor, value_type, value):
     test_true_with_call_block = builder.create_block()
     builder.cond_br(is_true, true_block, test_true_with_call_block)
 
+    test_true_with_number_protocol_block = builder.create_block()
+
     builder.set_insert_block(true_block)
     builder.store(builder.const_int1(True), result)
     continue_block = builder.create_block()
