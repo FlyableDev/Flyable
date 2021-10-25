@@ -24,6 +24,7 @@ void flyable_debug_support_vec(PyObject* obj)
 
 void flyable_debug_show_vec(PyObject* obj,PyObject* call)
 {
+    PyNumberMethods
     size_t offset = Py_TYPE(obj)->tp_vectorcall_offset;
 
     printf("%p\n",(char*) obj + offset);
@@ -31,10 +32,16 @@ void flyable_debug_show_vec(PyObject* obj,PyObject* call)
 
 void flyable_debug_print_int64(long long value)
 {
-    printf("%d\n", (int) value);
+    printf("%lld\n", value);
 }
 
 void flyable_debug_print_ptr(void* ptr)
 {
+    PyTypeObject
     printf("%p\n",ptr);
+}
+
+void debug_is_tuple(PyObject* tuple)
+{
+    printf("%p      %p\n",tuple,&PyTuple_Type);
 }

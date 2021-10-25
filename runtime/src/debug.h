@@ -12,4 +12,6 @@ void flyable_debug_print_int64(long long value);
 
 void flyable_debug_print_ptr(void* ptr);
 
+void debug_is_tuple(PyObject* tuple);
+
 #endif // DEBUG_H_INCLUDED
