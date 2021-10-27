@@ -807,7 +807,7 @@ class ParserVisitor(NodeVisitor):
                                                  self.__builder.const_int64(len(elts_values)))
         self.__last_value = array
 
-        if self.__last_type is None:
+        if common_type is None:
             self.__last_type = lang_type.get_list_of_python_obj_type()
         else:
             self.__last_type = copy.deepcopy(common_type)

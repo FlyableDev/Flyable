@@ -31,7 +31,7 @@ List shortcuts
 class ShortcutListCallAppend(ShortcutObjCall):
 
     def type_test(self, caller_type, args_type):
-        if caller_type.is_list() and len(args_type) == 1 and args_type[0].is_int():
+        if caller_type.is_list() and len(args_type) == 1:
             return True
         return False
 
