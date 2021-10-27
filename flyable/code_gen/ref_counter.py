@@ -66,7 +66,9 @@ def ref_decr(visitor, value_type, value):
         if value_type.is_obj():
             caller.call_obj(visitor, "__del__", value, value_type, [], [], True)
             runtime.free_call(code_gen, builder, value)
-        elif value_type.is_python_obj() or value_type.is_collection():
+        elif value_type.is_collection() or value_type.is_collection():
+            pass  # TODO: Implement
+        elif value_type.is_python_obj():
             obj_type = fly_obj.get_py_obj_type(visitor.get_builder(), value)
             dealloc_ptr = gen_type.py_object_type_get_dealloc_ptr(visitor, obj_type)
             dealloc_type = code_type.get_func(code_type.get_void(),
@@ -74,6 +76,8 @@ def ref_decr(visitor, value_type, value):
             dealloc_ptr = builder.ptr_cast(dealloc_ptr, dealloc_type)
             dealloc_ptr = builder.load(dealloc_ptr)
             builder.call_ptr(dealloc_ptr, [value])
+        else:
+            raise Exception("Type unsupported to decrement the ref counter")
 
         continue_block = builder.create_block()
 

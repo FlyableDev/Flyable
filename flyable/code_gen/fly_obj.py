@@ -105,20 +105,21 @@ def get_py_obj_type_getattro_ptr(visitor, obj):
 
 
 def allocate_flyable_instance(visitor, lang_class):
-    lang_type = lang_class.get_lang_type()
-    ptr_type = lang_type.to_code_type(visitor.get_code_gen())
+    class_lang_type = lang_class.get_lang_type()
+    ptr_type = class_lang_type.to_code_type(visitor.get_code_gen())
     alloc_size = visitor.get_builder().size_of_type_ptr_element(ptr_type)
     value = runtime.malloc_call(visitor.get_code_gen(), visitor.get_builder(), alloc_size)
     value = visitor.get_builder().ptr_cast(value, ptr_type)
 
     # Set the ref counter to 1
-    ref_ptr = ref_counter.get_ref_counter_ptr(visitor, lang_type, value)
+    ref_ptr = ref_counter.get_ref_counter_ptr(visitor, class_lang_type, value)
     visitor.get_builder().store(visitor.get_builder().const_int64(1), ref_ptr)
 
     # Set the type of
     type_ptr = get_py_obj_type_ptr(visitor.get_builder(), value)
     none_value = visitor.get_builder().global_var(visitor.get_code_gen().get_none())
-    none_value = visitor.get_builder().load(none_value)
+    ref_counter.ref_incr(visitor, lang_type.get_python_obj_type(), none_value)
+    # TODO : store the real flyable-python class in here
     visitor.get_builder().store(none_value, type_ptr)
 
     return value
