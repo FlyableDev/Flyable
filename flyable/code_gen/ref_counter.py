@@ -13,7 +13,7 @@ import flyable.code_gen.exception as excp
 
 
 def is_ref_counting_type(value_type):
-    return not value_type.is_primitive() and not value_type.is_none()
+    return not value_type.is_primitive() and not value_type.is_none() and not value_type.is_unknown()
 
 
 def get_ref_counter_ptr(visitor, value_type, value):
@@ -24,6 +24,7 @@ def get_ref_counter_ptr(visitor, value_type, value):
     if is_ref_counting_type(value_type):
         zero = builder.const_int32(0)
         gep = builder.const_int32(0)
+        builder.print_value_type(value)
         return builder.gep(value, zero, gep)
     return None
 
