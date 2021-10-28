@@ -117,7 +117,8 @@ class LangFunc:
         return self.__is_global
 
     def clear_info(self):
-        pass
+        self.__impls.clear()
+        self.__setup_unknown_impl()
 
     def __setup_unknown_impl(self):
         # Setup args

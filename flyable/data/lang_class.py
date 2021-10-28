@@ -84,4 +84,5 @@ class LangClass:
         return LangType(LangType.Type.OBJECT, self.__id)
 
     def clear_info(self):
-        pass
+        for func in self.__funcs:
+            func.clear_info()
