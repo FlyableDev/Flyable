@@ -370,7 +370,7 @@ class ParserVisitor(NodeVisitor):
                 self.__last_become_assign()
         else:
             str_error = self.__last_type.to_str(self.__data)
-            self.__parser.throw_error("Attribut access unrecognized from " + str_error, node.lineno,
+            self.__parser.throw_error("Attribut " + str_value + " unrecognized from " + str_error, node.lineno,
                                       node.end_col_offset)
 
     def visit_Call(self, node: Call) -> Any:
