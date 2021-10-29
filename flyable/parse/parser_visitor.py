@@ -490,20 +490,29 @@ class ParserVisitor(NodeVisitor):
         ref_counter.ref_decr_multiple_incr(self, args_types, args)
 
     def visit_Slice(self, node: Slice) -> Any:
-        lower_type, lower_value = self.__visit_node(node.lower)
-        upper_type, upper_value = self.__visit_node(node.upper)
+        if node.lower is not None:
+            lower_type, lower_value = self.__visit_node(node.lower)
+            lower_type, lower_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, lower_value, lower_type)
+        else:
+            lower_type = lang_type.get_none_type()
+            lower_value = self.__builder.global_var(self.__code_gen.get_none())
+
+        if node.upper is not None:
+            upper_type, upper_value = self.__visit_node(node.upper)
+            upper_type, upper_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, upper_value, upper_type)
+        else:
+            upper_type = lang_type.get_none_type()
+            upper_value = self.__builder.global_var(self.__code_gen.get_none())
+
         if node.step is not None:
             step_type, step_value = self.__visit_node(node.step)
-
-        lower_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, lower_value, lower_type)
-        upper_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, upper_value, upper_type)
-        if node.step is not None:
-            step_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, step_value, step_type)
+            step_type, step_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, step_value, step_type)
         else:
-            step_obj = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+            step_type = lang_type.get_none_type()
+            step_value = self.__builder.global_var(self.__code_gen.get_none())
 
         self.__last_type = lang_type.get_python_obj_type()
-        self.__last_value = gen_slice.py_slice_new(self, lower_obj, upper_obj, step_obj)
+        self.__last_value = gen_slice.py_slice_new(self, lower_value, upper_value, step_value)
 
     def visit_Delete(self, node: Delete) -> Any:
         for target in node.targets:
@@ -863,7 +872,7 @@ class ParserVisitor(NodeVisitor):
         self.__last_type.add_hint(hint.TypeHintRefIncr())
 
         for i, e in enumerate(elts_values):
-            py_obj_type,py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
+            py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
             ref_counter.ref_incr(self, py_obj_type, py_obj)
             gen_tuple.python_tuple_set_unsafe(self, self.__last_value, i, py_obj)
 

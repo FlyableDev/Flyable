@@ -125,7 +125,7 @@ def get_number_slot_from_func_name(func_name):
         "__sub__": 1,
         "__mul__": 2,
         "__div__": 3,
-        "": 4,
+        "__mod__": 4,
         "__pow__": 5,
         "__div__": 6,
         "__neg__": 7,
