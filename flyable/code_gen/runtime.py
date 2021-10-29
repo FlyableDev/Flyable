@@ -53,7 +53,6 @@ def py_runtime_object_print(code_gen, builder, obj):
                                              [code_type.get_py_obj_ptr(code_gen)], Linkage.EXTERNAL)
     return builder.call(print_func, [obj])
 
-
 def value_to_pyobj(code_gen, builder, value, value_type):
     result_type = lang_type.get_python_obj_type()
 

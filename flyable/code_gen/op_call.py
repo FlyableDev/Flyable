@@ -44,6 +44,8 @@ def bin_op(visitor, op, type_left, value_left, type_right, value_right):
         return type_left, builder.mul(value_left, value_right)
     elif isinstance(op, ast.Div):
         return type_left, builder.div(value_left, value_right)
+    elif isinstance(op, ast.Mod):
+        return type_left, builder.mod(value_left, value_right)
     elif isinstance(op, ast.FloorDiv):
         if type_left.is_int() and type_right.is_int():
             result = builder.div(value_left, value_right)

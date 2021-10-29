@@ -398,11 +398,18 @@ class ParserVisitor(NodeVisitor):
 
         if self.__last_type is None or self.__last_type.is_module():
             build_in_func = build.get_build_in(name_call)
+            call_python_module = False
             if build_in_func is not None and self.__last_type is None:  # Build-in func call
                 if isinstance(build_in_func, build.BuildInFunc):
-                    self.__last_type, self.__last_value = build_in_func.parse(args_types, args, self.__code_gen,
-                                                                              self.__builder)
-                else:  # Call a non implemented build-in function
+                    type_values = build_in_func.parse(args_types, args, self.__code_gen, self.__builder)
+                    if type_values is None:
+                        call_python_module = True
+                    else:
+                        self.__last_type, self.__last_value = type_values
+                else:
+                    call_python_module = True
+
+                if call_python_module:
                     self.__last_type = lang_type.get_python_obj_type()
                     module = self.__builder.global_var(self.__code_gen.get_build_in_module())
                     module = self.__builder.load(module)
@@ -856,8 +863,8 @@ class ParserVisitor(NodeVisitor):
         self.__last_type.add_hint(hint.TypeHintRefIncr())
 
         for i, e in enumerate(elts_values):
-            py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
-            ref_counter.ref_incr(self, lang_type.get_python_obj_type(), py_obj)
+            py_obj_type,py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
+            ref_counter.ref_incr(self, py_obj_type, py_obj)
             gen_tuple.python_tuple_set_unsafe(self, self.__last_value, i, py_obj)
 
     def visit_SetComp(self, node: SetComp) -> Any:
