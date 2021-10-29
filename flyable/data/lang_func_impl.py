@@ -107,11 +107,6 @@ class LangFuncImpl:
         """
         return self.__can_raise
 
-    def clear_info(self):
-        self.__can_raise = False
-        self.__return_type = type.LangType()
-        self.__parse_status = LangFuncImpl.ParseStatus.NOT_STARTED
-
     def __str__(self):
         result = str(self.__return_type) + " : "
         for e in self.__args:

@@ -12,6 +12,7 @@ class LangFile:
         self.__classes = []
         self.__funcs = []
         self.__global_func = None
+        self.__ast = None
 
     def read_from_path(self, path):
         with open(path) as f:
@@ -29,6 +30,15 @@ class LangFile:
             if e.get_name() == name:
                 return e
         return None
+
+    def clear_info(self):
+        for e in self.__classes:
+            e.clear_info()
+        for e in self.__funcs:
+            e.clear_info()
+
+        if self.__global_func is not None:
+            self.__global_func.clear_info()
 
     def add_class(self, _class):
         _class.set_file(self)

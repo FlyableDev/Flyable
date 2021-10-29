@@ -1,13 +1,8 @@
 import flyable.code_gen.list as gen_list
 import flyable.data.lang_type as lang_type
-import flyable.code_gen.caller as gen_call
-import flyable.code_gen.code_type as code_type
-import flyable.data.type_hint as hint
-import flyable.code_gen.code_gen as gen
-import flyable.code_gen.runtime as runtime
 
 """
-Shortcut is a module to generate code that aims to bypass call to the interpreter
+Shortcut is a module to generate code that aims to bypass calls to the Python interpreter.
 """
 
 

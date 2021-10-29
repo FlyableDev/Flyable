@@ -1,21 +1,26 @@
 import collections
+import traceback
 
 
 class CompData:
     """
     Class that holds all the structures found during the compiling process
     """
+
     def __init__(self):
         self.__files = collections.OrderedDict()
         self.__funcs = []
         self.__classes = []
         self.__configs = {}
         self.__change = False
+        self.__current_iter = 0
 
     def clear_info(self):
         """
         Clear info ask to every data he holds to remove parsed defined data
         """
+        for _, e in self.__files.items():
+            e.clear_info()
         for e in self.__funcs:
             e.clear_info()
         for e in self.__classes:
@@ -76,3 +81,9 @@ class CompData:
 
     def is_changed(self):
         return self.__change
+
+    def increment_current_iteration(self):
+        self.__current_iter += 1
+
+    def get_current_iter(self):
+        return self.__current_iter

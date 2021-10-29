@@ -4,6 +4,7 @@ import flyable.data.lang_func_impl as lang_func_impl
 import flyable.data.type_hint as hint
 from flyable.parse.variable import Variable
 
+
 def adapt_call(func_name, call_type, args, comp_data, parser, codegen):
     """
     Handle the logic to make the function call possible.
@@ -33,7 +34,6 @@ def adapt_func(func, args, comp_data, parser):
             if not adapted_impl.get_parse_status() == lang_func_impl.LangFuncImpl.ParseStatus.ENDED:
                 parser.parse_func(func)
         else:  # Need to create a new implementation
-            comp_data.set_changed(True)  # A new implementation is a change to take in account
             adapted_impl = lang_func_impl.LangFuncImpl()
             for i, e in enumerate(args):
                 new_arg = copy.deepcopy(e)
