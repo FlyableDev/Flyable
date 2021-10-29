@@ -101,6 +101,9 @@ class ParserVisitor(NodeVisitor):
         else:
             super().visit(node)
 
+    def visit_node(self, node):
+        return self.__visit_node(node)
+
     def __visit_node(self, node):
         self.visit(node)
         return self.__last_type, self.__last_value
@@ -307,7 +310,6 @@ class ParserVisitor(NodeVisitor):
         self.__reset_last()
         self.__last_type, self.__last_value = self.__visit_node(node.value)
         str_value = node.attr
-
         if self.__last_type.is_python_obj():  # Python obj attribute. Type is unknown
             self.__last_type = lang_type.get_python_obj_type()
             if isinstance(node.ctx, ast.Store):
@@ -321,18 +323,29 @@ class ParserVisitor(NodeVisitor):
                 self.__last_type.add_hint(hint.TypeHintRefIncr())
                 self.__last_value = fly_obj.py_obj_get_attr(self, self.__last_value, str_value)
         elif self.__last_type.is_obj():  # Flyable obj. The attribute type might be known. GEP access for more speed
-            attr = self.__data.get_class(self.__last_type.get_id()).get_attribute(node.attr)
+            attr = self.__data.get_class(self.__last_type.get_id()).get_attribute(str_value)
             if attr is not None:  # We found the attribute
                 first_index = self.__builder.const_int32(0)
                 second_index = self.__builder.const_int32(fly_obj.get_obj_attribute_start_index() + attr.get_id())
                 attr_index = self.__builder.gep(self.__last_value, first_index, second_index)
+
+                common_type = lang_type.get_type_common(self.__data, attr.get_type(), self.__assign_type)
+                if attr.get_type() != common_type:  # Type mismatch between the attribute and the new assign
+                    # Change the type of the attribute
+                    attr.set_type(common_type)
+                    self.__data.set_changed(True)  # Tell we changed an attribute to trigger a new compilation
+
                 if isinstance(node.ctx, ast.Store):
+                    if attr.get_type().is_python_obj():
+                        self.__assign_type, self.__assign_value = runtime.value_to_pyobj(
+                            self.__code_gen, self.__builder, self.__assign_value, self.__assign_type)
+
                     self.__builder.store(self.__assign_value, attr_index)
                     self.__last_become_assign()
                 else:
                     self.__last_value = self.__builder.load(attr_index)
                     self.__last_type = attr.get_type()
-            else:  # Attribut not found. It might be a declaration !
+            else:  # Attribute not found. It might be a declaration !
                 if isinstance(node.ctx, ast.Store):
                     self.__data.set_changed(True)
                     new_attr = flyable.data.attribut.Attribut()
@@ -343,7 +356,13 @@ class ParserVisitor(NodeVisitor):
                     second_index = self.__builder.const_int32(
                         fly_obj.get_obj_attribute_start_index() + new_attr.get_id())
                     attr_index = self.__builder.gep(self.__last_value, first_index, second_index)
+
+                    if new_attr.get_type().is_python_obj():
+                        self.__assign_type, self.__assign_value = runtime.value_to_pyobj(
+                            self.__code_gen, self.__builder, self.__assign_value, self.__assign_type)
+
                     self.__builder.store(self.__assign_value, attr_index)
+
                     self.__last_become_assign()
                 else:
                     self.__parser.throw_error("Attribut '" + node.attr + "' not declared", node.lineno,
@@ -988,53 +1007,8 @@ class ParserVisitor(NodeVisitor):
         self.__last_type.add_dim(lang_type.LangType.Dimension.DICT)
 
     def visit_Try(self, node: Try) -> Any:
-        continue_block = self.__builder.create_block()
-        excp_block = self.__builder.create_block()
-        excp_not_found_block = self.__builder.create_block()
-        else_block = self.__builder.create_block() if node.orelse is not None else None
-        self.__exception_blocks.append(excp_block)
-        handlers_block = []
-        handlers_cond_block = []
-        for e in node.handlers:
-            handlers_block.append(self.__builder.create_block())
-            handlers_cond_block.append(self.__builder.create_block())
-
-        self.__visit_node(node.body)
-
-        self.__builder.br(handlers_cond_block[0])
-
-        if node.orelse is None:
-            self.__builder.br(continue_block)
-        else:
-            self.__builder.br(else_block)
-
-        self.__builder.set_insert_block(excp_block)
-
-        self.__builder.br(handlers_cond_block[0])
-
-        for i, handler in enumerate(node.handlers):  # For each exception statement
-            self.__reset_last()
-            self.__builder.set_insert_block(handlers_cond_block[i])
-            excp_value = excp.py_runtime_get_excp(self.__code_gen, self.__builder)
-            excp_type = fly_obj.get_py_obj_type(self.__builder, excp_value)
-            excp_type = self.__builder.ptr_cast(excp_value, code_type.get_py_obj_ptr(self.__code_gen))
-            obj_type, obj_type_value = self.__visit_node(handler.type)
-            type_match = self.__builder.eq(obj_type_value, excp_type)
-            other_block = handlers_cond_block[i + 1] if i < len(node.handlers) - 1 else excp_not_found_block
-            self.__builder.cond_br(type_match, handlers_block[i], other_block)
-            self.__builder.br(continue_block)
-            self.__builder.set_insert_block(handlers_block[i])
-            self.__visit_node(handler.body)
-            self.__builder.br(continue_block)
-
-        # self.__visit_node(node.finalbody)
-
-        if node.orelse is not None:
-            self.__builder.set_insert_block(else_block)
-            self.__visit_node(node.orelse)
-            self.__builder.br(continue_block)
-
-        self.__builder.set_insert_block(continue_block)
+        import flyable.parse.content.content_try as content_try
+        content_try.parse_try(self, node)
 
     def visit_Raise(self, node: Raise) -> Any:
         self.__func.set_can_raise(True)  # There is a raise so it can raise an exception
@@ -1157,6 +1131,15 @@ class ParserVisitor(NodeVisitor):
             self.__builder.store(self.__builder.const_null(code_type), new_alloca)
         self.__builder.set_insert_block(current_block)
         return new_alloca
+
+    def add_except_block(self, block):
+        self.__exception_blocks.append(block)
+
+    def pop_except_block(self):
+        return self.__exception_blocks.pop()
+
+    def reset_last(self):
+        self.__reset_last()
 
     def __reset_last(self):
         self.__last_type = None
