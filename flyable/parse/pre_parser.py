@@ -54,6 +54,5 @@ class PreParser(ast.NodeVisitor, ErrorThrower):
         self.__data.add_class(new_class)
         self.__current_file.add_class(new_class)
         self.__current_class = new_class
-        self.__code_gen.gen_struct(new_class)
         super().generic_visit(node)
         self.__current_class = None

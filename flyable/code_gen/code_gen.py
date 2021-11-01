@@ -339,6 +339,9 @@ class CodeGen:
         self.__build_in_module = self.add_global_var(GlobalVar("__flyable@BuildIn@Module@",
                                                                code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
 
+        for _class in self.__data.classes_iter():
+            self.gen_struct(_class)
+
     def clear(self):
         self.__global_vars.clear()
         self.__funcs.clear()
@@ -469,11 +472,19 @@ class CodeGen:
 
     def gen_struct(self, _class):
         """
-        Create a structure from a class
+        Create a structure from a class and creates the global variable that will hold the type instance of that class
         """
+        # Create the struct
         new_struct = StructType("@flyable@__" + _class.get_name())
         _class.set_struct(new_struct)
         self.add_struct(new_struct)
+
+        # Create the global variable to hold it
+        # The allocation is static and not dynamic
+        type_name = "@flyable@type_instance@" + _class.get_name()
+        instance_type = GlobalVar(type_name, code_type.get_py_type(self))
+        self.add_global_var(instance_type)
+        _class.get_class_type().set_type_global_instance(instance_type)
 
     def setup_struct(self):
         for _class in self.__data.classes_iter():
@@ -510,7 +521,7 @@ class CodeGen:
                     func.get_builder().ret_void()
                 elif visitor.get_func().get_return_type() == lang_type.get_python_obj_type():
                     none_value = builder.global_var(self.get_none())
-                    ref_counter.ref_incr(visitor, lang_type.get_python_obj_type(), none_value)
+                    ref_counter.ref_incr(builder, lang_type.get_python_obj_type(), none_value)
                     builder.ret(none_value)
                 else:
                     func.get_builder().ret(func.get_builder().const_null(func_return_type))
@@ -593,6 +604,11 @@ class CodeGen:
                 type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert,
                                                                          lang_type.get_dec_type())
             builder.store(value_to_assign, constant_var)
+
+        # Create all the instances of type
+        # Put their ref count to 2 to avoid decrement delete
+        for _class in self.__data.classes_iter():
+            _class.get_class_type().generate(self, builder)
 
         main_func = self.__data.get_file(0).get_global_func().get_impl(1)
         return_value = builder.call(main_func.get_code_func(), [])

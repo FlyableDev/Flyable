@@ -129,7 +129,7 @@ class ParserVisitor(NodeVisitor):
             self.__assign_type, self.__assign_value = self.__visit_node(node.value)
 
             if not hint.is_incremented_type(self.__assign_type):
-                ref_counter.ref_incr(self, self.__assign_type, self.__assign_value)
+                ref_counter.ref_incr(self.__builder, self.__assign_type, self.__assign_value)
             hint.remove_hint_type(self.__assign_type, hint.TypeHintRefIncr)
 
             self.__reset_last()
@@ -141,7 +141,7 @@ class ParserVisitor(NodeVisitor):
                     self.__assign_type, self.__assign_value = self.__visit_node(values[i])
 
                     if not hint.is_incremented_type(self.__assign_type):
-                        ref_counter.ref_incr(self, self.__assign_type, self.__assign_value)
+                        ref_counter.ref_incr(self.__builder, self.__assign_type, self.__assign_value)
                     hint.remove_hint_type(self.__assign_type, hint.TypeHintRefIncr)
 
                     self.__reset_last()
@@ -161,7 +161,7 @@ class ParserVisitor(NodeVisitor):
             self.__reset_last()
 
             if not hint.is_incremented_type(self.__assign_type):
-                ref_counter.ref_incr(self, self.__assign_type, self.__assign_value)
+                ref_counter.ref_incr(self.__builder, self.__assign_type, self.__assign_value)
             hint.remove_hint_type(self.__assign_type, hint.TypeHintRefIncr)
 
             self.__last_type, self.__last_value = self.__visit_node(node.target)
@@ -528,7 +528,7 @@ class ParserVisitor(NodeVisitor):
         return_type, return_value = self.__visit_node(node.value)
 
         if not hint.is_incremented_type(return_type):  # Need to increment if we return to be consistent to CPython
-            ref_counter.ref_incr(self, return_type, return_value)
+            ref_counter.ref_incr(self.__builder, return_type, return_value)
 
         return_type.clear_hints()
 
@@ -647,7 +647,7 @@ class ParserVisitor(NodeVisitor):
         iter_type, iter_value = self.__visit_node(node.iter)
 
         if not hint.is_incremented_type(iter_type):
-            ref_counter.ref_incr(self, iter_type, iter_value)
+            ref_counter.ref_incr(self.__builder, iter_type, iter_value)
 
         new_var = self.__func.get_context().add_var(name, iter_type)
         alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
@@ -662,7 +662,7 @@ class ParserVisitor(NodeVisitor):
         next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
 
         if not hint.is_incremented_type(next_type):
-            ref_counter.ref_incr(self, next_type, next_value)
+            ref_counter.ref_incr(self.__builder, next_type, next_value)
 
         self.__builder.store(next_value, new_var.get_code_gen_value())
 
@@ -873,7 +873,7 @@ class ParserVisitor(NodeVisitor):
 
         for i, e in enumerate(elts_values):
             py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
-            ref_counter.ref_incr(self, py_obj_type, py_obj)
+            ref_counter.ref_incr(self.__builder, py_obj_type, py_obj)
             gen_tuple.python_tuple_set_unsafe(self, self.__last_value, i, py_obj)
 
     def visit_SetComp(self, node: SetComp) -> Any:
@@ -1051,6 +1051,18 @@ class ParserVisitor(NodeVisitor):
         excp.handle_raised_excp(self)
 
         self.__builder.set_insert_block(block_continue)
+
+    def visit_Yield(self, node: Yield) -> Any:
+        if not self.__func.has_yield():
+            self.__func.set_yield(True)
+            self.__reset_visit = True
+        raise Exception("Yield not supported")
+
+    def visit_YieldFrom(self, node: YieldFrom) -> Any:
+        if not self.__func.has_yield():
+            self.__func.set_yield(True)
+            self.__reset_visit = True
+        raise Exception("Yield not supported")
 
     def visit_Import(self, node: Import) -> Any:
         for e in node.names:
