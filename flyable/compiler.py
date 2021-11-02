@@ -12,6 +12,7 @@ import flyable.data.lang_class as lang_class
 class Compiler(ErrorThrower):
 
     def __init__(self):
+        super().__init__()
         self.__data = comp_data.CompData()
         self.set_output_path("output.o")
         self.__code_gen = gen.CodeGen(self.__data)
@@ -35,7 +36,7 @@ class Compiler(ErrorThrower):
         self.throw_errors(self.__parser.get_errors())
 
         for e in self.errors_iter():
-            print("" + e.get_message() + " " + str(e.get_line()) + " " + str(e.get_row()))
+            print(f"{e.get_message()} {e.get_line()} {e.get_row()}")
 
         if not self.has_error():
             self.__code_gen.setup_struct()

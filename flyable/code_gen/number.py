@@ -100,8 +100,8 @@ def is_number_binary_func(func_name):
     returns if the function name is a binary function from the number protocol
     """
     # TODO: Put all binary cases
-    binary_numb_funcs = ["__add__", "__sub__", "__mul__", "__div__", "__mod__", "__bool__", "__inv__", "__lshift__",
-                         "__rshift__", "_and", "__xor__", "__or__", ]
+    binary_numb_funcs = { "__add__", "__sub__", "__mul__", "__div__", "__mod__", "__bool__", "__inv__", "__lshift__",
+                          "__rshift__", "_and", "__xor__", "__or__", }
     return func_name in binary_numb_funcs
 
 
@@ -110,27 +110,27 @@ def is_number_func_inquiry(func_name):
 
 
 def is_number_func_ternary(func_name):
-    names = ["__pow__", "__in_pow__"]
+    names = { "__pow__", "__in_pow__" }
     return func_name in names
 
 
 def is_number_func_unary(func_name):
-    names = ["__neg__", "__pos__", "__abs__", "__int__", "__float__"]
-    return func_name is names
+    names = { "__neg__", "__pos__", "__abs__", "__int__", "__float__" }
+    return func_name in names
 
 
 def get_number_slot_from_func_name(func_name):
     slots = {
-        "__add__": 0,
-        "__sub__": 1,
-        "__mul__": 2,
-        "__div__": 3,
-        "__mod__": 4,
-        "__pow__": 5,
-        "__div__": 6,
-        "__neg__": 7,
-        "__pos__": 8,
-        "__abs__": 9,
+        "__add__" : 0,
+        "__sub__" : 1,
+        "__mul__" : 2,
+        "__div__" : 3,
+        "__mod__" : 4,
+        "__pow__" : 5,
+        "__div__" : 6,
+        "__neg__" : 7,
+        "__pos__" : 8,
+        "__abs__" : 9,
         "__bool__": 10,
     }
     return slots[func_name]

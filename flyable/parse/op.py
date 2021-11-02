@@ -2,27 +2,7 @@ import ast
 
 
 def is_op_cond(op):
-    if isinstance(op, ast.Eq):
-        return True
-    elif isinstance(op, ast.NotEq):
-        return True
-    elif isinstance(op, ast.Lt):
-        return True
-    elif isinstance(op, ast.LtE):
-        return True
-    elif isinstance(op, ast.Gt):
-        return True
-    elif isinstance(op, ast.GtE):
-        return True
-    elif isinstance(op, ast.Is):
-        return True
-    elif isinstance(op, ast.IsNot):
-        return True
-    elif isinstance(op, ast.In):
-        return True
-    elif isinstance(op, ast.NotIn):
-        return True
-    return False
+    return isinstance(op, (ast.Eq,  ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.Is, ast.IsNot, ast.In, ast.NotIn))
 
 
 def get_op_func_call(op):
