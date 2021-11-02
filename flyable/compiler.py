@@ -49,7 +49,7 @@ class Compiler(ErrorThrower):
 
     def __parse(self):
         self.__pre_parse()
-        code_gen = CodeGen(self.__data)
+        code_gen = self.__code_gen
 
         # Parse the code until it the compiler stop finding new data
         while True:

@@ -43,6 +43,9 @@ class StructType:
     def get_type(self, index):
         return self.__types[index]
 
+    def types_iter(self):
+        return iter(self.__types)
+
     def set_id(self, id):
         self.__id = id
 
@@ -248,7 +251,7 @@ class CodeGen:
         self.__python_list_struct = None
         self.__python_tuple_struct = None
         self.__python_func_struct = None
-        self.__python_type_struct = OrderedDict()
+        self.__python_type_struct = None
 
     def setup(self):
         # Create the Python object struct
@@ -346,6 +349,8 @@ class CodeGen:
         self.__global_vars.clear()
         self.__funcs.clear()
         self.__structs.clear()
+        self.__global_strings.clear()
+        self.__py_constants.clear()
 
     def get_data(self):
         return self.__data
@@ -434,8 +439,6 @@ class CodeGen:
         return new_func
 
     def get_or_insert_str(self, value):
-        if value is None:
-            raise ValueError()
         if value in self.__global_strings:
             return self.__global_strings[value]
 
@@ -465,6 +468,9 @@ class CodeGen:
         struct.set_id(len(self.__structs))
         self.__structs.append(struct)
 
+    def get_struct(self, index):
+        return self.__structs[index]
+
     def add_global_var(self, var):
         var.set_id(len(self.__global_vars))
         self.__global_vars.append(var)
@@ -482,7 +488,7 @@ class CodeGen:
         # Create the global variable to hold it
         # The allocation is static and not dynamic
         type_name = "@flyable@type_instance@" + _class.get_name()
-        instance_type = GlobalVar(type_name, code_type.get_py_type(self))
+        instance_type = GlobalVar(type_name, code_type.get_py_type(self), Linkage.INTERNAL)
         self.add_global_var(instance_type)
         _class.get_class_type().set_type_global_instance(instance_type)
 
@@ -608,7 +614,7 @@ class CodeGen:
         # Create all the instances of type
         # Put their ref count to 2 to avoid decrement delete
         for _class in self.__data.classes_iter():
-            _class.get_class_type().generate(self, builder)
+            _class.get_class_type().generate(_class, self, builder)
 
         main_func = self.__data.get_file(0).get_global_func().get_impl(1)
         return_value = builder.call(main_func.get_code_func(), [])
