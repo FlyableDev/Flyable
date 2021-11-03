@@ -37,7 +37,7 @@ def python_tuple_new_alloca(visitor, size):
 
     tuple_result = builder.ptr_cast(tuple_result, code_gen.get_py_tuple_struct().to_code_type().get_ptr_to())
 
-    ref_counter.set_ref_count(visitor, tuple_result, builder.const_int64(5))
+    ref_counter.set_ref_count(builder, tuple_result, builder.const_int64(5))
     builder.store(builder.const_int64(size), python_tuple_get_size_ptr(visitor, tuple_result))
 
     tuple_result = builder.ptr_cast(tuple_result, code_type.get_py_obj_ptr(code_gen))

@@ -8,6 +8,7 @@ import flyable.code_gen.code_type as code_type
 import flyable.data.type_hint as hint
 import flyable.code_gen.caller as caller
 import flyable.code_gen.runtime as runtime
+import flyable.code_gen.code_builder as code_builder
 import flyable.code_gen.debug as debug
 import flyable.code_gen.exception as excp
 
@@ -16,11 +17,10 @@ def is_ref_counting_type(value_type):
     return not value_type.is_primitive() and not value_type.is_none() and not value_type.is_unknown()
 
 
-def get_ref_counter_ptr(visitor, value_type, value):
+def get_ref_counter_ptr(builder, value_type, value):
     """
     Generate the code to get the ref counter address of an object
     """
-    builder = visitor.get_builder()
     if is_ref_counting_type(value_type):
         zero = builder.const_int32(0)
         gep = builder.const_int32(0)
@@ -28,21 +28,20 @@ def get_ref_counter_ptr(visitor, value_type, value):
     return None
 
 
-def get_ref_count(visitor, value):
-    return visitor.get_builder().load(get_ref_counter_ptr(visitor, lang_type.get_python_obj_type(), value))
+def get_ref_count(builder, value):
+    return builder.load(get_ref_counter_ptr(builder, lang_type.get_python_obj_type(), value))
 
 
-def set_ref_count(visitor, obj, value):
-    visitor.get_builder().store(value, get_ref_counter_ptr(visitor, lang_type.get_python_obj_type(), obj))
+def set_ref_count(builder, obj, value):
+    builder.store(value, get_ref_counter_ptr(builder, lang_type.get_python_obj_type(), obj))
 
 
-def ref_incr(visitor, value_type, value):
+def ref_incr(builder, value_type, value):
     """
     Generate the code to increment the reference counter by one
     """
-    builder = visitor.get_builder()
     if is_ref_counting_type(value_type):
-        ref_ptr = get_ref_counter_ptr(visitor, value_type, value)
+        ref_ptr = get_ref_counter_ptr(builder, value_type, value)
         ref_count = builder.load(ref_ptr)
         ref_count = builder.add(ref_count, builder.const_int64(1))
         builder.store(ref_count, ref_ptr)
@@ -53,7 +52,7 @@ def ref_decr(visitor, value_type, value):
     builder = visitor.get_builder()
 
     if is_ref_counting_type(value_type):
-        ref_ptr = get_ref_counter_ptr(visitor, value_type, value)
+        ref_ptr = get_ref_counter_ptr(builder, value_type, value)
         ref_count = builder.load(ref_ptr)
 
         dealloc_block = builder.create_block()

@@ -28,8 +28,6 @@ class Compiler(ErrorThrower):
         self.__data.set_config("output", path)
 
     def compile(self):
-        self.__pre_parse()
-
         if not self.has_error():
             self.__parse()
 
@@ -50,14 +48,15 @@ class Compiler(ErrorThrower):
         self.throw_errors(pre_parser.get_errors())
 
     def __parse(self):
-        code_gen = CodeGen(self.__data)
+        self.__pre_parse()
+        code_gen = self.__code_gen
 
         # Parse the code until it the compiler stop finding new data
         while True:
-            self.__data.set_changed(False)
             self.__data.clear_info()
             code_gen.clear()
             code_gen.setup()
+            self.__data.set_changed(False)
 
             try:
                 adapter.adapt_func(self.__data.get_file(0).get_global_func(), [], self.__data, self.__parser)
@@ -66,8 +65,11 @@ class Compiler(ErrorThrower):
                     raise exception
                 break
 
+            # If there is an error or no compiler data has been modifier we're confident that the generate code is valid
             if self.__parser.has_error() or not self.__data.is_changed():
                 break
+            else:
+                self.__data.increment_current_iteration()
 
         self.throw_errors(self.__parser.get_errors())
 
