@@ -40,6 +40,8 @@ class LangFuncImpl:
 
         self.__can_raise = False
 
+        self.__has_yield = False
+
     def set_id(self, _id):
         self.__id = _id
 
@@ -106,6 +108,18 @@ class LangFuncImpl:
         Return if the implementation can potentially raise an exception during his execution
         """
         return self.__can_raise
+
+    def set_yield(self, _yield):
+        """
+        Set if the function contains a yield
+        """
+        self.__has_yield = _yield
+
+    def has_yield(self):
+        """
+        Returns if the function contains a yield. It might contain one and return False if it has not been visited yet
+        """
+        return self.__has_yield
 
     def __str__(self):
         result = str(self.__return_type) + " : "

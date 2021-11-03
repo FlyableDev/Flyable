@@ -1,4 +1,5 @@
 from flyable.data.lang_type import LangType
+import flyable.data.lang_class_type as class_type
 
 
 class LangClass:
@@ -11,6 +12,7 @@ class LangClass:
         self.__struct = None
         self.__file = None
         self.__inherits = []
+        self.__class_type = class_type.LangClassType()
 
     def get_node(self):
         return self.__node
@@ -83,6 +85,10 @@ class LangClass:
     def get_lang_type(self):
         return LangType(LangType.Type.OBJECT, self.__id)
 
+    def get_class_type(self):
+        return self.__class_type
+
     def clear_info(self):
+        self.__class_type = class_type.LangClassType()
         for func in self.__funcs:
             func.clear_info()

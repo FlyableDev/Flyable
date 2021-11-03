@@ -43,7 +43,7 @@ def python_list_append(visitor, list, item_type, item):
     item_type, item = runtime.value_to_pyobj(code_gen, builder, item, item_type)
 
     if not hint.is_incremented_type(item_type):
-        ref_counter.ref_incr(visitor, item_type, item)
+        ref_counter.ref_incr(visitor.get_builder(), item_type, item)
 
     new_alloca_block = builder.create_block()
     continue_block = builder.create_block()

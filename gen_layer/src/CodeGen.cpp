@@ -166,12 +166,12 @@ void CodeGen::readStructs(FormatReader& reader)
     //read all structs
     int structCount = reader.readInt32();
     mStructTypes.resize(structCount);
-    for(size_t i = 0;i < structCount;++i)
+    for(int i = 0;i < structCount;++i)
     {
         mStructTypes[i] = llvm::StructType::create(mContext);
     }
 
-    for(size_t i = 0;i < structCount;++i)
+    for(int i = 0;i < structCount;++i)
     {
         llvm::StructType* current = mStructTypes[i];
         std::string name = reader.readString();
@@ -672,6 +672,15 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 {
                     std::string txt = current->readString();
                     values[current->readInt32()] = mBuilder.CreateGlobalString(llvm::StringRef(txt));
+                }
+                break;
+
+                case 9998:
+                {
+                    size_t size;
+                    llvm::Type* type = readType(*current);
+                    size = mLayout->getTypeAllocSize(type);
+                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),size,true);
                 }
                 break;
 
