@@ -1,4 +1,5 @@
 import ast
+import copy
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
 import flyable.data.lang_type as lang_type
@@ -37,15 +38,25 @@ def bin_op(visitor, op, type_left, value_left, type_right, value_right):
         result = caller.call_obj(visitor, parse_op.get_op_func_call(op), value_left, type_left, args, args_types)
         return result
     elif isinstance(op, ast.Add):
-        return type_left, builder.add(value_left, value_right)
+        result_type = copy.copy(type_left)
+        result_type.clear_hints()  # Since an op is done we remove the constant value hint
+        return result_type, builder.add(value_left, value_right)
     elif isinstance(op, ast.Sub):
-        return type_left, builder.sub(value_left, value_right)
+        result_type = copy.copy(type_left)
+        result_type.clear_hints()  # Since an op is done we remove the constant value hint
+        return result_type, builder.sub(value_left, value_right)
     elif isinstance(op, ast.Mult):
-        return type_left, builder.mul(value_left, value_right)
+        result_type = copy.copy(type_left)
+        result_type.clear_hints()  # Since an op is done we remove the constant value hint
+        return result_type, builder.mul(value_left, value_right)
     elif isinstance(op, ast.Div):
-        return type_left, builder.div(value_left, value_right)
+        result_type = copy.copy(type_left)
+        result_type.clear_hints()  # Since an op is done we remove the constant value hint
+        return result_type, builder.div(value_left, value_right)
     elif isinstance(op, ast.Mod):
-        return type_left, builder.mod(value_left, value_right)
+        result_type = copy.copy(type_left)
+        result_type.clear_hints()  # Since an op is done we remove the constant value hint
+        return result_type, builder.mod(value_left, value_right)
     elif isinstance(op, ast.FloorDiv):
         if type_left.is_int() and type_right.is_int():
             result = builder.div(value_left, value_right)
