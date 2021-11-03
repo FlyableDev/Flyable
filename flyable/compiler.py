@@ -29,7 +29,7 @@ class Compiler(ErrorThrower):
 
     def compile(self):
         self.__pre_parse()
-
+        
         if not self.has_error():
             self.__parse()
 
@@ -44,6 +44,7 @@ class Compiler(ErrorThrower):
             self.__code_gen.write()
 
     def __pre_parse(self):
+        
         pre_parser = PreParser(self.__data, self.__code_gen)
         pre_parser.parse(self.__data)
         self.__resolve_inheritance()
