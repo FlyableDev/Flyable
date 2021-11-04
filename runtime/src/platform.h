@@ -25,7 +25,7 @@ int __flyable_runtime__get__platform()
             return 4;
         #else
             return 0;
-    #endif
+        #endif
     #endif
 
     return 0;

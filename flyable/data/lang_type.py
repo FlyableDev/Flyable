@@ -125,11 +125,11 @@ class LangType:
     def __init__(self, type=Type.UNKNOWN, id=0):
         if not isinstance(id, int): raise TypeError("Integer expected for id")
 
-        self.__type = type
-        self.__id = id
-        self.__dims = []
-        self.__hints = []  # Hints are extra data that allows the compiler to perform more severe optimization
-        self.__can_none = False
+        self.__type: LangType.Type = type
+        self.__id: int = id
+        self.__dims: list[LangType.Dimension] = []
+        self.__hints: list[hint.TypeHint] = []  # Hints are extra data that allows the compiler to perform more severe optimization
+        self.__can_none: bool = False
 
     def is_unknown(self):
         return self.__type == LangType.Type.UNKNOWN
