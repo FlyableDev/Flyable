@@ -28,13 +28,15 @@ class Compiler(ErrorThrower):
         self.__data.set_config("output", path)
 
     def compile(self):
+        self.__pre_parse()
+        
         if not self.has_error():
             self.__parse()
 
         self.throw_errors(self.__parser.get_errors())
 
         for e in self.errors_iter():
-            print("" + e.get_message() + " " + str(e.get_line()) + " " + str(e.get_row()))
+            print(f"{e.get_message()} {e.get_line()} {e.get_row()}")
 
         if not self.has_error():
             self.__code_gen.setup_struct()

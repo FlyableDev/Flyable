@@ -9,7 +9,7 @@ import flyable.code_gen.code_type as code_type
 
 def instanciate_python_set(visitor, obj):
     """
-    Generate the code to allocate a Python List
+    Generate the code to allocate a Python Set
     """
     builder = visitor.get_builder()
     code_gen = visitor.get_code_gen()
@@ -21,7 +21,7 @@ def instanciate_python_set(visitor, obj):
 
 def python_set_add(visitor, set_obj, item):
     """
-    Generate the code to set an element in a Python List
+    Generate the code to set an element in a Python Set
     """
     builder = visitor.get_builder()
     code_gen = visitor.get_code_gen()
@@ -33,7 +33,7 @@ def python_set_add(visitor, set_obj, item):
 
 def python_set_len(visitor, set_obj):
     """
-    Generate the code that returns the len of the list
+    Generate the code that returns the len of the Set
     """
     builder = visitor.get_builder()
     code_gen = visitor.get_code_gen()

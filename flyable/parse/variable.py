@@ -1,7 +1,6 @@
 import copy
 
 import flyable.data.lang_type as type
-import flyable.data.type_hint
 import flyable.data.type_hint as hint
 
 
