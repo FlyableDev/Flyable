@@ -57,7 +57,7 @@ class CodeBuilder:
         return self.__make_op(10, v1, v2)
 
     def neg(self, value):
-        self.__make_op(11, value)
+        return self.__make_op(11, value)
 
     def _and(self, v1, v2):
         return self.__make_op(12, v1, v2)
