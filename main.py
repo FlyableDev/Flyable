@@ -44,6 +44,7 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
         
         end_step()
         # Now run the code
+        """
         start_step("Running")
         p = Popen([output_dir + f"/{exec_name}.exe"], cwd=output_dir, stdin=PIPE, stdout=PIPE)
         output, err = p.communicate()
@@ -51,9 +52,9 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
 
         print("-------------------")
         print(output.decode())  # Print what the program outputted
-
+        """
         print("Application ended with code " + str(p.returncode))
 
 
 if __name__ == '__main__':
-    main("test.py", f"./build3/{plat.get_platform_folder()}", "a")
+    main("for-loops.py", f"./build3/{plat.get_platform_folder()}", "a")

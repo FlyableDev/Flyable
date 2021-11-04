@@ -1,3 +1,4 @@
+from typing import Any
 import flyable.code_gen.code_gen as gen
 
 
@@ -26,98 +27,52 @@ class CodeBuilder:
         return self.__current_block
 
     def add(self, v1, v2):
-        self.__writer.add_int32(1)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(1, v1, v2)
 
     def sub(self, v1, v2):
-        self.__writer.add_int32(2)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(2, v1, v2)
 
     def mul(self, v1, v2):
-        self.__writer.add_int32(3)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(3, v1, v2)
 
     def div(self, v1, v2):
-        self.__writer.add_int32(4)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(4, v1, v2)
 
     def eq(self, v1, v2):
-        self.__writer.add_int32(5)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(5, v1, v2)
 
     def ne(self, v1, v2):
-        self.__writer.add_int32(6)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(6, v1, v2)
 
     def lt(self, v1, v2):
-        self.__writer.add_int32(7)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(7, v1, v2)
 
     def lte(self, v1, v2):
-        self.__writer.add_int32(8)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(8, v1, v2)
 
     def gt(self, v1, v2):
-        self.__writer.add_int32(9)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(9, v1, v2)
 
     def gte(self, v1, v2):
-        self.__writer.add_int32(10)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(10, v1, v2)
 
     def neg(self, value):
-        self.__writer.add_int32(11)
-        self.__writer.add_int32(value)
-        return self.__gen_value()
+        self.__make_op(11, value)
 
     def _and(self, v1, v2):
-        self.__writer.add_int32(12)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(12, v1, v2)
 
     def _or(self, v1, v2):
-        self.__writer.add_int32(13)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(13, v1, v2)
 
     def mod(self, v1, v2):
-        self.__writer.add_int32(14)
-        self.__writer.add_int32(v1)
-        self.__writer.add_int32(v2)
-        return self.__gen_value()
+        return self.__make_op(14, v1, v2)
 
     def store(self, value, store):
-        self.__writer.add_int32(100)
-        self.__writer.add_int32(value)
-        self.__writer.add_int32(store)
-        return self.__gen_value()
+        return self.__make_op(100, value, store)
 
     def load(self, value):
-        self.__writer.add_int32(101)
-        self.__writer.add_int32(value)
-        return self.__gen_value()
+        return self.__make_op(101, value)
 
     def br(self, block):
         self.__writer.add_int32(150)
@@ -135,11 +90,7 @@ class CodeBuilder:
         self.__writer.lock()
 
     def gep(self, value, first_index, second_index):
-        self.__writer.add_int32(152)
-        self.__writer.add_int32(value)
-        self.__writer.add_int32(first_index)
-        self.__writer.add_int32(second_index)
-        return self.__gen_value()
+        return self.__make_op(152, value, first_index, second_index)
 
     def gep2(self, value, type, array_indices):
         self.__writer.add_int32(153)
@@ -151,14 +102,10 @@ class CodeBuilder:
         return self.__gen_value()
 
     def call(self, func, args):
-        self.__writer.add_int32(170)
-        self.__writer.add_int32(func.get_id())
-        self.__writer.add_int32(len(args))
-        for e in args:
-            self.__writer.add_int32(e)
-        return self.__gen_value()
+        return self.__make_op(170, func.get_id(), len(args), *args)
 
     def call_ptr(self, ptr, args, call_conv=None):
+        """
         self.__writer.add_int32(171)
         self.__writer.add_int32(ptr)
         if call_conv is None:
@@ -169,6 +116,13 @@ class CodeBuilder:
         for e in args:
             self.__writer.add_int32(e)
         return self.__gen_value()
+        """
+        return self.__make_op(171,
+                              ptr,
+                              call_conv if call_conv is not None else gen.CallingConv.C,
+                              len(args),
+                              *args
+                              )
 
     def const_int64(self, value):
         self.__writer.add_int32(1000)
@@ -176,24 +130,36 @@ class CodeBuilder:
         return self.__gen_value()
 
     def const_int32(self, value):
+        """
         self.__writer.add_int32(1001)
         self.__writer.add_int32(value)
         return self.__gen_value()
+        """ 
+        return self.__make_op(1001, value)
 
     def const_int16(self, value):
+        """
         self.__writer.add_int32(1002)
         self.__writer.add_int32(value)
         return self.__gen_value()
+        """
+        return self.__make_op(1002, value)
 
     def const_int8(self, value):
+        """
         self.__writer.add_int32(1003)
         self.__writer.add_int32(value)
         return self.__gen_value()
+        """
+        return self.__make_op(1003, value)
 
     def const_int1(self, value):
+        """
         self.__writer.add_int32(1007)
         self.__writer.add_int32(int(value))
         return self.__gen_value()
+        """
+        return self.__make_op(1007, int(value))
 
     def const_float32(self, value):
         self.__writer.add_float32(1004)
@@ -268,9 +234,12 @@ class CodeBuilder:
         self.__writer.lock()
 
     def global_var(self, var):
+        """
         self.__writer.add_int32(3000)
         self.__writer.add_int32(var.get_id())
         return self.__gen_value()
+        """
+        return self.__make_op(3000, var.get_id())
 
     def global_str(self, value):
         self.__writer.add_int32(3001)
@@ -308,3 +277,20 @@ class CodeBuilder:
     def __gen_block(self):
         result = self.__func.add_block()
         return result
+
+    def __make_op(self, id: int, *values: Any) -> Any:
+        """
+        This function adds, to the writer, the id and each subsequent values passed in the parameter
+        values. 
+        Then, it calls self.__gen_value() and returns its result
+
+        Args:
+            id (int): the id of the operation
+
+        Returns:
+            Any: the result of self.__gen_value()
+        """
+        self.__writer.add_int32(id)
+        for v in values:
+            self.__writer.add_int32(v)
+        return self.__gen_value()

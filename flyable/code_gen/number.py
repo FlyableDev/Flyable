@@ -18,23 +18,28 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
-    protocol_result = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
+    protocol_result = visitor.generate_entry_block_var(
+        code_type.get_py_obj_ptr(code_gen))
 
     num_call_args = []
     num_call_args_types = []
 
     for i, e in enumerate(args):
-        new_type, new_value = runtime.value_to_pyobj(code_gen, builder, args[i], args_types[i])
+        new_type, new_value = runtime.value_to_pyobj(
+            code_gen, builder, args[i], args_types[i])
         num_call_args.append(new_value)
         num_call_args_types.append(new_type)
 
     slot = builder.const_int64(get_number_slot_from_func_name(func_name))
 
-    as_number = gen_type.py_object_type_get_tp_as_number_ptr(visitor, instance_type)
+    as_number = gen_type.py_object_type_get_tp_as_number_ptr(
+        visitor, instance_type)
     as_number = builder.load(as_number)
-    as_number = builder.ptr_cast(as_number, code_type.get_int8_ptr().get_ptr_to())
+    as_number = builder.ptr_cast(
+        as_number, code_type.get_int8_ptr().get_ptr_to())
 
-    is_number_null = builder.eq(as_number, builder.const_null(code_type.get_int8_ptr().get_ptr_to()))
+    is_number_null = builder.eq(as_number, builder.const_null(
+        code_type.get_int8_ptr().get_ptr_to()))
 
     basic_call_block = builder.create_block()
     number_call_block = builder.create_block()
@@ -44,11 +49,13 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     builder.set_insert_block(number_call_block)
     func_to_call = builder.gep2(as_number, code_type.get_int8_ptr(), [slot])
     func_to_call = builder.load(func_to_call)
-    func_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2)
+    func_type = code_type.get_func(code_type.get_py_obj_ptr(
+        code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2)
     func_type = func_type.get_ptr_to()
     func_to_call = builder.ptr_cast(func_to_call, func_type)
     continue_block = builder.create_block()
-    builder.store(builder.call_ptr(func_to_call, [obj] + num_call_args), protocol_result)
+    builder.store(builder.call_ptr(
+        func_to_call, [obj] + num_call_args), protocol_result)
     builder.br(continue_block)
 
     builder.set_insert_block(basic_call_block)
@@ -59,7 +66,8 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
 
     builder.set_insert_block(continue_block)
     for i in range(len(num_call_args)):
-        ref_counter.ref_decr_incr(visitor, num_call_args_types[i], num_call_args[i])
+        ref_counter.ref_decr_incr(
+            visitor, num_call_args_types[i], num_call_args[i])
     return builder.load(protocol_result)
 
 
@@ -74,8 +82,10 @@ def is_py_obj_impl_number_protocol(visitor, obj_type, obj, instance_type=None):
     if instance_type is None:
         instance_type = fly_obj.get_py_obj_type(builder, obj)
 
-    as_number = builder.load(gen_type.py_object_type_get_tp_as_number_ptr(visitor, instance_type))
-    impl_number_protocol = builder.eq(as_number, builder.const_null(code_type.get_py_obj_ptr(code_gen)))
+    as_number = builder.load(
+        gen_type.py_object_type_get_tp_as_number_ptr(visitor, instance_type))
+    impl_number_protocol = builder.eq(
+        as_number, builder.const_null(code_type.get_py_obj_ptr(code_gen)))
     return impl_number_protocol, as_number
 
 
@@ -100,8 +110,8 @@ def is_number_binary_func(func_name):
     returns if the function name is a binary function from the number protocol
     """
     # TODO: Put all binary cases
-    binary_numb_funcs = { "__add__", "__sub__", "__mul__", "__div__", "__mod__", "__bool__", "__inv__", "__lshift__",
-                          "__rshift__", "_and", "__xor__", "__or__", }
+    binary_numb_funcs = {"__add__", "__sub__", "__mul__", "__div__", "__mod__", "__bool__", "__inv__", "__lshift__",
+                         "__rshift__", "_and", "__xor__", "__or__", }
     return func_name in binary_numb_funcs
 
 
@@ -110,27 +120,27 @@ def is_number_func_inquiry(func_name):
 
 
 def is_number_func_ternary(func_name):
-    names = { "__pow__", "__in_pow__" }
+    names = {"__pow__", "__in_pow__"}
     return func_name in names
 
 
 def is_number_func_unary(func_name):
-    names = { "__neg__", "__pos__", "__abs__", "__int__", "__float__" }
+    names = {"__neg__", "__pos__", "__abs__", "__int__", "__float__"}
     return func_name in names
 
 
 def get_number_slot_from_func_name(func_name):
     slots = {
-        "__add__" : 0,
-        "__sub__" : 1,
-        "__mul__" : 2,
-        "__div__" : 3,
-        "__mod__" : 4,
-        "__pow__" : 5,
-        "__div__" : 6,
-        "__neg__" : 7,
-        "__pos__" : 8,
-        "__abs__" : 9,
+        "__add__": 0,
+        "__sub__": 1,
+        "__mul__": 2,
+        "__div__": 3,
+        "__mod__": 4,
+        "__pow__": 5,
+        "__div__": 6,
+        "__neg__": 7,
+        "__pos__": 8,
+        "__abs__": 9,
         "__bool__": 10,
     }
     return slots[func_name]
