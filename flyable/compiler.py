@@ -13,14 +13,14 @@ class Compiler(ErrorThrower):
 
     def __init__(self):
         super().__init__()
-        self.__data = comp_data.CompData()
+        self.__data: comp_data.CompData = comp_data.CompData()
         self.set_output_path("output.o")
-        self.__code_gen = gen.CodeGen(self.__data)
+        self.__code_gen: CodeGen = gen.CodeGen(self.__data)
         self.__code_gen.setup()
-        self.__parser = par.Parser(self.__data, self.__code_gen)
+        self.__parser: par.Parser = par.Parser(self.__data, self.__code_gen)
 
-    def add_file(self, path):
-        new_file = lang_file.LangFile()
+    def add_file(self, path: str):
+        new_file: lang_file.LangFile = lang_file.LangFile()
         new_file.read_from_path(path)
         self.__data.add_file(new_file)
 

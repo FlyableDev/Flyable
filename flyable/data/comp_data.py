@@ -1,5 +1,8 @@
 import collections
-import traceback
+from os import PathLike
+from typing import AnyStr, Union
+
+from flyable.data.lang_file import LangFile
 
 
 class CompData:
@@ -8,36 +11,35 @@ class CompData:
     """
 
     def __init__(self):
-        self.__files = collections.OrderedDict()
+        self.__files: dict[str, LangFile] = collections.OrderedDict()
         self.__funcs = []
         self.__classes = []
         self.__configs = {}
-        self.__change = False
-        self.__current_iter = 0
+        self.__change: bool = False
+        self.__current_iter: int = 0
 
     def clear_info(self):
         """
         Clear info ask to every data he holds to remove parsed defined data
         """
-        for _, e in self.__files.items():
-            e.clear_info()
-        for e in self.__funcs:
-            e.clear_info()
-        for e in self.__classes:
+        for e in self.__files.values() + self.__funcs + self.__classes:
             e.clear_info()
 
-    def add_file(self, file):
+    def add_file(self, file: LangFile):
         self.__change = True
         self.__files[file.get_path()] = file
 
-    def get_file(self, index):
+    def get_file(self, index: Union[str, int]) -> Union[LangFile, None]:
         if isinstance(index, str):  # get item by path
-            try:
-                return self.__files[index]
-            except KeyError:
-                return None
+            return self.__files.get(index)
         elif isinstance(index, int):  # get item by index
             return list(self.__files.items())[index][1]
+
+    def get_file_by_index(self, idx: int):
+        pass
+
+    def get_file_by_path(self, path: str):
+        pass
 
     def get_files_count(self):
         return len(self.__files)

@@ -1,4 +1,5 @@
 import os
+from typing import Any, AnyStr
 
 
 class LangFile:
@@ -6,18 +7,18 @@ class LangFile:
     Representation of a Python textual file. In Python it represents a module
     """
 
-    def __init__(self, path="", txt=""):
-        self.__path = path
-        self.__text = txt
-        self.__classes = []
-        self.__funcs = []
+    def __init__(self, path: str = "", txt: str = ""):
+        self.__path: str = path
+        self.__text: str = txt
+        self.__classes: list = []
+        self.__funcs: list = []
         self.__global_func = None
         self.__ast = None
 
-    def read_from_path(self, path):
+    def read_from_path(self, path: str):
         with open(path) as f:
             self.__path = os.path.abspath(path)
-            self.__text = str(f.read())
+            self.__text = f.read()
 
     def find_content(self, name):
         """
