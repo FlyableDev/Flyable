@@ -134,6 +134,7 @@ def get_number_slot_from_func_name(func_name):
     slots = {
         "__add__": 0,
         "__sub__": 1,
+        "__mul__": 2,
         "__mod__": 3,
         "__divmod__": 4,
         "__pow__": 5,
