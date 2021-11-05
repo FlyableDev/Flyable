@@ -26,7 +26,7 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
     # Make sur the folder exist
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     compiler.compile()
-    
+
     end_step()
 
     if not compiler.has_error():
@@ -41,10 +41,10 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
         p.wait()
         if p.returncode != 0:
             raise Exception("Linking error")
-        
+
         end_step()
         # Now run the code
-        """
+
         start_step("Running")
         p = Popen([output_dir + f"/{exec_name}.exe"], cwd=output_dir, stdin=PIPE, stdout=PIPE)
         output, err = p.communicate()
@@ -52,9 +52,9 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
 
         print("-------------------")
         print(output.decode())  # Print what the program outputted
-        """
+
         print("Application ended with code " + str(p.returncode))
 
 
 if __name__ == '__main__':
-    main("for-loops.py", f"./build3/{plat.get_platform_folder()}", "a")
+    main("test.py", f"./build/{plat.get_platform_folder()}", "a")

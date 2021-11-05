@@ -8,11 +8,33 @@ import flyable.code_gen.code_type as code_type
 
 def parse_for_loop(node, visitor):
     object_to_iter_on = node.iter
-    __for_loop_with_iterators(node, visitor)
-    # Check for a very fast for loop in a range
+
+    #    if __for_loop_with_iterators(object_to_iter_on):
+
+    #   else:
+    iter_type, iter_value = visitor.visit_node(node.iter)
+    __for_loop_with_iterators(node, visitor, iter_type, iter_value)
 
 
-def __for_loop_with_iterators(node, visitor):
+def __for_node_matches_range_opt(iter_node):
+    if isinstance(iter_node, ast.Call):
+        args_size = len(iter_node.args)
+        if args_size > 0 and args_size <= 3:
+            for arg in iter_node.args:
+                if isinstance(arg, ast.Constant):
+                    if not isinstance(arg.value, int):
+                        return False
+                else:
+                    return False
+            return True
+    return False
+
+
+def __for_loop_with_range_opt(node, visitor, arg1, arg2, arg3):
+    pass
+
+
+def __for_loop_with_iterators(node, visitor, iter_type, iter_value):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
