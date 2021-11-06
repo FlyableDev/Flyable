@@ -23,8 +23,10 @@ def setup_test(file: str, prefix: str = "test"):
 
 
 def run_test(file: str, *expected_outputs: str, prefix: str = "test"):
+    output_dir = "flyableTests/build-test"
+    
     test = Test()
-    test.setup(output_dir="build-test", source_dir="flyableTests/tests")
+    test.setup(output_dir=output_dir, source_dir="flyableTests/tests")
 
     clean_up = setup_test(file, prefix=prefix)
 
@@ -32,7 +34,7 @@ def run_test(file: str, *expected_outputs: str, prefix: str = "test"):
         test.add_test(f"{prefix}-{file}", *expected_outputs)
         test.run()
     finally:
-        clean_up("build-test/win64")
+        clean_up(f"{output_dir}/win64")
 
 #-------------------- Add your tests here --------------------#
 
