@@ -6,10 +6,6 @@ class ErrorThrower:
     def __init__(self):
         self.__errors: list[Error] = []
 
-    @property
-    def has_error(self):
-        return len(self.__errors) > 0
-
     def throw_error(self, msg: str, line: int, row: int):
         self.__errors.append(Error(msg, line, row))
 
@@ -27,3 +23,6 @@ class ErrorThrower:
 
     def errors_iter(self):
         return iter(self.__errors)
+
+    def has_error(self):
+        return len(self.__errors) > 0

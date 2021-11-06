@@ -57,4 +57,4 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
 
 
 if __name__ == '__main__':
-    main("for-loops.py", f"./build3/{plat.get_platform_folder()}", "a")
+    main("test.py", f"./build3/{plat.get_platform_folder()}", "a")

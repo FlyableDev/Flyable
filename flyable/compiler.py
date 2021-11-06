@@ -30,7 +30,7 @@ class Compiler(ErrorThrower):
     def compile(self):
         self.__pre_parse()
         
-        if not self.has_error:
+        if not self.has_error():
             self.__parse()
 
         self.throw_errors(self.__parser.get_errors())
@@ -38,7 +38,7 @@ class Compiler(ErrorThrower):
         for e in self.errors_iter():
             print(f"{e.message} [{e.line}, {e.row}]")
 
-        if not self.has_error:
+        if not self.has_error():
             self.__code_gen.setup_struct()
             self.__code_gen.generate_main()
             self.__code_gen.write()

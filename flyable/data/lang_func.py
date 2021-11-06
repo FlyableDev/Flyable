@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import ast
-from flyable.data.lang_file import LangFile
+import flyable.data.lang_file as lang_file
 
 from flyable.data.lang_func_impl import LangFuncImpl
 import flyable.data.lang_type as type
@@ -45,7 +47,7 @@ class LangFunc:
     def get_impl(self, index):
         return self.__impls[index]
 
-    def set_file(self, file: LangFile):
+    def set_file(self, file: lang_file.LangFile):
         self.__file = file
 
     def get_file(self):

@@ -1,5 +1,4 @@
 import copy
-from typing import Union
 
 import flyable.data.lang_type as type
 import flyable.parse.context as context
