@@ -421,7 +421,7 @@ class ParserVisitor(NodeVisitor):
                 else:
                     file = self.__data.get_file(self.__last_type.get_id())
 
-                content = file.find_content(name_call)
+                content = file.find_content_by_name(name_call)
                 if isinstance(content, lang_class.LangClass):
                     # New instance class call
                     self.__last_type = lang_type.get_obj_type(content.get_id())

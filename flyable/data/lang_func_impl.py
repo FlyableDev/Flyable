@@ -1,4 +1,5 @@
 import copy
+from typing import Union
 
 import flyable.data.lang_type as type
 import flyable.parse.context as context
@@ -26,34 +27,34 @@ class LangFuncImpl:
         ENDED = 1
 
     def __init__(self):
-        self.__id = -1
-        self.__unknown = False
+        self.__id: int = -1
+        self.__unknown: bool = False
         self.__code_func = None
-        self.__args = []
+        self.__args: list[type.LangType] = []
         self.__parent_func = None
 
         self.__parse_status = LangFuncImpl.ParseStatus.NOT_STARTED
 
-        self.__return_type = type.LangType()
+        self.__return_type: type.LangType = type.LangType()
 
-        self.__context = context.Context()
+        self.__context: context.Context = context.Context()
 
-        self.__can_raise = False
+        self.__can_raise: bool = False
 
-        self.__has_yield = False
+        self.__has_yield: bool = False
 
-    def set_id(self, _id):
+    def set_id(self, _id: int):
         self.__id = _id
 
     def get_id(self):
         return self.__id
 
-    def add_arg(self, arg):
+    def add_arg(self, arg: type.LangType):
         arg = copy.deepcopy(arg)
         hint.remove_hint_type(arg, hint.TypeHintRefIncr)
         self.__args.append(arg)
 
-    def get_arg(self, index):
+    def get_arg(self, index: int):
         return self.__args[index]
 
     def get_args_count(self):
@@ -68,14 +69,14 @@ class LangFuncImpl:
     def get_parent_func(self):
         return self.__parent_func
 
-    def set_unknown(self, unknown):
+    def set_unknown(self, unknown: bool):
         self.__unknown = unknown
 
     def is_unknown(self):
         return self.__unknown
 
-    def set_parse_status(self, status):
-        return self.__parse_status
+    def set_parse_status(self, status: ParseStatus):
+        self.__parse_status = status
 
     def get_parse_status(self):
         return self.__parse_status
@@ -83,7 +84,7 @@ class LangFuncImpl:
     def get_return_type(self):
         return self.__return_type
 
-    def set_return_type(self, return_type):
+    def set_return_type(self, return_type: type.LangType):
         return_type = copy.deepcopy(return_type)
         hint.remove_hint_type(return_type, hint.TypeHintRefIncr)
         self.__return_type = return_type
@@ -97,7 +98,7 @@ class LangFuncImpl:
     def get_context(self):
         return self.__context
 
-    def set_can_raise(self, can_raise):
+    def set_can_raise(self, can_raise: bool):
         """
         Set if the implementation can potentially raise an exception during his execution
         """
@@ -109,7 +110,7 @@ class LangFuncImpl:
         """
         return self.__can_raise
 
-    def set_yield(self, _yield):
+    def set_yield(self, _yield: bool):
         """
         Set if the function contains a yield
         """

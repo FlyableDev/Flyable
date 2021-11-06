@@ -30,15 +30,15 @@ class Compiler(ErrorThrower):
     def compile(self):
         self.__pre_parse()
         
-        if not self.has_error():
+        if not self.has_error:
             self.__parse()
 
         self.throw_errors(self.__parser.get_errors())
 
         for e in self.errors_iter():
-            print(f"{e.get_message()} {e.get_line()} {e.get_row()}")
+            print(f"{e.message} [{e.line}, {e.row}]")
 
-        if not self.has_error():
+        if not self.has_error:
             self.__code_gen.setup_struct()
             self.__code_gen.generate_main()
             self.__code_gen.write()
@@ -79,7 +79,7 @@ class Compiler(ErrorThrower):
         for _class in self.__data.classes_iter():
             node = _class.get_node()
             for e in node.bases:
-                found_class = _class.get_file().find_content(e.id)
+                found_class = _class.get_file().find_content_by_id(e.id)
                 if isinstance(found_class, lang_class.LangClass):
                     _class.add_inherit(found_class)
                 else:
