@@ -43,18 +43,27 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
             raise Exception("Linking error")
 
         end_step()
-        # Now run the code
+        
+        
+def run_code(output_dir: str, exec_name: str):
+    """Runs the code
 
-        start_step("Running")
-        p = Popen([output_dir + f"/{exec_name}.exe"], cwd=output_dir, stdin=PIPE, stdout=PIPE)
-        output, err = p.communicate()
-        end_step()
+    Args:
+        output_dir (str): the directory where the code is
+        exec_name (str): the name of the executable
+    """
+    start_step("Running")
+    p = Popen([output_dir + f"/{exec_name}.exe"], cwd=output_dir, stdin=PIPE, stdout=PIPE)
+    output, err = p.communicate()
+    end_step()
 
-        print("-------------------")
-        print(output.decode())  # Print what the program outputted
+    print("-------------------")
+    print(output.decode())  # Print what the program outputted
 
-        print("Application ended with code " + str(p.returncode))
+    print("Application ended with code " + str(p.returncode))
 
 
 if __name__ == '__main__':
-    main("test.py", f"./build/{plat.get_platform_folder()}", "a")
+    dir = f"./build3/{plat.get_platform_folder()}"
+    main("test.py", dir, "a")
+    #run_code(dir, "a")

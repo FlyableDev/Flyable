@@ -1,10 +1,9 @@
 import ast
 import sys
-import flyable.data.lang_file as file
+from flyable.data.comp_data import CompData
 import flyable.data.lang_func as func
 import flyable.data.lang_class as _class
 from flyable.data.error_thrower import ErrorThrower
-from flyable.tool.repr_visitor import ReprVisitor
 
 
 class PreParser(ast.NodeVisitor, ErrorThrower):
@@ -20,7 +19,7 @@ class PreParser(ast.NodeVisitor, ErrorThrower):
         self.__current_file = None
         self.__code_gen = code_gen
 
-    def parse(self, comp_data):
+    def parse(self, comp_data: CompData):
         for i in range(comp_data.get_files_count()):
             file = comp_data.get_file(i)
             self.__current_file = file

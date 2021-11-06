@@ -7,24 +7,20 @@ result = ""
 
 # Test the if true
 if a == 10:
-    result += "Y"
+    print("Y")
 
 
 # Test the elif
 if b == 1:
-    result += "N"
+    print("N")
 elif b == 2:
-    result += "N"
+    print("N")
 elif b == 30:
-    result += "Y"
+    print("Y")
 
 
 # Test the condition on python object
 if c == d:
-    result += "N"
+    print("N")
 else:
-    result += "Y"
-
-
-print(result)
-
+    print("Y")

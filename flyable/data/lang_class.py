@@ -1,3 +1,6 @@
+from typing import Union
+from flyable.data.lang_file import LangFile
+from flyable.data.lang_func import LangFunc
 from flyable.data.lang_type import LangType
 import flyable.data.lang_class_type as class_type
 
@@ -6,11 +9,11 @@ class LangClass:
 
     def __init__(self, node):
         self.__node = node
-        self.__funcs = []
+        self.__funcs: list[LangFunc] = []
         self.__attributes = []
-        self.__id = -1
+        self.__id: int = -1
         self.__struct = None
-        self.__file = None
+        self.__file: Union[LangFile, None] = None
         self.__inherits = []
         self.__class_type = class_type.LangClassType()
 
@@ -39,13 +42,13 @@ class LangClass:
     def funcs_iter(self):
         return iter(self.__funcs)
 
-    def set_id(self, id):
+    def set_id(self, id: int):
         self.__id = id
 
     def get_id(self):
         return self.__id
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.__node.name
 
     def add_attribute(self, attr):
@@ -73,7 +76,7 @@ class LangClass:
     def iter_inherits(self):
         return iter(self.__inherits)
 
-    def get_inherits(self, index):
+    def get_inherits(self, index: int):
         return self.__inherits[index]
 
     def set_struct(self, struct):

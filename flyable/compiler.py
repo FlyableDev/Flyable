@@ -13,14 +13,14 @@ class Compiler(ErrorThrower):
 
     def __init__(self):
         super().__init__()
-        self.__data = comp_data.CompData()
+        self.__data: comp_data.CompData = comp_data.CompData()
         self.set_output_path("output.o")
-        self.__code_gen = gen.CodeGen(self.__data)
+        self.__code_gen: CodeGen = gen.CodeGen(self.__data)
         self.__code_gen.setup()
-        self.__parser = par.Parser(self.__data, self.__code_gen)
+        self.__parser: par.Parser = par.Parser(self.__data, self.__code_gen)
 
-    def add_file(self, path):
-        new_file = lang_file.LangFile()
+    def add_file(self, path: str):
+        new_file: lang_file.LangFile = lang_file.LangFile()
         new_file.read_from_path(path)
         self.__data.add_file(new_file)
 
@@ -36,7 +36,7 @@ class Compiler(ErrorThrower):
         self.throw_errors(self.__parser.get_errors())
 
         for e in self.errors_iter():
-            print(f"{e.get_message()} {e.get_line()} {e.get_row()}")
+            print(f"{e.message} [{e.line}, {e.row}]")
 
         if not self.has_error():
             self.__code_gen.setup_struct()
@@ -79,7 +79,7 @@ class Compiler(ErrorThrower):
         for _class in self.__data.classes_iter():
             node = _class.get_node()
             for e in node.bases:
-                found_class = _class.get_file().find_content(e.id)
+                found_class = _class.get_file().find_content_by_id(e.id)
                 if isinstance(found_class, lang_class.LangClass):
                     _class.add_inherit(found_class)
                 else:

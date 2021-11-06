@@ -1,5 +1,9 @@
 import collections
-import traceback
+from typing import Any, Union
+from flyable.data.lang_class import LangClass
+
+from flyable.data.lang_file import LangFile
+from flyable.data.lang_func import LangFunc
 
 
 class CompData:
@@ -8,36 +12,58 @@ class CompData:
     """
 
     def __init__(self):
-        self.__files = collections.OrderedDict()
-        self.__funcs = []
-        self.__classes = []
-        self.__configs = {}
-        self.__change = False
-        self.__current_iter = 0
+        self.__files: dict[str, LangFile] = collections.OrderedDict()
+        self.__funcs: list[LangFunc] = []
+        self.__classes: list[LangClass] = []
+        self.__configs: dict[str, Any] = {}
+        self.__change: bool = False
+        self.__current_iter: int = 0
 
     def clear_info(self):
         """
         Clear info ask to every data he holds to remove parsed defined data
         """
-        for _, e in self.__files.items():
-            e.clear_info()
-        for e in self.__funcs:
-            e.clear_info()
-        for e in self.__classes:
+        for e in list(self.__files.values()) + self.__funcs + self.__classes:
             e.clear_info()
 
-    def add_file(self, file):
+    def add_file(self, file: LangFile):
         self.__change = True
         self.__files[file.get_path()] = file
 
-    def get_file(self, index):
+    def get_file(self, index: Union[str, int]) -> Union[LangFile, None]:
+        """
+        Deprecated: 
+            you should call `get_file_by_idx` or `get_file_by_path` instead
+        """
         if isinstance(index, str):  # get item by path
-            try:
-                return self.__files[index]
-            except KeyError:
-                return None
+            return self.__files.get(index)
         elif isinstance(index, int):  # get item by index
-            return list(self.__files.items())[index][1]
+            return list(self.__files.values())[index]
+
+    def get_file_by_index(self, idx: int) -> Union[LangFile, None]:
+        """Get the file at the specified index
+
+        Args:
+            idx (int): the index of the file in the file dict
+
+        Returns:
+            Union[LangFile, None]: The file at specified index, or None if the index is not in bound
+        """
+        # the `- 1` in `abs(idx) - 1` is necessary because if we have a list of length n and want
+        # to access the 0th element with negative idx, it will be index -n but the abs(-n) == n
+        # and it wouldn't pass the test abs(idx) < len(list) if one wasn't substracted from it
+        return list(self.__files.values())[idx] if abs(idx) - 1 < len(self.__files.values()) else None
+
+    def get_file_by_path(self, path: str) -> Union[LangFile, None]:
+        """Get the file at the specified path
+
+        Args:
+            path (str): the path of the file
+
+        Returns:
+            Union[LangFile, None]: The file with a matching path, or None if there isn't one
+        """
+        return self.__files.get(path)
 
     def get_files_count(self):
         return len(self.__files)
@@ -47,7 +73,7 @@ class CompData:
         func.set_id(self.get_funcs_count())
         self.__funcs.append(func)
 
-    def get_func(self, index):
+    def get_func(self, index: int):
         return self.__funcs[index]
 
     def get_funcs_count(self):
@@ -61,7 +87,7 @@ class CompData:
         _class.set_id(self.get_classes_count())
         self.__classes.append(_class)
 
-    def get_class(self, index):
+    def get_class(self, index: int):
         return self.__classes[index]
 
     def get_classes_count(self):
@@ -70,13 +96,13 @@ class CompData:
     def classes_iter(self):
         return iter(self.__classes)
 
-    def set_config(self, name, data):
+    def set_config(self, name: str, data: Any):
         self.__configs[name] = data
 
-    def get_config(self, name):
+    def get_config(self, name: str):
         return self.__configs[name]
 
-    def set_changed(self, change):
+    def set_changed(self, change: bool):
         self.__change = change
 
     def is_changed(self):

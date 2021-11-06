@@ -1,5 +1,9 @@
+from __future__ import annotations
+from functools import reduce
+
 import copy
 from enum import Enum
+from typing import Union
 from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_type as code_type
 import flyable.data.type_hint as hint
@@ -24,6 +28,9 @@ def get_type_common(data, primary_type, second_type=None):
     """
     Return a type that can contains both types.
     Return none if no common types found
+
+    DEPRECATED:
+        Use `get_most_common_type` instead
     """
     result = None
     if isinstance(primary_type, list) and second_type is None:
@@ -50,6 +57,47 @@ def get_type_common(data, primary_type, second_type=None):
             raise NotImplementedError()
 
     return result
+
+
+def _get_type_common(primary_type, second_type=None) -> LangType:
+    """"""
+    result: LangType
+    if primary_type == second_type or second_type is None:
+        result = copy.deepcopy(primary_type)
+        result.clear_hints()
+    elif primary_type.is_python_obj() or second_type.is_python_obj():
+        result = get_python_obj_type()
+    elif primary_type.is_obj() and second_type.is_obj():
+        result = get_python_obj_type()
+    elif primary_type.is_none() or second_type.is_none():
+        result = get_python_obj_type()
+    elif primary_type.is_primitive() or second_type.is_primitive():
+        # If one of them is primitive but they are not equals, only a py object can represent both
+        result = get_python_obj_type()
+    else:
+        raise NotImplementedError()
+    return result
+
+
+def get_most_common_type(data, *types: LangType) -> LangType:
+    """Finds a type that can contains all the types passed in
+    the argument or returns None if there isn't one.
+
+    Args:
+        data ([type]): ??
+        types (LangType...): the types you want to find the most common type
+
+    Raises:
+        ValueError: If there are not at least one type passed in the argument
+
+    Returns:
+        LangType: the most common type of all the types passed in the argument
+    """
+    if len(types) == 0:
+        raise ValueError(
+            "You must specify at least one type to get the most common one"
+        )
+    return reduce(_get_type_common, types[1:], types[0])
 
 
 def get_int_type():
@@ -123,12 +171,14 @@ class LangType:
         SET = 3
 
     def __init__(self, type=Type.UNKNOWN, id=0):
-        if not isinstance(id, int): raise TypeError("Integer expected for id")
+        if not isinstance(id, int):
+            raise TypeError("Integer expected for id")
 
         self.__type: LangType.Type = type
         self.__id: int = id
         self.__dims: list[LangType.Dimension] = []
-        self.__hints: list[hint.TypeHint] = []  # Hints are extra data that allows the compiler to perform more severe optimization
+        # Hints are extra data that allows the compiler to perform more severe optimization
+        self.__hints: list[hint.TypeHint] = []
         self.__can_none: bool = False
 
     def is_unknown(self):
@@ -179,8 +229,8 @@ class LangType:
     def can_be_none(self):
         return self.__can_none
 
-    def set_can_be_none(self, can):
-        self.__can_none = can
+    def set_can_be_none(self, can_be_none: bool):
+        self.__can_none = can_be_none
 
     def to_code_type(self, code_gen):
         result = CodeType()
@@ -195,7 +245,8 @@ class LangType:
         elif self.is_python_obj():
             result = code_type.get_py_obj_ptr(code_gen)
         elif self.is_obj():
-            result = code_gen.get_data().get_class(self.__id).get_struct().to_code_type().get_ptr_to()
+            result = code_gen.get_data().get_class(
+                self.__id).get_struct().to_code_type().get_ptr_to()
         elif self.is_none():
             result = code_type.get_int32()
         elif self.is_unknown():
@@ -218,17 +269,18 @@ class LangType:
                     result.add_hint(hint.TypeHintPythonType("builtins.int"))
                 elif result.is_dec():
                     result.add_hint(hint.TypeHintPythonType("builtins.float"))
-                result.__type = LangType.Type.PYTHON  # A container can only contain python object object
+                # A container can only contain python object object
+                result.__type = LangType.Type.PYTHON
             return result
         return get_python_obj_type()
 
-    def add_hint(self, new_hint):
+    def add_hint(self, new_hint: hint.TypeHint):
         if isinstance(new_hint, hint.TypeHint):
             self.__hints.append(new_hint)
         else:
             raise ValueError(str(type(new_hint)) + " instead of HintType")
 
-    def remove_hint(self, index):
+    def remove_hint(self, index: int):
         self.__hints.pop(index)
 
     def get_hint(self, index):
@@ -251,29 +303,29 @@ class LangType:
         return self.__type == other.__type
 
     def to_str(self, comp_data):
+        to_str: str
         if self.is_primitive() or self.is_module() or self.is_unknown():
-            return str(self)
+            to_str = str(self)
         elif self.is_none():
-            return "None type"
+            to_str = "None type"
         elif self.is_obj():
-            return comp_data.get_class(self.__id).get_name()
+            to_str = comp_data.get_class(self.__id).get_name()
         elif self.is_python_obj():
-            return "Python object"
+            to_str = "Python object"
         elif self.is_dict():
-            return "dict"
+            to_str = "dict"
         elif self.is_list():
-            return "list"
+            to_str = "list"
         elif self.is_set():
-            return "set"
+            to_str = "set"
         elif self.is_tuple():
-            return tuple
-        return "Flyable type"
+            to_str = "tuple"
+        else:
+            to_str = "Flyable type"
+        return to_str
 
     def __str__(self):
-        result = ""
-
         str_types = {
-
             LangType.Type.UNKNOWN: "Unknown",
             LangType.Type.INTEGER: "int",
             LangType.Type.DECIMAL: "float",
@@ -284,7 +336,7 @@ class LangType:
             LangType.Type.NONE: "none"
         }
 
-        result += str_types[self.__type]
+        result = str_types[self.__type]
 
         for dim in self.__dims:
             if dim == LangType.Dimension.DICT:
