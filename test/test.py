@@ -12,7 +12,7 @@ result the test is considered to be successful.
 
 def setup_test(test):
     test.add_test("fibonacci.py", "55")
-    #test.add_test("cond.py", "YYY")
+    test.add_test("cond.py", "YYY")
 
 
 class Test:
@@ -26,8 +26,8 @@ class Test:
         self.__expected_results.append(result)
 
     def run(self):
-        for i, _ in enumerate(self.__files):
-            self.__run_test(self.__files[i], self.__expected_results[i])
+        for file, expected_result in zip(self.__files, self.__expected_results):
+            self.__run_test(file, expected_result)
 
     def __run_test(self, file_name, expected_print):
         file_name = "src/" + file_name

@@ -272,7 +272,7 @@ class ParserVisitor(NodeVisitor):
                     ref_counter.ref_decr_nullable(self, found_var.get_type(), old_content)
 
                     # The variable might have a new type
-                    found_var.set_type(lang_type.get_type_common(self.__data, found_var.get_type(), self.__assign_type))
+                    found_var.set_type(lang_type.get_most_common_type(self.__data, found_var.get_type(), self.__assign_type))
 
                     # Store the new content
                     self.__builder.store(self.__assign_value, self.__last_value)
@@ -329,7 +329,7 @@ class ParserVisitor(NodeVisitor):
                 second_index = self.__builder.const_int32(fly_obj.get_obj_attribute_start_index() + attr.get_id())
                 attr_index = self.__builder.gep(self.__last_value, first_index, second_index)
 
-                common_type = lang_type.get_type_common(self.__data, attr.get_type(), self.__assign_type)
+                common_type = lang_type.get_most_common_type(self.__data, attr.get_type(), self.__assign_type)
                 if attr.get_type() != common_type:  # Type mismatch between the attribute and the new assign
                     # Change the type of the attribute
                     attr.set_type(common_type)
@@ -593,7 +593,7 @@ class ParserVisitor(NodeVisitor):
         self.__builder.set_insert_block(false_cond)
         false_type, false_value = self.__visit_node(node.orelse)
 
-        common_type = lang_type.get_type_common(self.__data, true_type, false_type)
+        common_type = lang_type.get_most_common_type(self.__data, true_type, false_type)
         new_var = self.generate_entry_block_var(common_type.to_code_type(self.__code_gen))
 
         self.__builder.set_insert_block(true_cond)
@@ -784,7 +784,7 @@ class ParserVisitor(NodeVisitor):
             if common_type is None:
                 common_type = type
             else:
-                common_type = lang_type.get_type_common(self.__data, common_type, type)
+                common_type = lang_type.get_most_common_type(self.__data, common_type, type)
 
         array = gen_list.instanciate_python_list(self.__code_gen, self.__builder,
                                                  self.__builder.const_int64(len(elts_values)))

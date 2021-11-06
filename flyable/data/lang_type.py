@@ -1,3 +1,6 @@
+from __future__ import annotations
+from functools import reduce
+
 import copy
 from enum import Enum
 from typing import Union
@@ -25,6 +28,9 @@ def get_type_common(data, primary_type, second_type=None):
     """
     Return a type that can contains both types.
     Return none if no common types found
+
+    DEPRECATED:
+        Use `get_most_common_type` instead
     """
     result = None
     if isinstance(primary_type, list) and second_type is None:
@@ -51,6 +57,47 @@ def get_type_common(data, primary_type, second_type=None):
             raise NotImplementedError()
 
     return result
+
+
+def _get_type_common(primary_type, second_type=None) -> LangType:
+    """"""
+    result: LangType
+    if primary_type == second_type or second_type is None:
+        result = copy.deepcopy(primary_type)
+        result.clear_hints()
+    elif primary_type.is_python_obj() or second_type.is_python_obj():
+        result = get_python_obj_type()
+    elif primary_type.is_obj() and second_type.is_obj():
+        result = get_python_obj_type()
+    elif primary_type.is_none() or second_type.is_none():
+        result = get_python_obj_type()
+    elif primary_type.is_primitive() or second_type.is_primitive():
+        # If one of them is primitive but they are not equals, only a py object can represent both
+        result = get_python_obj_type()
+    else:
+        raise NotImplementedError()
+    return result
+
+
+def get_most_common_type(data, *types: LangType) -> LangType:
+    """Finds a type that can contains all the types passed in
+    the argument or returns None if there isn't one.
+
+    Args:
+        data ([type]): ??
+        types (LangType...): the types you want to find the most common type
+
+    Raises:
+        ValueError: If there are not at least one type passed in the argument
+
+    Returns:
+        LangType: the most common type of all the types passed in the argument
+    """
+    if len(types) == 0:
+        raise ValueError(
+            "You must specify at least one type to get the most common one"
+        )
+    return reduce(_get_type_common, types[1:], types[0])
 
 
 def get_int_type():

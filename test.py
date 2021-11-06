@@ -13,7 +13,7 @@ def is_prime(n):
 def main():
     start = time.time()
     primes = []
-    nb = 1000
+    nb = 100000
     for i in range(nb):
         is_p = is_prime(i)
         if is_p:
