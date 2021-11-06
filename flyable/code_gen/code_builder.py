@@ -105,24 +105,7 @@ class CodeBuilder:
         return self.__make_op(170, func.get_id(), len(args), *args)
 
     def call_ptr(self, ptr, args, call_conv=None):
-        """
-        self.__writer.add_int32(171)
-        self.__writer.add_int32(ptr)
-        if call_conv is None:
-            call_conv = gen.CallingConv.C
-        self.__writer.add_int32(call_conv)
-
-        self.__writer.add_int32(len(args))
-        for e in args:
-            self.__writer.add_int32(e)
-        return self.__gen_value()
-        """
-        return self.__make_op(171,
-                              ptr,
-                              call_conv if call_conv is not None else gen.CallingConv.C,
-                              len(args),
-                              *args
-                              )
+        return self.__make_op(171, ptr, call_conv if call_conv is not None else gen.CallingConv.C, len(args), *args)
 
     def const_int64(self, value):
         self.__writer.add_int32(1000)
@@ -130,35 +113,15 @@ class CodeBuilder:
         return self.__gen_value()
 
     def const_int32(self, value):
-        """
-        self.__writer.add_int32(1001)
-        self.__writer.add_int32(value)
-        return self.__gen_value()
-        """ 
         return self.__make_op(1001, value)
 
     def const_int16(self, value):
-        """
-        self.__writer.add_int32(1002)
-        self.__writer.add_int32(value)
-        return self.__gen_value()
-        """
         return self.__make_op(1002, value)
 
     def const_int8(self, value):
-        """
-        self.__writer.add_int32(1003)
-        self.__writer.add_int32(value)
-        return self.__gen_value()
-        """
         return self.__make_op(1003, value)
 
     def const_int1(self, value):
-        """
-        self.__writer.add_int32(1007)
-        self.__writer.add_int32(int(value))
-        return self.__gen_value()
-        """
         return self.__make_op(1007, int(value))
 
     def const_float32(self, value):
@@ -234,11 +197,6 @@ class CodeBuilder:
         self.__writer.lock()
 
     def global_var(self, var):
-        """
-        self.__writer.add_int32(3000)
-        self.__writer.add_int32(var.get_id())
-        return self.__gen_value()
-        """
         return self.__make_op(3000, var.get_id())
 
     def global_str(self, value):

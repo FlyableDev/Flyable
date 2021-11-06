@@ -30,7 +30,8 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
         num_call_args.append(new_value)
         num_call_args_types.append(new_type)
 
-    slot = builder.const_int64(get_number_slot_from_func_name(func_name))
+    slot_id = get_number_slot_from_func_name(func_name)
+    slot = builder.const_int64(slot_id)
 
     as_number = gen_type.py_object_type_get_tp_as_number_ptr(
         visitor, instance_type)
@@ -134,13 +135,18 @@ def get_number_slot_from_func_name(func_name):
         "__add__": 0,
         "__sub__": 1,
         "__mul__": 2,
-        "__div__": 3,
-        "__mod__": 4,
+        "__mod__": 3,
+        "__divmod__": 4,
         "__pow__": 5,
         "__div__": 6,
-        "__neg__": 7,
-        "__pos__": 8,
-        "__abs__": 9,
-        "__bool__": 10,
+        "__pos__": 7,
+        "__abs__": 8,
+        "__bool__": 9,
+        "__lshift__": 11,
+        "__rshitf__": 12,
+        "_and": 13,
+        "__xor__": 14,
+        "__or__": 15,
     }
+
     return slots[func_name]
