@@ -64,6 +64,5 @@ def run_code(output_dir: str, exec_name: str):
 
 
 if __name__ == '__main__':
-    dir = f"./build3/{plat.get_platform_folder()}"
+    dir = f"./build/{plat.get_platform_folder()}"
     main("test.py", dir, "a")
-    #run_code(dir, "a")

@@ -30,7 +30,7 @@ def parse_for_loop(node, visitor):
             __for_loop_with_range_opt(node, visitor, node.target.id, args_types, args_values)
         else:
             # Call the range object from the builtins module
-            builtins_module = builder.load(code_gen.get_build_in_module())
+            builtins_module = builder.load(builder.global_var(code_gen.get_build_in_module()))
             iter_type, iter_value = caller.call_obj(visitor, "range", builtins_module, lang_type.get_python_obj_type(),
                                                     args_values, args_types)
             __for_loop_with_iterators(node, visitor, iter_type, iter_value)

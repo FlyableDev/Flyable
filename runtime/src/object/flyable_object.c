@@ -2,6 +2,7 @@
 
 PyObject* __flyable__generate__class(char* name,char** names,void** funcs,int size)
 {
+    PyNumberMethods
     /*PyType_Spec* type = (PyType_Spec*) calloc(sizeof(PyType_Spec),1);
     type->name = name;
     type->basicsize = sizeof(XxoObject);

@@ -1,5 +1,4 @@
 
 
-def main():
-    a = 10
-    print(a)
+for i in range(100):
+    print(i % 2)

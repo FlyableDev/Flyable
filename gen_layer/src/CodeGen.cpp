@@ -262,7 +262,6 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
         while(!current->atEnd())
         {
             int opcode = current->readInt32();
-
             switch(opcode)
             {
 
