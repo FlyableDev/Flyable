@@ -4,7 +4,7 @@
 Flyable is a Python compiler that generates efficient native code. It uses different techniques and aggressive optimizations to make sure your code runs the way you want: the fastest way possible. It also relies on CPython to make sure that all your favorite libraries are still available and fully functional.
 
 - [Website](https://www.flyable.dev)
-- [Discord](https://discord.gg/tquHUe9Q89)
+- [Discord (new !)](https://discord.gg/tquHUe9Q89)
 - [Documentation](https://flyabledev.github.io/FlyableDoc/#/)
 - [Gitter](https://gitter.im/FlyableDev/community)
 
