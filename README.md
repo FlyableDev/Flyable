@@ -6,7 +6,6 @@ Flyable is a Python compiler that generates efficient native code. It uses diffe
 - [Website](https://www.flyable.dev)
 - [Discord (new !)](https://discord.gg/tquHUe9Q89)
 - [Documentation](https://flyabledev.github.io/FlyableDoc/#/)
-- [Gitter](https://gitter.im/FlyableDev/community)
 
 Flyable is licensed under the GNU Affero General Public License v3.0 .
 
