@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 from flyable.data.lang_type import LangType
 from flyable.parse.variable import Variable
 
@@ -6,7 +6,7 @@ from flyable.parse.variable import Variable
 class Context:
 
     def __init__(self):
-        self.__vars: list[Variable] = []
+        self.__vars: List[Variable] = []
 
     def add_var(self, name: str, type: LangType):
         new_var = Variable(len(self.__vars))

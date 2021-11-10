@@ -1,5 +1,5 @@
 import collections
-from typing import Any, Union
+from typing import Any, Union, List, Dict
 from flyable.data.lang_class import LangClass
 
 from flyable.data.lang_file import LangFile
@@ -12,10 +12,10 @@ class CompData:
     """
 
     def __init__(self):
-        self.__files: dict[str, LangFile] = collections.OrderedDict()
-        self.__funcs: list[LangFunc] = []
-        self.__classes: list[LangClass] = []
-        self.__configs: dict[str, Any] = {}
+        self.__files: Dict[str, LangFile] = collections.OrderedDict()
+        self.__funcs: List[LangFunc] = []
+        self.__classes: List[LangClass] = []
+        self.__configs: Dict[str, Any] = {}
         self.__change: bool = False
         self.__current_iter: int = 0
 

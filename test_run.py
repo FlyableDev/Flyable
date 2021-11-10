@@ -1,4 +1,6 @@
 import os
+from typing import List
+
 from tests.test import Test
 
 """
@@ -18,7 +20,7 @@ How to add another test:
 # -------------------- setup, run and clean up for the tests --------------------#
 
 def setup_test(file: str, prefix: str = "test"):
-    lines_before_test: list[str]
+    lines_before_test: List[str]
     with open(f"tests/tests/{file}", "r") as f:
         lines_before_test = f.readlines()
 

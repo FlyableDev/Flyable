@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Sequence, List
 import flyable.compiler as com
 import flyable.tool.platform as plat
 from subprocess import Popen, PIPE
@@ -16,8 +16,8 @@ class Test:
     def setup(self, output_dir: str, source_dir: str):
         self.__output_dir = output_dir
         self.__source_dir = source_dir
-        self.__files: list[str] = []
-        self.__expected_results: list[Sequence[str]] = []
+        self.__files: List[str] = []
+        self.__expected_results: List[Sequence[str]] = []
 
     def add_test(self, file_name: str, *results: str):
         self.__files.append(file_name)
@@ -27,7 +27,7 @@ class Test:
         for file, expected_result in zip(self.__files, self.__expected_results):
             self.__run_test(file, expected_result)
 
-    def __run_test(self, file_name: str, expected_outputs: list[str]):
+    def __run_test(self, file_name: str, expected_outputs: List[str]):
         file_name = f"{self.__source_dir}/{file_name}"
         output_dir = f"{self.__output_dir}/{plat.get_platform_folder()}"
         compiler = com.Compiler()

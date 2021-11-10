@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 from flyable.data.lang_file import LangFile
 from flyable.data.lang_func import LangFunc
 from flyable.data.lang_type import LangType
@@ -9,7 +9,7 @@ class LangClass:
 
     def __init__(self, node):
         self.__node = node
-        self.__funcs: list[LangFunc] = []
+        self.__funcs: List[LangFunc] = []
         self.__attributes = []
         self.__id: int = -1
         self.__struct = None
