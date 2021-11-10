@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Union
+from typing import Union, List
 from ast import Module
 
 import flyable.data.lang_func as lang_func
@@ -16,8 +16,8 @@ class LangFile:
     def __init__(self, path: str = "", txt: str = ""):
         self.__path: str = path
         self.__text: str = txt
-        self.__classes: list[lang_class.LangClass] = []
-        self.__funcs: list[lang_func.LangFunc] = []
+        self.__classes: List[lang_class.LangClass] = []
+        self.__funcs: List[lang_func.LangFunc] = []
         self.__global_func = None
         self.__ast: Union[Module, None] = None
 

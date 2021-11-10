@@ -1,15 +1,17 @@
+from typing import List
+
 from flyable.data.error import Error
 
 
 class ErrorThrower:
 
     def __init__(self):
-        self.__errors: list[Error] = []
+        self.__errors: List[Error] = []
 
     def throw_error(self, msg: str, line: int, row: int):
         self.__errors.append(Error(msg, line, row))
 
-    def throw_errors(self, errors: list[Error]):
+    def throw_errors(self, errors: List[Error]):
         self.__errors = errors.copy()
 
     def get_error(self, index: int):

@@ -3,7 +3,7 @@ from functools import reduce
 
 import copy
 from enum import Enum
-from typing import Union
+from typing import List
 from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_type as code_type
 import flyable.data.type_hint as hint
@@ -176,9 +176,9 @@ class LangType:
 
         self.__type: LangType.Type = type
         self.__id: int = id
-        self.__dims: list[LangType.Dimension] = []
+        self.__dims: List[LangType.Dimension] = []
         # Hints are extra data that allows the compiler to perform more severe optimization
-        self.__hints: list[hint.TypeHint] = []
+        self.__hints: List[hint.TypeHint] = []
         self.__can_none: bool = False
 
     def is_unknown(self):
