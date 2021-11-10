@@ -284,9 +284,7 @@ class ParserVisitor(NodeVisitor):
             self.__last_type = lang_type.get_python_obj_type()
             module = self.__builder.global_var(self.__code_gen.get_build_in_module())
             module = self.__builder.load(module)
-            str_content = self.__code_gen.get_or_insert_str(node.id)
-            str_content = self.__builder.load(self.__builder.global_var(str_content))
-            self.__last_value = fly_obj.py_obj_get_attr(self, module, str_content)
+            self.__last_value = fly_obj.py_obj_get_attr(self, module, node.id)
         elif isinstance(node.ctx, Store):  # not found so declaring a variable
             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
             if self.__func.get_parent_func().is_global():
@@ -475,8 +473,8 @@ class ParserVisitor(NodeVisitor):
 
         if isinstance(node.ctx, ast.Store):
             func_name = "__setitem__"
-            args_types += self.__assign_type
-            args += self.__assign_value
+            args_types += [self.__assign_type]
+            args += [self.__assign_value]
         elif isinstance(node.ctx, ast.Del):
             func_name = "__delitem__"
         else:  # load
