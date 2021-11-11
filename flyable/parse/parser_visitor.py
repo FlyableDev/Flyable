@@ -205,17 +205,42 @@ class ParserVisitor(NodeVisitor):
 
     def visit_Compare(self, node: Compare) -> Any:
         all = [node.left] + node.comparators
-        last_value = None
-        last_type = None
+        first_type = None
+        first_value = None
+        compare_types = []
+        compare_values = []
         for e in range(len(node.ops)):
-            first_type, first_value = self.__visit_node(all[e])
+            if e == 0:
+                first_type, first_value = self.__visit_node(all[e])
             second_type, second_value = self.__visit_node(all[e + 1])
             current_op = node.ops[e]
-            last_type, last_value = op_call.cond_op(self, current_op, first_type, first_value, second_type,
-                                                    second_value)
-            ref_counter.ref_decr_multiple_incr(self, [first_type, second_type], [first_value, second_value])
-        self.__last_value = last_value
-        self.__last_type = last_type
+            compare_type, compare_value = op_call.cond_op(self, current_op, first_type, first_value, second_type,
+                                                          second_value)
+            compare_types.append(compare_type)
+            compare_values.append(compare_value)
+            if e == len(node.ops) - 1:
+                ref_counter.ref_decr_multiple_incr(self, [first_type, second_type], [first_value, second_value])
+            else:
+                ref_counter.ref_decr_incr(self, first_type, first_value)
+            first_type, first_value = second_type, second_value
+        if len(node.ops) == 1:
+            self.__last_value = compare_values[0]
+            self.__last_type = compare_types[0]
+        else:
+            compare_value = None
+            compare_type = None
+            for e in range(len(compare_values) - 1):
+                if e == 0:
+                    first_value = compare_values[e]
+                    first_type = compare_types[e]
+                second_value = compare_values[e + 1]
+                second_type = compare_types[e + 1]
+                compare_type, compare_value = op_call.cond_op(self, ast.And(), first_type, first_value, second_type,
+                                                              second_value)
+                ref_counter.ref_decr_multiple_incr(self, [first_type, second_type], [first_value, second_value])
+                first_type, first_value = compare_type, compare_value
+            self.__last_value = compare_value
+            self.__last_type = compare_type
 
     def visit_AugAssign(self, node: AugAssign) -> Any:
         right_type, right_value = self.__visit_node(node.value)
@@ -554,6 +579,20 @@ class ParserVisitor(NodeVisitor):
                 self.__reset_visit = True
             conv_type, conv_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, return_value, return_type)
             self.__builder.ret(conv_value)
+
+    # TODO: fix issues #39 & #41 and then complete the visitor
+    def visit_Global(self, node: Global) -> Any:
+        global_func = self.__func.get_parent_func().get_file().get_global_func()
+        impl = global_func.get_impl(1)
+        for name in node.names:
+            result = impl.get_context().find_active_var(name)
+
+    # TODO: fix issues #39 & #41 and then complete the visitor
+    def visit_Nonlocal(self, node: Nonlocal) -> Any:
+        for name in node.names:
+            self.__func.get_context()
+            if self.__func.get_parent_func().is_global():
+                pass
 
     def visit_Pass(self, node: Pass) -> Any:
         pass

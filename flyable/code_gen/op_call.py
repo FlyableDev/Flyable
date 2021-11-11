@@ -98,9 +98,9 @@ def cond_op(visitor, op, type_left, first_value, type_right, second_value):
     # the binary conditionnal operator we want to apply
     apply_op: Callable[[Any, Any], Any]
     if isinstance(op, ast.And):
-        apply_op = builder.op_and
+        apply_op = builder._and
     elif isinstance(op, ast.Or):
-        apply_op = builder.op_or
+        apply_op = builder._or
     elif isinstance(op, ast.Eq):
         apply_op = builder.eq
     elif isinstance(op, ast.NotEq):
