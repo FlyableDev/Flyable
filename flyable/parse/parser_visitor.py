@@ -272,7 +272,8 @@ class ParserVisitor(NodeVisitor):
                     ref_counter.ref_decr_nullable(self, found_var.get_type(), old_content)
 
                     # The variable might have a new type
-                    found_var.set_type(lang_type.get_most_common_type(self.__data, found_var.get_type(), self.__assign_type))
+                    found_var.set_type(
+                        lang_type.get_most_common_type(self.__data, found_var.get_type(), self.__assign_type))
 
                     # Store the new content
                     self.__builder.store(self.__assign_value, self.__last_value)
@@ -440,6 +441,9 @@ class ParserVisitor(NodeVisitor):
                                                       func_impl_to_call.get_parent_func().get_name(), node.lineno,
                                                       node.col_offset)
                         self.__last_value = self.__builder.call(func_impl_to_call.get_code_func(), args)
+                        if func_impl_to_call.get_return_type().is_unknown():
+                            self.__last_type = get_none_type()
+                            self.__last_value = self.__builder.const_int32(0)
                     else:
                         self.__parser.throw_error("Function " + node.func.id + " not found", node.lineno,
                                                   node.end_col_offset)
@@ -457,6 +461,9 @@ class ParserVisitor(NodeVisitor):
             else:
                 self.__last_type, self.__last_value = caller.call_obj(self, name_call, self.__last_value,
                                                                       self.__last_type, args, args_types)
+                if self.__last_type.is_unknown():
+                    self.__last_type = get_none_type()
+                    self.__last_value = self.__builder.const_int32(0)
         else:
             str_error = "Call unrecognized with " + self.__last_type.to_str(self.__data)
             self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
@@ -547,13 +554,9 @@ class ParserVisitor(NodeVisitor):
                 self.__reset_visit = True
             conv_type, conv_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, return_value, return_type)
             self.__builder.ret(conv_value)
-    
-    def visit_Pass(self, node: Pass) -> Any:
-        if len(self.__out_blocks) == 0:
-            if self.__func.get_return_type().is_unknown():
-                self.__func.set_return_type(lang_type.get_none_type())
-                self.__builder.ret(self.__builder.load(self.__builder.global_var(self.__code_gen.get_none())))
 
+    def visit_Pass(self, node: Pass) -> Any:
+        pass
 
     def visit_Constant(self, node: Constant) -> Any:
         if isinstance(node.value, bool):
