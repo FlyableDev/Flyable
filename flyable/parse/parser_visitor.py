@@ -547,6 +547,13 @@ class ParserVisitor(NodeVisitor):
                 self.__reset_visit = True
             conv_type, conv_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, return_value, return_type)
             self.__builder.ret(conv_value)
+    
+    def visit_Pass(self, node: Pass) -> Any:
+        if len(self.__out_blocks) == 0:
+            if self.__func.get_return_type().is_unknown():
+                self.__func.set_return_type(lang_type.get_none_type())
+                self.__builder.ret(self.__builder.load(self.__builder.global_var(self.__code_gen.get_none())))
+
 
     def visit_Constant(self, node: Constant) -> Any:
         if isinstance(node.value, bool):
