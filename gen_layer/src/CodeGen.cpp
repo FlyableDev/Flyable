@@ -410,6 +410,13 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 }
                 break;
 
+                case 15:
+                {
+                    llvm::Value* value = values[current->readInt32()];
+                    values[current->readInt32()] = mBuilder.CreateNot(value);
+                }
+                break;
+
                 case 100:
                 {
                     llvm::Value* value = values[current->readInt32()];

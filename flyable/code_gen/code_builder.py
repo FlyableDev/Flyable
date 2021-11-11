@@ -68,6 +68,9 @@ class CodeBuilder:
     def mod(self, v1, v2):
         return self.__make_op(14, v1, v2)
 
+    def _not(self, value):
+        return self.__make_op(15, value)
+
     def store(self, value, store):
         return self.__make_op(100, value, store)
 
