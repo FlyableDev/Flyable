@@ -493,21 +493,21 @@ class ParserVisitor(NodeVisitor):
             lower_type, lower_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, lower_value, lower_type)
         else:
             lower_type = lang_type.get_none_type()
-            lower_value = self.__builder.global_var(self.__code_gen.get_none())
+            lower_value = self.__builder.load(self.__builder.global_var(self.__code_gen.get_none()))
 
         if node.upper is not None:
             upper_type, upper_value = self.__visit_node(node.upper)
             upper_type, upper_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, upper_value, upper_type)
         else:
             upper_type = lang_type.get_none_type()
-            upper_value = self.__builder.global_var(self.__code_gen.get_none())
+            upper_value = self.__builder.load(self.__builder.global_var(self.__code_gen.get_none()))
 
         if node.step is not None:
             step_type, step_value = self.__visit_node(node.step)
             step_type, step_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, step_value, step_type)
         else:
             step_type = lang_type.get_none_type()
-            step_value = self.__builder.global_var(self.__code_gen.get_none())
+            step_value = self.__builder.load(self.__builder.global_var(self.__code_gen.get_none()))
 
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_value = gen_slice.py_slice_new(self, lower_value, upper_value, step_value)
@@ -794,12 +794,15 @@ class ParserVisitor(NodeVisitor):
             self.__last_type = copy.deepcopy(common_type)
             self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
 
+        # Give the hints that specific that the returned new array is ref recounted
         self.__last_type.add_hint(hint.TypeHintRefIncr())
 
         for i, e in enumerate(elts_values):
             py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
             index = self.__builder.const_int64(i)
             gen_list.python_list_set(self, self.__last_value, index, py_obj)
+            if not hint.is_incremented_type(py_obj_type):
+                ref_counter.ref_incr(self.__builder, py_obj_type, py_obj)
 
     def visit_Tuple(self, node: Tuple) -> Any:
         elts_types = []

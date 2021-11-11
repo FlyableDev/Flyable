@@ -74,6 +74,7 @@ def python_list_append(visitor, list, item_type, item):
     builder.store(item, item_ptr)  # Set the item in the buffer
     builder.store(new_size, size_ptr)  # Set the new size in case it didn't enter the resize
 
+
 def python_list_capacity_ptr(visitor, list):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     list = builder.ptr_cast(list, code_type.get_list_obj_ptr(code_gen))

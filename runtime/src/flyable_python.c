@@ -11,3 +11,8 @@ int __flyable__print(PyObject* obj)
     printf("\n");
     return 0;
 }
+
+PyObject* flyable_get_none()
+{
+    return Py_None;
+}

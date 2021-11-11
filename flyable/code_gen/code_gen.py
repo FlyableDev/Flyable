@@ -329,7 +329,7 @@ class CodeGen:
         self.__false_var = self.add_global_var(
             GlobalVar("@Flyable@_False", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__none_var = self.add_global_var(
-            GlobalVar("_Py_NoneStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
+            GlobalVar("@Flyable@_None", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__py_func_type_var = self.add_global_var(
             GlobalVar("PyFunction_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
         self.__method_type = self.add_global_var(
@@ -526,7 +526,7 @@ class CodeGen:
                 if func_return_type == CodeType():
                     func.get_builder().ret_void()
                 elif visitor.get_func().get_return_type() == lang_type.get_python_obj_type():
-                    none_value = builder.global_var(self.get_none())
+                    none_value = builder.load(builder.global_var(self.get_none()))
                     ref_counter.ref_incr(builder, lang_type.get_python_obj_type(), none_value)
                     builder.ret(none_value)
                 else:
@@ -586,10 +586,17 @@ class CodeGen:
         # Set True global var
         true_type, true_value = runtime.value_to_pyobj(self, builder, builder.const_int1(1), lang_type.get_bool_type())
         builder.store(true_value, builder.global_var(self.get_true()))
+
         # Set False global var
         false_type, false_value = runtime.value_to_pyobj(self, builder, builder.const_int1(0),
                                                          lang_type.get_bool_type())
         builder.store(false_value, builder.global_var(self.get_false()))
+
+        # Set None global var
+        none_value = builder.call(
+            self.get_or_create_func("flyable_get_none", code_type.get_py_obj_ptr(self), [], Linkage.EXTERNAL), [])
+        builder.store(none_value, builder.global_var(self.get_none()))
+
         # Set the build-in module
         build_in_module = gen_module.import_py_module(self, builder, "builtins")
         builder.store(build_in_module, builder.global_var(self.get_build_in_module()))
