@@ -182,7 +182,7 @@ class ParserVisitor(NodeVisitor):
     def visit_UnaryOp(self, node: UnaryOp) -> Any:
         value_type, value = self.__visit_node(node.operand)
 
-        self.__last_type, self.__last_value = op_call.unary_op(self, value_type, value, node.op)
+        self.__last_type, self.__last_value = op_call.unary_op(self, value_type, value, node)
         ref_counter.ref_decr_incr(self, value_type, value)
 
     def visit_BoolOp(self, node: BoolOp) -> Any:
