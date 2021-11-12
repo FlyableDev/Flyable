@@ -425,7 +425,7 @@ class ParserVisitor(NodeVisitor):
             call_python_module = False
             if build_in_func is not None and self.__last_type is None:  # Build-in func call
                 if isinstance(build_in_func, build.BuildInFunc):
-                    type_values = build_in_func.parse(args_types, args, self.__code_gen, self.__builder)
+                    type_values = build_in_func.parse(args_types, args, self)
                     if type_values is None:
                         call_python_module = True
                     else:

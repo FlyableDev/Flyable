@@ -23,7 +23,7 @@ class BuildInFunc:
     def __init__(self):
         pass
 
-    def parse(self, args_types, args, codegen, builder):
+    def parse(self, args_types, args, visitor):
         pass
 
 
@@ -32,9 +32,11 @@ class BuildInList(BuildInFunc):
     def __init__(self):
         super().__init__()
 
-    def parse(self, args_types, args, codegen, builder):
+    def parse(self, args_types, args, visitor):
         if len(args_types) == 0:
             list_type = lang_type.get_list_of_python_obj_type()
+            codegen = visitor.get_code_gen()
+            builder = visitor.get_builder()
             return list_type, gen_list.instanciate_python_list(codegen, builder, builder.const_int64(0))
 
 
@@ -43,11 +45,12 @@ class BuildInLen(BuildInFunc):
     def __init__(self):
         super().__init__()
 
-    def parse(self, args_types, args, codegen, builder):
+    def parse(self, args_types, args, visitor):
         if len(args_types) == 1 and args_types[0].is_list():
-            return lang_type.get_int_type(), gen_list.python_list_len(codegen, builder, args[0])
+            return lang_type.get_int_type(), gen_list.python_list_len(visitor, args[0])
         else:
-            return lang_type.get_int_type(), runtime.py_runtime_obj_len(codegen, builder, args[0])
+            return lang_type.get_int_type(), runtime.py_runtime_obj_len(visitor.get_code_gen(), visitor.get_builder(),
+                                                                        args[0])
 
 
 def get_build_in(name):
