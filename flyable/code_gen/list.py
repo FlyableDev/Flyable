@@ -9,6 +9,8 @@ import flyable.code_gen.code_type as code_type
 import flyable.code_gen.runtime as runtime
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.data.type_hint as hint
+import flyable.data.lang_type as lang_type
+import flyable.code_gen.debug as debug
 
 
 def instanciate_python_list(code_gen, builder, len):
@@ -30,7 +32,8 @@ def python_list_set(visitor, list, index, item):
                            code_type.get_py_obj_ptr(code_gen)]
     set_item_func = code_gen.get_or_create_func("PyList_SetItem", code_type.get_int32(),
                                                 set_item_args_types, gen.Linkage.EXTERNAL)
-    return builder.call(set_item_func, [list, index, item])
+    result = builder.call(set_item_func, [list, index, item])
+    return result
 
 
 def python_list_append(visitor, list, item_type, item):

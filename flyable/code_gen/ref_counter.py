@@ -8,6 +8,7 @@ import flyable.code_gen.code_type as code_type
 import flyable.data.type_hint as hint
 import flyable.code_gen.caller as caller
 import flyable.code_gen.runtime as runtime
+import flyable.code_gen.list as _list
 import flyable.code_gen.code_builder as code_builder
 import flyable.code_gen.debug as debug
 import flyable.code_gen.exception as excp
@@ -65,9 +66,40 @@ def ref_decr(visitor, value_type, value):
         if value_type.is_obj():
             caller.call_obj(visitor, "__del__", value, value_type, [], [], True)
             runtime.free_call(code_gen, builder, value)
-        elif value_type.is_collection() or value_type.is_collection():
-            pass  # TODO: Implement
-        elif value_type.is_python_obj():
+        elif value_type.is_list() or value_type.is_tuple():
+            # Might be a bit slow to rely on dealloc call when we know that it's a list...
+            obj_type = fly_obj.get_py_obj_type(visitor.get_builder(), value)
+            dealloc_ptr = gen_type.py_object_type_get_dealloc_ptr(visitor, obj_type)
+            dealloc_type = code_type.get_func(code_type.get_void(),
+                                              [code_type.get_py_obj_ptr(code_gen)]).get_ptr_to().get_ptr_to()
+            dealloc_ptr = builder.ptr_cast(dealloc_ptr, dealloc_type)
+            dealloc_ptr = builder.load(dealloc_ptr)
+            builder.call_ptr(dealloc_ptr, [value])
+
+            """
+            index_ptr = visitor.create_entry_alloca()
+            content_ptr = _list.python_list_get_content_ptr(visitor, value)
+            builder.store(builder.const_int32(0), index_ptr)
+
+            cond_check_block = builder.create_block()
+            array_size = _list.python_list_len(visitor, value)
+            can_delete = builder.lt(builder.load(index_ptr), array_size)
+
+            decrement_block = builder.create_block()
+            continue_block = builder.create_block()
+
+            builder.cond_br(can_delete, decrement_block, continue_block)
+
+            builder.set_insert_block(decrement_block)
+            
+            # Decrement the content
+            ref_decr(visitor, value_type.get_content(), builder.load(builder.gep(content_ptr, builder.load(index_ptr))))
+            
+            builder.br(continue_block)
+
+            builder.set_insert_block(continue_block)
+            """
+        elif value_type.is_python_obj() or value_type.is_dict():
             obj_type = fly_obj.get_py_obj_type(visitor.get_builder(), value)
             dealloc_ptr = gen_type.py_object_type_get_dealloc_ptr(visitor, obj_type)
             dealloc_type = code_type.get_func(code_type.get_void(),
@@ -76,7 +108,7 @@ def ref_decr(visitor, value_type, value):
             dealloc_ptr = builder.load(dealloc_ptr)
             builder.call_ptr(dealloc_ptr, [value])
         else:
-            raise Exception("Type unsupported to decrement the ref counter")
+            raise Exception("Type " + str(value_type) + " unsupported to decrement the ref counter")
 
         continue_block = builder.create_block()
 
