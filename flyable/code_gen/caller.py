@@ -128,6 +128,8 @@ def generate_python_call(visitor, obj, func_name, args):
     builder.set_insert_block(continue_block)
 
     result = builder.load(call_result_var)
-    #excp.py_runtime_print_error(code_gen, builder)
-    #excp.check_excp(visitor, result)
+    ref_counter.ref_decr(visitor, lang_type.get_python_obj_type(), func_to_call)
+
+    # excp.py_runtime_print_error(code_gen, builder)
+    # excp.check_excp(visitor, result)
     return result
