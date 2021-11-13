@@ -25,7 +25,6 @@ def __load_lib():
         raise OSError("OS not supported")
 
 
-
 def call_code_generation_layer(writer, output):
     lib = __load_lib()
     gen_func = lib.flyable_codegen_run
@@ -33,6 +32,7 @@ def call_code_generation_layer(writer, output):
     native_buffer = (ctypes.c_char * buffer_size).from_buffer(writer.get_data())
     output_c_str = ctypes.c_char_p(output.encode("utf-8"))
     gen_func(native_buffer, ctypes.c_int32(buffer_size), output_c_str)
+
 
 def load_lib_and_dependecies(path, lib):
     try:
