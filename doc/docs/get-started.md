@@ -41,8 +41,10 @@ Once the installation of Flyable is completed, create a new Python file and for 
 import flyable.compiler as com
 import flyable.tool.platform as plat
 from subprocess import Popen, PIPE
+from flyable import constants
 from pathlib import Path
 import platform
+
 ```
 
 <br />
@@ -72,8 +74,7 @@ def main():
 
         # Link the object file
         print("Linking.....")
-        python_lib = "python39.lib" if platform.system() == "Windows" else "python3.9.a"
-        linker_args = ["gcc", "output.o", "libFlyableRuntime.a", python_lib]
+        linker_args = ["gcc", "output.o", constants.LIB_FLYABLE_RUNTIME_PATH, constants.PYTHON_3_10_PATH]
         p = Popen(linker_args, cwd="..\\build\\" + plat.get_platform_folder())
         p.wait()
         if p.returncode != 0: raise Exception("Linking error")
