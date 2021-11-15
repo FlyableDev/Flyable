@@ -12,9 +12,9 @@ import flyable.compiler as com
 import flyable.tool.platform as plat
 from subprocess import Popen, PIPE
 from pathlib import Path
-import platform
 
-from flyable.tool.utils import Step, end_step, start_step
+from flyable import constants
+from flyable.tool.utils import end_step, start_step
 
 
 def main(file: str, output_dir: str = ".", exec_name: str = "a"):
@@ -34,9 +34,8 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
         start_step("Linking")
 
         # Now link the code
-        python_lib = "python310.lib" if platform.system() == "Windows" else "python3.10.a"
         linker_args = ["gcc", "-flto", "output.o",
-                       "libFlyableRuntime.a", python_lib]
+                       constants.LIB_FLYABLE_RUNTIME_PATH, constants.PYTHON_3_10_PATH]
         p = Popen(linker_args, cwd=output_dir)
         p.wait()
         if p.returncode != 0:
