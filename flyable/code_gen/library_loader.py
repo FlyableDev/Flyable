@@ -20,7 +20,7 @@ def __load_lib():
         lib_name = "libFlyableCodeGen.so"
         path += "/../dyn_lib/linux64/"
         lib_path = path
-        return load_lib_and_dependecies(lib_path,lib_name)
+        return load_lib_and_dependecies(lib_path, lib_name)
     else:
         raise OSError("OS not supported")
 
@@ -39,8 +39,14 @@ def load_lib_and_dependecies(path, lib):
         return ctypes.CDLL(path + lib)
     except OSError as excp:
         # Get the name of the library not found
-        lib_load = excp.args[0].split(" ")[0]
+        error_msg = excp.args[0]
+        # Should crash for any errors that are not missing object file
+        # errors, since we can't handle them
+        if not "cannot open shared" in error_msg:
+            # https://stackoverflow.com/questions/24752395/python-raise-from-usage
+            # Helps to avoid a massive error message due to recursive calls
+            raise excp from None
+        lib_load = error_msg.split(" ")[0]
         lib_load = lib_load[0:-1]
         # Now load it
-        load_lib_and_dependecies(path,lib_load)
-        return load_lib_and_dependecies(path,lib)
+        load_lib_and_dependecies(path, lib_load)
