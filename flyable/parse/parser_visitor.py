@@ -261,6 +261,8 @@ class ParserVisitor(NodeVisitor):
         token_store.ctx = ast.Load()
         left_type, left_value = self.__visit_node(token_store)
 
+        ref_counter.ref_incr(self.__builder, left_type, left_value)
+
         self.__reset_last()
         right_type, right_value = self.__visit_node(node.value)
 

@@ -48,7 +48,7 @@ def flyable_debug_print_int64(code_gen, builder, value):
 def flyable_print_obj_ref_count(code_gen, builder, value):
     # Make sure the object is a python object
     value = builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
-    count = ref_count.get_obj_ref_count(code_gen, builder, value)
+    count = ref_count.get_ref_count(builder, value)
     flyable_debug_print_int64(code_gen, builder, count)
 
 
