@@ -48,6 +48,7 @@ class ParserVisitor(NodeVisitor):
         self.__assign_value = None
         self.__last_type: LangType = LangType()
         self.__last_value = None
+        self.__aug_mode = False
         self.__func: LangFuncImpl = func_impl
         self.__parser = parser
         self.__data: comp_data.CompData = parser.get_data()
@@ -99,7 +100,10 @@ class ParserVisitor(NodeVisitor):
             for e in node:
                 super().visit(e)
         else:
-            super().visit(node)
+            if hasattr(node, "context") and node.context is None:
+                pass
+            else:
+                super().visit(node)
 
     def visit_node(self, node):
         return self.__visit_node(node)
@@ -243,18 +247,42 @@ class ParserVisitor(NodeVisitor):
             self.__last_type = compare_type
 
     def visit_AugAssign(self, node: AugAssign) -> Any:
-        right_type, right_value = self.__visit_node(node.value)
-        left_type, left_value = self.__visit_node(node.target)
-        if not left_type == right_type:
-            self.__parser.throw_error("Type " + left_type.to_str(self.__data) + " can't be assigned to type"
-                                      + right_type.to_str(self.__data))
+        import flyable.tool.token_change as token_change
 
-        if left_type.is_primitive():
-            old_value = self.__builder.load(left_value)
-            new_type, new_value = op_call.bin_op(self, node.op, left_type, old_value, right_type, right_value)
-            self.__builder.store(new_value, left_value)
-        else:
-            raise NotImplementedError()
+        token_store = token_change.find_token_store(node)
+
+        # Run what we can of the target. The visitor will stop if it finds a none context
+        node.ctx = None
+        base_type, base_value = self.__visit_node(node.target)
+
+        # Load value first
+        self.__last_type = base_type
+        self.__last_value = base_value
+        token_store.ctx = ast.Load()
+        left_type, left_value = self.__visit_node(token_store)
+
+        self.__reset_last()
+        right_type, right_value = self.__visit_node(node.value)
+
+        # Operate value and target together
+        self.__assign_type, self.__assign_value = op_call.bin_op(self, node.op, left_type, left_value, right_type,
+                                                                 right_value)
+
+        # And now do the assign
+        self.__last_type = base_type
+        self.__last_value = base_value
+        token_store.ctx = ast.Store()
+        self.__visit_node(token_store)
+
+        # Decrement the left load if needed
+        ref_counter.ref_decr_incr(self, left_type, left_value)
+
+        # Decrement the right load if needed
+        ref_counter.ref_decr_incr(self, right_type, right_value)
+
+        # Increment the assignation if there is a need for it
+        if not hint.is_incremented_type(self.__assign_type):
+            ref_counter.ref_incr(self.__builder, self.__assign_type, self.__assign_value)
 
     def visit_Expr(self, node: Expr) -> Any:
         # Represent an expression with the return value unused
@@ -1011,8 +1039,8 @@ class ParserVisitor(NodeVisitor):
             key_type, key_value = self.__visit_node(node.keys[i])
             value_type, value_value = self.__visit_node(node.values[i])
 
-            _,key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
-            _,value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
+            _, key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
+            _, value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
 
             gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
             self.__last_value = None

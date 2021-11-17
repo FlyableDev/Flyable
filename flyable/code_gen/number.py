@@ -18,8 +18,7 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
-    protocol_result = visitor.generate_entry_block_var(
-        code_type.get_py_obj_ptr(code_gen))
+    protocol_result = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
 
     num_call_args = []
     num_call_args_types = []
@@ -46,17 +45,21 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     number_call_block = builder.create_block()
 
     builder.cond_br(is_number_null, basic_call_block, number_call_block)
-
     builder.set_insert_block(number_call_block)
     func_to_call = builder.gep2(as_number, code_type.get_int8_ptr(), [slot])
     func_to_call = builder.load(func_to_call)
-    func_type = code_type.get_func(code_type.get_py_obj_ptr(
-        code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2)
+    func_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2)
     func_type = func_type.get_ptr_to()
     func_to_call = builder.ptr_cast(func_to_call, func_type)
+
+    # Check if the function that we got from the slot is not null
+    number_call_2_block = builder.create_block()
+    is_func_null = builder.eq(func_to_call, builder.const_null(func_type))
+    builder.cond_br(is_func_null, basic_call_block, number_call_2_block)
+
     continue_block = builder.create_block()
-    builder.store(builder.call_ptr(
-        func_to_call, [obj] + num_call_args), protocol_result)
+    builder.set_insert_block(number_call_2_block)
+    builder.store(builder.call_ptr(func_to_call, [obj] + num_call_args), protocol_result)
     builder.br(continue_block)
 
     builder.set_insert_block(basic_call_block)

@@ -1,5 +1,6 @@
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
+import flyable.code_gen.ref_counter as ref_count
 
 
 def debug_call_addr_minus(visitor, v1, v2):
@@ -42,6 +43,13 @@ def flyable_debug_print_int64(code_gen, builder, value):
     func_call = code_gen.get_or_create_func(func_name, code_type.get_void(), [code_type.get_int64()],
                                             gen.Linkage.EXTERNAL)
     builder.call(func_call, [value])
+
+
+def flyable_print_obj_ref_count(code_gen, builder, value):
+    # Make sure the object is a python object
+    value = builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
+    count = ref_count.get_obj_ref_count(code_gen, builder, value)
+    flyable_debug_print_int64(code_gen, builder, count)
 
 
 def flyable_debug_print_ptr(visitor, value):

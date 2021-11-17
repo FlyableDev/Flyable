@@ -50,3 +50,5 @@ def load_lib_and_dependecies(path, lib):
         lib_load = lib_load[0:-1]
         # Now load it
         load_lib_and_dependecies(path, lib_load)
+    # Make sure to still return a value if we handled an exception
+    return load_lib_and_dependecies(path, lib)
