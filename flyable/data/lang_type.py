@@ -294,7 +294,7 @@ class LangType:
             return result
 
     def get_hints(self):
-        return copy.deepcopy(self.__hints)
+        return copy.copy(self.__hints)
 
     def clear_hints(self):
         self.__hints.clear()

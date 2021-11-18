@@ -119,3 +119,40 @@ class TypeHintRefCount(TypeHint):
 
     def get_count(self):
         return self.__count
+
+
+"""
+Data source hints
+Gives hints from where the type comes from
+"""
+
+
+class TypeHintDataSource(TypeHint):
+    """
+    Hint that indicates that the type comes from a data source
+    """
+    pass
+
+
+class TypeHintSourceLocalVariable(TypeHintDataSource):
+    """
+    Hint that indicates that the type comes from a local variable
+    """
+
+    def __init__(self, var):
+        self.__var = var
+
+    def get_var(self):
+        return self.__var
+
+
+class TypeHintSourceAttribute(TypeHintDataSource):
+    """
+    Hint that indicates that the type comes from an object attribute
+    """
+
+    def __init__(self, attribute):
+        self.__attribute = attribute
+
+    def get_attribute(self):
+        return self.__attribute

@@ -38,11 +38,6 @@ class LangClassType:
         # Set the ref count to 2 to make sure that the type instance is not garbage collected
         ref_counter.set_ref_count(builder, type_instance, builder.const_int64(2))
 
-       # self.__gen_get_attr()
-       # self.__gen_set_attr()
-       # self.__gen_traverse()
-       # self.__gen_dealloc()
-
     def set_type_global_instance(self, var):
         self.__type_global_instance = var
 
