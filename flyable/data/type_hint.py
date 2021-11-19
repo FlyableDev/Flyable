@@ -52,6 +52,10 @@ class TypeHintConstStr(TypeHintConstValue):
         super().__init__(value)
 
 
+class TypeHintCanBeNone(TypeHint):
+    pass
+
+
 """
 Type hints
 """
@@ -88,6 +92,18 @@ class TypeHintConstLen(TypeHint):
 
     def get_count(self):
         return self.__count
+
+
+class TypeHintCollectionContentHint(TypeHint):
+    """
+    Hint representing what content a collection has inside
+    """
+
+    def __init__(self, hint_type):
+        self.__hint_type = hint_type
+
+    def get_hint_type(self):
+        return self.__hint_type
 
 
 """

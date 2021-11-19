@@ -34,15 +34,9 @@ import flyable.code_gen.slice as gen_slice
 import flyable.code_gen.debug as debug
 
 
-class ParserVisitMode(enum.IntEnum):
-    DISCOVERY = 1,
-    GENERAL = 2
-
-
 class ParserVisitor(NodeVisitor):
 
     def __init__(self, parser, code_gen, func_impl):
-        self.__mode = ParserVisitMode.GENERAL
         self.__code_gen: gen.CodeGen = code_gen
         self.__assign_type: LangType = LangType()
         self.__assign_value = None
@@ -53,6 +47,7 @@ class ParserVisitor(NodeVisitor):
         self.__parser = parser
         self.__data: comp_data.CompData = parser.get_data()
         self.__current_node = None
+        self.__subscript_assign = False  # For a id to know if a type has to be changed
         self.__reset_visit = False
 
         self.__assign_depth = 0
@@ -527,7 +522,10 @@ class ParserVisitor(NodeVisitor):
         ref_counter.ref_decr_multiple_incr(self, args_types, args)
 
     def visit_Subscript(self, node: Subscript) -> Any:
+        self.__subscript_assign = isinstance(node.ctx, ast.Store)
         value_type, value = self.__visit_node(node.value)
+        self.__subscript_assign = False
+
         index_type, index_value = self.__visit_node(node.slice)
 
         args_types = [index_type]
@@ -870,8 +868,8 @@ class ParserVisitor(NodeVisitor):
         if common_type is None:
             self.__last_type = lang_type.get_list_of_python_obj_type()
         else:
-            self.__last_type = copy.deepcopy(common_type)
-            self.__last_type.add_dim(lang_type.LangType.Dimension.LIST)
+            self.__last_type = lang_type.get_list_of_python_obj_type()
+            self.__last_type.add_hint(hint.TypeHintCollectionContentHint(common_type))
 
         # Give the hints that specific that the returned new array is ref recounted
         self.__last_type.add_hint(hint.TypeHintRefIncr())
@@ -892,8 +890,7 @@ class ParserVisitor(NodeVisitor):
             elts_values.append(value)
             self.__last_value = None
 
-        self.__last_type = lang_type.get_python_obj_type()
-        self.__last_type.add_dim(lang_type.LangType.Dimension.TUPLE)
+        self.__last_type = lang_type.get_tuple_of_python_obj_type()
         new_tuple = gen_tuple.python_tuple_new(self.__code_gen, self.__builder,
                                                self.__builder.const_int64(len(elts_values)))
         self.__last_value = new_tuple
@@ -964,7 +961,6 @@ class ParserVisitor(NodeVisitor):
 
     def visit_Set(self, node: Set) -> Any:
         set_type = lang_type.get_set_of_python_obj_type()
-        set_type.add_dim(LangType.Dimension.SET)
         null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
         new_set = gen_set.instanciate_python_set(self, null_value)
         for e in node.elts:
@@ -1031,8 +1027,7 @@ class ParserVisitor(NodeVisitor):
             prev_for_block = block_for
 
         self.__builder.set_insert_block(block_continue)
-        self.__last_type = lang_type.get_python_obj_type()
-        self.__last_type.add_dim(lang_type.LangType.Dimension.DICT)
+        self.__last_type = lang_type.get_dict_of_python_obj_type()
         self.__last_value = result_dict
 
     def visit_Dict(self, node: Dict) -> Any:
@@ -1047,9 +1042,8 @@ class ParserVisitor(NodeVisitor):
             gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
             self.__last_value = None
         self.__last_value = new_dict
-        self.__last_type = lang_type.get_python_obj_type()
-        self.__last_type.add_dim(lang_type.LangType.Dimension.DICT)
-
+        self.__last_type = lang_type.get_dict_of_python_obj_type()
+        
     def visit_Try(self, node: Try) -> Any:
         import flyable.parse.content.content_try as content_try
         content_try.parse_try(self, node)
@@ -1234,7 +1228,6 @@ class ParserVisitor(NodeVisitor):
         return result
 
     def __reset_info(self):
-        self.__mode = ParserVisitMode.GENERAL
         self.__assign_type: LangType = LangType()
         self.__assign_value = None
         self.__last_type: LangType = LangType()

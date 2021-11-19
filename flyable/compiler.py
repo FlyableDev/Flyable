@@ -83,4 +83,4 @@ class Compiler(ErrorThrower):
                 if isinstance(found_class, lang_class.LangClass):
                     _class.add_inherit(found_class)
                 else:
-                    self.__parser.throw_errors(str(e) + " not expected to inherits", node.lineno, node.end_col_offset)
+                    self.__parser.throw_error(str(e) + " not expected to inherits", node.lineno, node.end_col_offset)

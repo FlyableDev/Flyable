@@ -137,14 +137,22 @@ def get_none_type():
 
 
 def get_list_of_python_obj_type():
-    result = LangType(LangType.Type.PYTHON)
-    result.add_dim(LangType.Dimension.LIST)
+    result = get_python_obj_type(hint.TypeHintPythonType("builtins.list"))
+    return result
+
+
+def get_tuple_of_python_obj_type():
+    result = get_python_obj_type(hint.TypeHintPythonType("builtins.tuple"))
     return result
 
 
 def get_set_of_python_obj_type():
-    result = LangType(LangType.Type.PYTHON)
-    result.add_dim(LangType.Dimension.SET)
+    result = get_python_obj_type(hint.TypeHintPythonType("builtins.set"))
+    return result
+
+
+def get_dict_of_python_obj_type():
+    result = get_python_obj_type(hint.TypeHintPythonType("builtins.dict"))
     return result
 
 
@@ -162,13 +170,7 @@ class LangType:
         SUPER = 5,  # 'super()' call return a specific type of the object
         PYTHON = 6,  # Pure python object
         BOOLEAN = 7,  # Boolean value
-        NONE = 8
-
-    class Dimension(Enum):
-        LIST = 0,
-        DICT = 1,
-        TUPLE = 2,
-        SET = 3
+        NONE = 8  # The None keyword
 
     def __init__(self, type=Type.UNKNOWN, id=0):
         if not isinstance(id, int):
@@ -176,34 +178,32 @@ class LangType:
 
         self.__type: LangType.Type = type
         self.__id: int = id
-        self.__dims: List[LangType.Dimension] = []
         # Hints are extra data that allows the compiler to perform more severe optimization
         self.__hints: List[hint.TypeHint] = []
-        self.__can_none: bool = False
 
     def is_unknown(self):
         return self.__type == LangType.Type.UNKNOWN
 
     def is_list(self):
-        return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.LIST
+        return self.is_python_obj("builtins.list")
 
     def is_dict(self):
-        return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.DICT
+        return self.is_python_obj("builtins.dict")
 
     def is_set(self):
-        return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.SET
+        return self.is_python_obj("builtins.set")
 
     def is_tuple(self):
-        return len(self.__dims) > 0 and self.__dims[-1] == LangType.Dimension.TUPLE
+        return self.is_python_obj("builtins.tuple")
 
     def is_collection(self):
         return self.is_list() or self.is_set() or self.is_dict() or self.is_tuple()
 
     def is_int(self):
-        return len(self.__dims) == 0 and self.__type == LangType.Type.INTEGER
+        return self.__type == LangType.Type.INTEGER
 
     def is_dec(self):
-        return len(self.__dims) == 0 and self.__type == LangType.Type.DECIMAL
+        return self.__type == LangType.Type.DECIMAL
 
     def is_bool(self):
         return self.__type == LangType.Type.BOOLEAN
@@ -212,25 +212,22 @@ class LangType:
         return self.is_int() or self.is_dec() or self.is_bool()
 
     def is_obj(self):
-        return len(self.__dims) == 0 and self.__type == LangType.Type.OBJECT
+        return self.__type == LangType.Type.OBJECT
 
     def is_module(self):
-        return len(self.__dims) == 0 and self.__type == LangType.Type.MODULE
+        return self.__type == LangType.Type.MODULE
 
-    def is_python_obj(self):
-        return len(self.__dims) == 0 and self.__type == LangType.Type.PYTHON
+    def is_python_obj(self, type_path=None):
+        if type_path is None:
+            return self.__type == LangType.Type.PYTHON
+        else:
+            return self.is_python_obj_of_type(type_path)
 
     def is_none(self):
-        return len(self.__dims) == 0 and self.__type == LangType.Type.NONE
+        return self.__type == LangType.Type.NONE
 
     def get_id(self):
         return self.__id
-
-    def can_be_none(self):
-        return self.__can_none
-
-    def set_can_be_none(self, can_be_none: bool):
-        self.__can_none = can_be_none
 
     def to_code_type(self, code_gen):
         result = CodeType()
@@ -245,34 +242,28 @@ class LangType:
         elif self.is_python_obj():
             result = code_type.get_py_obj_ptr(code_gen)
         elif self.is_obj():
-            result = code_gen.get_data().get_class(
-                self.__id).get_struct().to_code_type().get_ptr_to()
+            result = code_gen.get_data().get_class(self.__id).get_struct().to_code_type().get_ptr_to()
         elif self.is_none():
             result = code_type.get_int32()
         elif self.is_unknown():
             result = code_type.get_void()
         return result
 
-    def add_dim(self, dim):
-        self.__dims.append(dim)
-
-    def get_dim(self):
-        return self.__dims[-1]
-
     def get_content(self):
-        result = copy.deepcopy(self)
+        result = get_python_obj_type()
 
-        if len(result.__dims) > 0:
-            result.__dims.pop()
-            if result.is_primitive():
-                if result.is_int():
-                    result.add_hint(hint.TypeHintPythonType("builtins.int"))
-                elif result.is_dec():
-                    result.add_hint(hint.TypeHintPythonType("builtins.float"))
-                # A container can only contain python object object
-                result.__type = LangType.Type.PYTHON
-            return result
-        return get_python_obj_type()
+        if self.is_collection():  # Let's look at the content of the collection to find content type
+            for current_hint in self.__hints:
+                if isinstance(current_hint, hint.TypeHintCollectionContentHint):
+                    result.add_hint(current_hint.get_hint_type())
+
+        return result
+
+    def is_python_obj_of_type(self, type_path):
+        for e in self.__hints:
+            if isinstance(e, hint.TypeHintPythonType) and e.get_class_path() == type_path:
+                return True
+        return False
 
     def add_hint(self, new_hint: hint.TypeHint):
         if isinstance(new_hint, hint.TypeHint):
@@ -338,12 +329,19 @@ class LangType:
 
         result = str_types[self.__type]
 
-        for dim in self.__dims:
-            if dim == LangType.Dimension.DICT:
-                result = "{ " + result + " }"
-            elif dim == LangType.Dimension.LIST:
-                result = "[ " + result + " ]"
-            elif dim == LangType.Dimension.TUPLE:
-                result = "( " + result + " )"
+        if self.is_python_obj():
+            result += " of type '" + self.__type_path + "'"
+
+        if self.is_dict():
+            result = "{ " + str(result) + " }"
+        elif self.is_list():
+            result = "[ " + str(result) + " ]"
+        elif self.is_tuple():
+            result = "( " + str(result) + " )"
+
+        if len(self.__hints):
+            result += "@hints"
+            for e in self.__hints:
+                result += " " + str(type(e)) + " "
 
         return result
