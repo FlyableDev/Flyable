@@ -329,7 +329,7 @@ class ParserVisitor(NodeVisitor):
                     self.__last_become_assign()
                 else:
                     self.__last_value = self.__builder.load(self.__last_value)
-                    self.__last_type = found_var.get_type()
+                    self.__last_type = copy.copy(found_var.get_type())
                     self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
         elif build.get_build_in_name(node.id) is not None:  # An element in the build-in module
             self.__last_type = lang_type.get_python_obj_type()
@@ -351,7 +351,8 @@ class ParserVisitor(NodeVisitor):
                 found_var.set_code_gen_value(alloca_value)
                 self.__builder.store(self.__assign_value, alloca_value)
                 self.__last_value = found_var.get_code_gen_value()
-            self.__last_type = found_var.get_type()
+            self.__last_type = copy.copy(found_var.get_type())
+            self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
         else:
             self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
 
@@ -393,7 +394,7 @@ class ParserVisitor(NodeVisitor):
                     self.__last_become_assign()
                 else:
                     self.__last_value = self.__builder.load(attr_index)
-                    self.__last_type = attr.get_type()
+                    self.__last_type = copy.copy(attr.get_type())
                     self.__last_type.add_hint(hint.TypeHintSourceAttribute(attr))
             else:  # Attribute not found. It might be a declaration !
                 if isinstance(node.ctx, ast.Store):
