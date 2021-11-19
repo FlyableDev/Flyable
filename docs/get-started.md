@@ -103,7 +103,7 @@ if __name__ == '__main__':
 ```
 
 That's it! After a few seconds you should see the Hello World message print on your screen!
-You can see the complete "main.py" file on [GitHub](https://github.com/FlyableDev/Flyable/blob/main/flyable/main.py).
+You can see the complete "main.py" file on [GitHub](https://github.com/FlyableDev/Flyable/blob/main/main.py).
 
 <br />
 <br />
