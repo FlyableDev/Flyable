@@ -36,7 +36,7 @@ def call_py_func_vec_call(visitor, obj, func_to_call, args, func_to_call_type=No
     args_stack_memory = visitor.generate_entry_block_var(
         code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), len(args) + 1))
     builder.store(obj, builder.gep(args_stack_memory, builder.const_int32(0), builder.const_int32(0)))
-    # Python doc recommend the use of the offset for more efficient call
+    # Python docs recommend the use of the offset for more efficient call
     args_stack_memory = builder.gep(args_stack_memory, builder.const_int32(0), builder.const_int32(1))
 
     # Set the args into the stack memory
