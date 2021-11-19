@@ -47,7 +47,6 @@ class ParserVisitor(NodeVisitor):
         self.__parser = parser
         self.__data: comp_data.CompData = parser.get_data()
         self.__current_node = None
-        self.__subscript_assign = False  # For a id to know if a type has to be changed
         self.__reset_visit = False
 
         self.__assign_depth = 0
@@ -331,6 +330,7 @@ class ParserVisitor(NodeVisitor):
                 else:
                     self.__last_value = self.__builder.load(self.__last_value)
                     self.__last_type = found_var.get_type()
+                    self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
         elif build.get_build_in_name(node.id) is not None:  # An element in the build-in module
             self.__last_type = lang_type.get_python_obj_type()
             module = self.__builder.global_var(self.__code_gen.get_build_in_module())
@@ -394,6 +394,7 @@ class ParserVisitor(NodeVisitor):
                 else:
                     self.__last_value = self.__builder.load(attr_index)
                     self.__last_type = attr.get_type()
+                    self.__last_type.add_hint(hint.TypeHintSourceAttribute(attr))
             else:  # Attribute not found. It might be a declaration !
                 if isinstance(node.ctx, ast.Store):
                     self.__data.set_changed(True)
@@ -414,12 +415,12 @@ class ParserVisitor(NodeVisitor):
 
                     self.__last_become_assign()
                 else:
-                    self.__parser.throw_error("Attribut '" + node.attr + "' not declared", node.lineno,
+                    self.__parser.throw_error("Attribute '" + node.attr + "' not declared", node.lineno,
                                               node.end_col_offset)
                 self.__last_become_assign()
         else:
             str_error = self.__last_type.to_str(self.__data)
-            self.__parser.throw_error("Attribut " + str_value + " unrecognized from " + str_error, node.lineno,
+            self.__parser.throw_error("Attribute " + str_value + " unrecognized from " + str_error, node.lineno,
                                       node.end_col_offset)
 
     def visit_Call(self, node: Call) -> Any:
@@ -522,9 +523,7 @@ class ParserVisitor(NodeVisitor):
         ref_counter.ref_decr_multiple_incr(self, args_types, args)
 
     def visit_Subscript(self, node: Subscript) -> Any:
-        self.__subscript_assign = isinstance(node.ctx, ast.Store)
         value_type, value = self.__visit_node(node.value)
-        self.__subscript_assign = False
 
         index_type, index_value = self.__visit_node(node.slice)
 
@@ -1043,7 +1042,7 @@ class ParserVisitor(NodeVisitor):
             self.__last_value = None
         self.__last_value = new_dict
         self.__last_type = lang_type.get_dict_of_python_obj_type()
-        
+
     def visit_Try(self, node: Try) -> Any:
         import flyable.parse.content.content_try as content_try
         content_try.parse_try(self, node)
