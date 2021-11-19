@@ -8,7 +8,7 @@ Here you will find instructions on [how to get access](get-started.md#_1-install
 
 ## Community
 
-If you have any inquiries or questions to which you don't find an answer or if you simply want to chat with us and other users, please reach out on [Gitter](https://gitter.im/FlyableDev/community) or [Twitter](https://twitter.com/FlyableDev).
+If you have any inquiries or questions to which you don't find an answer or if you simply want to chat with us and other users, please reach out on [Discord](https://discord.gg/tquHUe9Q89) or [Twitter](https://twitter.com/FlyableDev).
 
 ## Employment opportunities
 

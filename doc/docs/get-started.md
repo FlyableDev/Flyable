@@ -111,4 +111,4 @@ You can see the complete "main.py" file on [GitHub](https://github.com/FlyableDe
 ## 3. Learn more
 <br />
 
-Take a look at the [FAQ](faq.md) to get answers to common questions, chat with the community on [Gitter](https://gitter.im/FlyableDev/community) and take a look at the code behind the compiler on [GitHub](https://github.com/FlyableDev/Flyable). You can also send us an email at <a href="mailto:contact@flyable.dev">contact@flyable.dev</a>!
+Take a look at the [FAQ](faq.md) to get answers to common questions, chat with the community on [Discord](https://discord.gg/tquHUe9Q89) and take a look at the code behind the compiler on [GitHub](https://github.com/FlyableDev/Flyable). You can also send us an email at <a href="mailto:contact@flyable.dev">contact@flyable.dev</a>!
