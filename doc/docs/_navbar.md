@@ -3,6 +3,6 @@
 * [<font size="5">Tutorial</font>](https://www.flyabledev.com/tutorial.html)
 * [<font size="5">About</font>](https://www.flyabledev.com/about.html)
 * [![Github](https://icongr.am/devicon/github-original.svg?size=25&color=currentColor)](https://github.com/FlyableDev)
-* [![Gitter](gitter-logo.png ':size=25')](https://gitter.im/FlyableDev/community)
+* [![Discord](discord_logo.png ':size=30')](https://discord.gg/tquHUe9Q89)
 * [![Twitter](https://icongr.am/devicon/twitter-original.svg?size=25&color=currentColor)](http://twitter.com/FlyableDev)
 * [![LinkedIn](https://icongr.am/devicon/linkedin-original.svg?size=25&color=currentColor)](https://www.linkedin.com/company/flyable/)

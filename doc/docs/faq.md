@@ -111,4 +111,4 @@ Flyable helps you develop more performant Python code. Our benchmarks show that 
 
 ### How can I connect with the Flyable team/community?
 
-You can connect with the Flyable team on [Twitter](https://twitter.com/FlyableDev) and [LinkedIn](https://www.linkedin.com/company/flyable) and you can send us a message at contact@flyable.dev. You can also connect with the community on [Gitter](https://gitter.im/FlyableDev/community).
+You can connect with the Flyable team on [Twitter](https://twitter.com/FlyableDev) and [LinkedIn](https://www.linkedin.com/company/flyable) and you can send us a message at contact@flyable.dev. You can also connect with the community on [Discord](https://discord.gg/tquHUe9Q89).
