@@ -122,6 +122,10 @@ class LangFuncImpl:
         """
         return self.__has_yield
 
+    def clear_info(self):
+        if self.__code_func is not None:
+            self.__code_func.clear_info()
+
     def __str__(self):
         result = str(self.__return_type) + " : "
         for e in self.__args:

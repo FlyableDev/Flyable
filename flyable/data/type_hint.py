@@ -143,11 +143,23 @@ Gives hints from where the type comes from
 """
 
 
+def get_type_source(hint_type):
+    for e in hint_type.iter_hints():
+        if isinstance(e, TypeHintDataSource):
+            return e
+    return None
+
+
 class TypeHintDataSource(TypeHint):
     """
     Hint that indicates that the type comes from a data source
     """
-    pass
+
+    def __init__(self, var):
+        self.__source = var
+
+    def get_source(self):
+        return self.__source
 
 
 class TypeHintSourceLocalVariable(TypeHintDataSource):
@@ -156,10 +168,7 @@ class TypeHintSourceLocalVariable(TypeHintDataSource):
     """
 
     def __init__(self, var):
-        self.__var = var
-
-    def get_var(self):
-        return self.__var
+        super().__init__(var)
 
 
 class TypeHintSourceAttribute(TypeHintDataSource):
@@ -168,7 +177,4 @@ class TypeHintSourceAttribute(TypeHintDataSource):
     """
 
     def __init__(self, attribute):
-        self.__attribute = attribute
-
-    def get_attribute(self):
-        return self.__attribute
+        super().__init__(attribute)

@@ -9,7 +9,7 @@ import flyable.data.lang_class as lang_class
 import flyable.data.lang_func as lang_func
 import flyable.parse.adapter as adapter
 import flyable.parse.build_in as build
-import flyable.data.attribut
+import flyable.data.attribute
 from flyable.data.lang_func_impl import LangFuncImpl
 import flyable.data.comp_data as comp_data
 from flyable.code_gen.code_builder import CodeBuilder
@@ -22,6 +22,8 @@ import flyable.code_gen.runtime as runtime
 import enum
 import flyable.code_gen.op_call as op_call
 import flyable.data.lang_type as lang_type
+import flyable.data.attribute as _attribute
+import flyable.parse.variable as _variable
 import flyable.data.type_hint as hint
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.tool.repr_visitor as repr_vis
@@ -399,7 +401,7 @@ class ParserVisitor(NodeVisitor):
             else:  # Attribute not found. It might be a declaration !
                 if isinstance(node.ctx, ast.Store):
                     self.__data.set_changed(True)
-                    new_attr = flyable.data.attribut.Attribut()
+                    new_attr = flyable.data.attribute.Attribut()
                     new_attr.set_name(node.attr)
                     new_attr.set_type(self.__assign_type)
                     self.__data.get_class(self.__last_type.get_id()).add_attribute(new_attr)
@@ -527,6 +529,23 @@ class ParserVisitor(NodeVisitor):
         value_type, value = self.__visit_node(node.value)
 
         index_type, index_value = self.__visit_node(node.slice)
+
+        if isinstance(node.ctx, ast.Store):
+            source = hint.get_type_source(value_type)
+            source_data = source.get_source()
+            source_type = source_data.get_type()
+
+            if source_type != self.__assign_type:
+                new_source_type = lang_type.get_most_common_type(self.__data, source_type, self.__assign_type)
+                if isinstance(source_data, _variable.Variable):
+                    source_data.set_type(new_source_type)
+                    if source_data.is_global():
+                        self.__data.set_changed(True)  # A modification of global variable means recompile globally
+                    else:
+                        self.__reset_visit = True  # A new type for local variable means a local new code generation
+                elif isinstance(source_data, _attribute.Attribute):
+                    source_data.set_type(new_source_type)
+                    self.__data.set_changed(True)  # Need to take in account the new type of the attribute
 
         args_types = [index_type]
         args = [index_value]

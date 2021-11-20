@@ -150,6 +150,10 @@ class CodeFunc:
         def get_name(self):
             return "Block@" + str(self.__id)
 
+        def clear(self):
+            self.__br_blocks.clear()
+            self.__has_return = False
+
     def __init__(self, name):
         self.__id = -1
         self.__value_id = 0

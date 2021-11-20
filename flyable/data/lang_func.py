@@ -120,8 +120,8 @@ class LangFunc:
         return self.__is_global
 
     def clear_info(self):
-        self.__impls.clear()
-        self.__setup_unknown_impl()
+        for impl in self.__impls:
+            impl.clear_info()
 
     def __setup_unknown_impl(self):
         # Setup args

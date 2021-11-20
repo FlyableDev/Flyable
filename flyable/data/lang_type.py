@@ -24,47 +24,10 @@ def to_code_type(code_gen, type):
     return type.to_code_type(code_gen)
 
 
-def get_type_common(data, primary_type, second_type=None):
-    """
-    Return a type that can contains both types.
-    Return none if no common types found
-
-    DEPRECATED:
-        Use `get_most_common_type` instead
-    """
-    result = None
-    if isinstance(primary_type, list) and second_type is None:
-        # Support the case where there is more than two types to check
-        current_type = copy.deepcopy(primary_type[0])
-        type_iter = next(iter(primary_type))
-        for e in type_iter:
-            current_type = get_type_common(data, current_type, e)
-        return current_type
-    else:
-        if primary_type == second_type:
-            result = copy.deepcopy(primary_type)
-            result.clear_hints()
-        elif primary_type.is_python_obj() or second_type.is_python_obj():
-            result = get_python_obj_type()
-        elif primary_type.is_obj() and second_type.is_obj():
-            result = get_python_obj_type()
-        elif primary_type.is_none() or second_type.is_none():
-            result = get_python_obj_type()
-        elif primary_type.is_primitive() or second_type.is_primitive():
-            # If one of them is primitive but they are not equals, only a py object can represent both
-            result = get_python_obj_type()
-        else:
-            raise NotImplementedError()
-
-    return result
-
-
 def _get_type_common(primary_type, second_type=None) -> LangType:
-    """"""
     result: LangType
     if primary_type == second_type or second_type is None:
-        result = copy.deepcopy(primary_type)
-        result.clear_hints()
+        result = copy.copy(primary_type)
     elif primary_type.is_python_obj() or second_type.is_python_obj():
         result = get_python_obj_type()
     elif primary_type.is_obj() and second_type.is_obj():
@@ -94,9 +57,7 @@ def get_most_common_type(data, *types: LangType) -> LangType:
         LangType: the most common type of all the types passed in the argument
     """
     if len(types) == 0:
-        raise ValueError(
-            "You must specify at least one type to get the most common one"
-        )
+        raise ValueError("You must specify at least one type to get the most common one")
     return reduce(_get_type_common, types[1:], types[0])
 
 
@@ -287,11 +248,16 @@ class LangType:
     def get_hints(self):
         return copy.copy(self.__hints)
 
+    def iter_hints(self):
+        return iter(self.__hints)
+
     def clear_hints(self):
         self.__hints.clear()
 
     def __eq__(self, other):
-        return self.__type == other.__type
+        if self.__type == other.__type:
+            return True
+        return False
 
     def to_str(self, comp_data):
         to_str: str
@@ -328,9 +294,6 @@ class LangType:
         }
 
         result = str_types[self.__type]
-
-        if self.is_python_obj():
-            result += " of type '" + self.__type_path + "'"
 
         if self.is_dict():
             result = "{ " + str(result) + " }"
