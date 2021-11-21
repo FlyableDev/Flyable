@@ -219,6 +219,12 @@ class CodeFunc:
     def get_name(self):
         return self.__name
 
+    def clear(self):
+        self.__value_id = 0
+        self.__return_type = CodeType()
+        self.__blocks = []
+        self.__builder = CodeBuilder(self)
+
     def write_to_code(self, writer):
         writer.add_str(self.__name)
         writer.add_int32(int(self.__linkage))
