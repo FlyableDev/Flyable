@@ -15,7 +15,7 @@ class LangClass:
         self.__struct = None
         self.__file: Union[LangFile, None] = None
         self.__inherits = []
-        self.__class_type = class_type.LangClassType()
+        self.__class_type = class_type.LangClassType(self)
 
     def get_node(self):
         return self.__node
@@ -92,6 +92,6 @@ class LangClass:
         return self.__class_type
 
     def clear_info(self):
-        self.__class_type = class_type.LangClassType()
+        self.__class_type = class_type.LangClassType(self)
         for func in self.__funcs:
             func.clear_info()

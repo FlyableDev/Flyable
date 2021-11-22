@@ -272,7 +272,7 @@ class CodeGen:
         self.add_struct(self.__python_type_struct)
 
         self.__python_obj_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
-        self.__python_obj_struct.add_type(self.get_python_type().to_code_type().get_ptr_to())  # PyTypeObject * ob_type
+        self.__python_obj_struct.add_type(code_type.get_py_type(self).get_ptr_to())  # PyTypeObject * ob_type
 
         # Create the Python list struct
         self.__python_list_struct = StructType("__flyable_py_obj_list")
@@ -497,15 +497,12 @@ class CodeGen:
 
         # Create the global variable to hold it
         # The allocation is static and not dynamic
-        type_name = "@flyable@type_instance@" + _class.get_name()
-        instance_type = GlobalVar(type_name, code_type.get_py_type(self), Linkage.INTERNAL)
-        self.add_global_var(instance_type)
-        _class.get_class_type().set_type_global_instance(instance_type)
+        _class.get_class_type().setup(self)
 
     def setup_struct(self):
         for _class in self.__data.classes_iter():
             _class.get_struct().add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
-            _class.get_struct().add_type(code_type.get_py_obj_ptr(self))  # PyTypeObject * ob_type
+            _class.get_struct().add_type(code_type.get_py_type(self).get_ptr_to())  # PyTypeObject * ob_type
             for attribute in _class.attributes_iter():
                 _class.get_struct().add_type(attribute.get_type().to_code_type(self))
 

@@ -1,4 +1,6 @@
 import flyable.data.lang_type as type
+import copy
+import flyable.data.type_hint as hint
 
 
 class Attribut:
@@ -21,7 +23,8 @@ class Attribut:
         return self.__name
 
     def set_type(self, s_type):
-        self.__type = s_type
+        self.__type = copy.copy(s_type)
+        hint.remove_hint_type(self.__type, hint.TypeHintDataSource)
 
     def get_type(self):
         return self.__type

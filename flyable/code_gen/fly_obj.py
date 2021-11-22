@@ -116,11 +116,10 @@ def allocate_flyable_instance(visitor, lang_class):
     ref_ptr = ref_counter.get_ref_counter_ptr(visitor.get_builder(), class_lang_type, value)
     visitor.get_builder().store(visitor.get_builder().const_int64(1), ref_ptr)
 
-    # Set the type of
+    # Set the type of the object
+    type_instance = builder.load(builder.global_var(lang_class.get_class_type().get_type_global_instance()))
+    ref_counter.ref_incr(visitor.get_builder(), lang_type.get_python_obj_type(), type_instance)
     type_ptr = get_py_obj_type_ptr(visitor.get_builder(), value)
-    none_value = builder.load(builder.global_var(visitor.get_code_gen().get_none()))
-    ref_counter.ref_incr(visitor.get_builder(), lang_type.get_python_obj_type(), none_value)
-    # TODO : store the real flyable-python class in here
-    visitor.get_builder().store(none_value, type_ptr)
+    visitor.get_builder().store(type_instance, type_ptr)
 
     return value
