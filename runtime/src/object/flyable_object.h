@@ -17,7 +17,7 @@ typedef struct
 
 FlyableClass* flyable_class_alloc();
 
-void flyable_class_set_attr_index(FlyableClass* flyClass,char* attr,long long index);
+void flyable_class_set_attr_index(FlyableClass* flyClass,char* attr,long long index,int type);
 
 PyObject* flyable_class_get_attr(PyObject* obj,char* str);
 

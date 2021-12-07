@@ -12,7 +12,7 @@ FlyableClass* flyable_class_alloc()
     return result;
 }
 
-void flyable_class_set_attr_index(FlyableClass* flyClass,char* attr,long long index)
+void flyable_class_set_attr_index(FlyableClass* flyClass,char* attr,long long index,int type)
 {
     hashmap_set(flyClass->attrMap,attr,strlen(attr),index);
 }
