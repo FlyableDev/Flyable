@@ -38,6 +38,25 @@ class LangClassType:
         type_instance = builder.call(class_alloc_func, [])
         builder.store(type_instance, type_instance_ptr)
 
+        # Set all the attributes into the class map
+        set_attr_func = code_gen.get_or_create_func("flyable_class_set_attr_index", code_type.get_void(),
+                                                    [code_type.get_py_type(code_gen).get_ptr_to(),
+                                                     code_type.get_int8_ptr(),
+                                                     code_type.get_int32(),
+                                                     code_type.get_int32()], gen.Linkage.EXTERNAL)
+
+        for i, attribute in enumerate(_class.attributes_iter()):
+            int_type = 3
+            if attribute.get_type().is_int():
+                int_type = 1
+            elif attribute.get_type().is_dec():
+                int_type = 2
+            # The index suppose that every fields are 8 bytes long
+            attr_str = builder.global_str(attribute.get_name() + "\0")
+            attr_str = builder.ptr_cast(attr_str, code_type.get_int8_ptr())
+            builder.call(set_attr_func,
+                         [type_instance, attr_str, builder.const_int32(i * 8), builder.const_int32(int_type)])
+
     def set_type_global_instance(self, var):
         self.__type_global_instance = var
 
