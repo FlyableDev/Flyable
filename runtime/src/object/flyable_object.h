@@ -13,11 +13,17 @@ typedef struct
 {
     PyTypeObject type;
     hashmap* attrMap;
-} FlyableClass;
+}FlyableClass;
+
+typedef struct
+{
+    int type;
+    int index;
+}FlyableClassAttr;
 
 FlyableClass* flyable_class_alloc();
 
-void flyable_class_set_attr_index(FlyableClass* flyClass,char* attr,long long index,int type);
+void flyable_class_set_attr_index(FlyableClass* flyClass,char* attr,int index,int type);
 
 PyObject* flyable_class_get_attr(PyObject* obj,char* str);
 
