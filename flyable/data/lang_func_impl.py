@@ -57,6 +57,9 @@ class LangFuncImpl:
     def get_arg(self, index: int):
         return self.__args[index]
 
+    def get_args(self):
+        return copy.copy(self.__args)
+
     def get_args_count(self):
         return len(self.__args)
 

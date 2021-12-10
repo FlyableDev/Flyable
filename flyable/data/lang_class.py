@@ -51,6 +51,9 @@ class LangClass:
     def get_name(self) -> str:
         return self.__node.name
 
+    def get_full_name(self):
+        return self.__file.get_path() + self.get_name()
+
     def add_attribute(self, attr):
         attr.set_id(len(self.__attributes))
         self.__attributes.append(attr)

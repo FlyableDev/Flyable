@@ -9,6 +9,7 @@ FlyableClass* flyable_class_alloc()
     result->type.tp_getattro = &flyable_class_get_attro;
     result->type.tp_setattr = &flyable_class_get_attr;
     result->type.tp_setattro = &flyable_class_get_attro;
+    result->type.tp_dealloc = &flyable_class_dealloc;
     return result;
 }
 
@@ -79,4 +80,9 @@ int flyable_class_set_attr(PyObject* obj,char* str, PyObject* objSet)
 int flyable_class_set_attro(PyObject* obj,PyObject* str, PyObject* objSet)
 {
     FlyableClass* flyClass = (FlyableClass*) obj->ob_type;
+}
+
+void flyable_class_dealloc(PyObject* obj)
+{
+
 }

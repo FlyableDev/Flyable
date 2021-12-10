@@ -1,3 +1,4 @@
+import copy
 import platform
 
 import flyable.code_gen.code_writer as _writer
@@ -196,6 +197,9 @@ class CodeFunc:
 
     def get_args_count(self):
         return len(self.__args)
+
+    def get_args(self):
+        return copy.copy(self.__args)
 
     def add_block(self):
         self.__blocks.append(CodeFunc.CodeBlock(len(self.__blocks)))
@@ -510,8 +514,11 @@ class CodeGen:
         """
         Take an implementation  and create a callable CodeFunction from it
         """
-        func_name = "@flyable@__" + impl.get_parent_func().get_name() + "@" + str(impl.get_id()) + "@" \
-                    + str(impl.get_parent_func().get_id()) + "@" + str(impl.get_id())
+        class_name = ""
+        if impl.get_parent_func().get_class() is not None:
+            class_name = impl.get_parent_func().get_class().get_name()
+        func_name = "@flyable@__" + class_name + "@" + impl.get_parent_func().get_name() + "@" + \
+                    str(impl.get_id()) + "@" + str(impl.get_parent_func().get_id()) + "@" + str(impl.get_id())
         return_type = impl.get_return_type().to_code_type(self)
         func_args = lang_type.to_code_type(self, list(impl.args_iter()))
         new_func = self.get_or_create_func(func_name, return_type, func_args)

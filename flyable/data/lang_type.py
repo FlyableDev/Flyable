@@ -200,10 +200,10 @@ class LangType:
             result = code_type.get_double()
         elif self.is_bool():
             result = code_type.get_int1()
-        elif self.is_python_obj():
-            result = code_type.get_py_obj_ptr(code_gen)
         elif self.is_obj():
             result = code_gen.get_data().get_class(self.__id).get_struct().to_code_type().get_ptr_to()
+        elif self.is_python_obj():
+            result = code_type.get_py_obj_ptr(code_gen)
         elif self.is_none():
             result = code_type.get_int32()
         elif self.is_unknown():
@@ -211,14 +211,22 @@ class LangType:
         return result
 
     def get_content(self):
-        result = get_python_obj_type()
+        result = []
 
         if self.is_collection():  # Let's look at the content of the collection to find content type
             for current_hint in self.__hints:
                 if isinstance(current_hint, hint.TypeHintCollectionContentHint):
-                    result.add_hint(current_hint.get_hint_type())
+                    result.append(current_hint.get_hint_type())
 
-        return result
+        if len(result) == 1:
+            return result[0]
+        elif len(result) > 1:
+            type_result = get_python_obj_type()
+            for type in result:
+                type_result.add_hint(hint.TypeHintPythonType(type))
+            return type_result
+        else:
+            return get_python_obj_type()
 
     def is_python_obj_of_type(self, type_path):
         for e in self.__hints:

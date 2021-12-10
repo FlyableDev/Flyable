@@ -161,7 +161,7 @@ class CodeType:
             CodeType.CodePrimitive.INT32: "int32",
             CodeType.CodePrimitive.FLOAT: "float",
             CodeType.CodePrimitive.DOUBLE: "double",
-            CodeType.CodePrimitive.STRUCT: "struct",
+            CodeType.CodePrimitive.STRUCT: "struct( " + str(self.__struct_id) + " )",
             CodeType.CodePrimitive.FUNC: "func",
             CodeType.CodePrimitive.ARRAY: "array[" + str(self.__array_size) + " x " + str(self.__array_type) + "]"
         }

@@ -33,5 +33,7 @@ int flyable_class_set_attr(PyObject* obj,char* str, PyObject* objSet);
 
 int flyable_class_set_attro(PyObject* obj,PyObject* str, PyObject* objSet);
 
+void flyable_class_dealloc(PyObject* obj);
+
 
 #endif // FLYABLE_OBJECT_H_INCLUDED
