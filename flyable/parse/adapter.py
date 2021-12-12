@@ -43,6 +43,7 @@ def adapt_func(func, args, comp_data, parser):
             parser.get_code_gen().gen_func(adapted_impl)
             parser.parse_impl(adapted_impl)
 
+
         return adapted_impl
 
     return None

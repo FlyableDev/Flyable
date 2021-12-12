@@ -888,7 +888,8 @@ class ParserVisitor(NodeVisitor):
             self.__last_type = lang_type.get_list_of_python_obj_type()
         else:
             self.__last_type = lang_type.get_list_of_python_obj_type()
-            self.__last_type.add_hint(hint.TypeHintCollectionContentHint(common_type))
+            for e in elts_types:
+                self.__last_type.add_hint(hint.TypeHintCollectionContentHint(e))
 
         # Give the hints that specific that the returned new array is ref recounted
         self.__last_type.add_hint(hint.TypeHintRefIncr())

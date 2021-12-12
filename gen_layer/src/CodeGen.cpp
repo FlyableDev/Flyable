@@ -135,7 +135,7 @@ void CodeGen::output(std::string output)
     {
         std::string filename = output;
         std::error_code EC;
-        llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
+        llvm::raw_fd_ostream dest(filename, EC);
         llvm::legacy::PassManager pass;
         if(mTargetMachine->addPassesToEmitFile(pass, dest,nullptr,llvm::CodeGenFileType::CGFT_ObjectFile))
         {
@@ -663,7 +663,10 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
 
                 case 2002:
                 {
-                    values[current->readInt32()] = mBuilder.CreateRet(getNull(func->getType()));
+                    if(func->getReturnType() == llvm::Type::getVoidTy(mContext))
+                        values[current->readInt32()] = mBuilder.CreateRetVoid();
+                    else
+                        values[current->readInt32()] = mBuilder.CreateRet(getNull(func->getType()));
                 }
                 break;
 

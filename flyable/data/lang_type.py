@@ -212,7 +212,6 @@ class LangType:
 
     def get_content(self):
         result = []
-
         if self.is_collection():  # Let's look at the content of the collection to find content type
             for current_hint in self.__hints:
                 if isinstance(current_hint, hint.TypeHintCollectionContentHint):
@@ -222,8 +221,6 @@ class LangType:
             return result[0]
         elif len(result) > 1:
             type_result = get_python_obj_type()
-            for type in result:
-                type_result.add_hint(hint.TypeHintPythonType(type))
             return type_result
         else:
             return get_python_obj_type()
@@ -313,6 +310,6 @@ class LangType:
         if len(self.__hints):
             result += "@hints"
             for e in self.__hints:
-                result += " " + str(type(e)) + " "
+                result += " " + str(e) + " "
 
         return result

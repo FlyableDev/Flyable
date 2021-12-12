@@ -70,7 +70,6 @@ def check_excp(visitor, value_to_check):
 def handle_raised_excp(visitor):
     found_block = visitor.get_except_block()
     if found_block is None:
-        func_type = visitor.get_func().get_return_type()
         visitor.get_builder().ret_null()
     else:
         visitor.get_builder().br(found_block)

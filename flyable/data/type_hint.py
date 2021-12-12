@@ -105,6 +105,10 @@ class TypeHintCollectionContentHint(TypeHint):
     def get_hint_type(self):
         return self.__hint_type
 
+    def __str__(self):
+        result = "<Collection contentHint " + str(self.__hint_type) + " >"
+        return result
+
 
 """
 Memory management hint
