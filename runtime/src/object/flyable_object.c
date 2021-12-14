@@ -30,7 +30,7 @@ PyObject* flyable_class_get_attr(PyObject* obj,char* str)
     {
         if(attr != NULL)
         {
-            PyObject** result =  (PyObject**) obj + attr->index;
+            PyObject** result =  (PyObject**) obj + (attr->index / sizeof(PyObject*));
             int attrType = attr->type;
 
             if(attrType == FLYABLE_ATTR_TYPE_INT)
@@ -75,7 +75,7 @@ int flyable_class_set_attr(PyObject* obj,char* str, PyObject* objSet)
     {
         if(attr != NULL)
         {
-            PyObject** result =  (PyObject**) obj + attr->index;
+            PyObject** result =  (PyObject**) obj + (attr->index / sizeof(PyObject*));
             *result = objSet;
             return 1;
         }
