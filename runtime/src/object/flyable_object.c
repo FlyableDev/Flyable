@@ -30,11 +30,12 @@ PyObject* flyable_class_get_attr(PyObject* obj,char* str)
     {
         if(attr != NULL)
         {
-            PyObject* result =  (PyObject*) obj + attr->index;
+            PyObject** result =  (PyObject**) obj + attr->index;
             int attrType = attr->type;
+
             if(attrType == FLYABLE_ATTR_TYPE_INT)
             {
-                return PyLong_FromLongLong((*(long long*) result));
+                return PyLong_FromLongLong(*((long long*) result));
             }
             else if(attrType == FLYABLE_ATTR_TYPE_DEC)
             {
@@ -42,8 +43,9 @@ PyObject* flyable_class_get_attr(PyObject* obj,char* str)
             }
             else
             {
-                Py_IncRef(result);
-                return result;
+                const PyObject* loadResult = *result;
+                Py_IncRef(loadResult);
+                return loadResult;
             }
         }
     }
@@ -54,18 +56,11 @@ PyObject* flyable_class_get_attr(PyObject* obj,char* str)
 
 PyObject* flyable_class_get_attro(PyObject* obj,PyObject* str)
 {
-    FlyableClass* flyClass = (FlyableClass*) obj->ob_type;
-    if(PyUnicode_Check(obj))
+    if(PyUnicode_CheckExact(str))
     {
-        char* str = PyUnicode_DATA(obj);
-        Py_ssize_t strSize = PyUnicode_GET_LENGTH(obj);
-        long long outValue;
-        if(hashmap_get(flyClass->attrMap,str,strSize,&outValue))
-        {
-            PyObject* result =  (PyObject*) obj + outValue;
-            Py_IncRef(result);
-            return result;
-        }
+        size_t strSize;
+        char* txt = PyUnicode_AsUTF8AndSize(str,&strSize);
+        return flyable_class_get_attr(obj,txt);
     }
 
     Py_INCREF(Py_None);
@@ -75,11 +70,31 @@ PyObject* flyable_class_get_attro(PyObject* obj,PyObject* str)
 int flyable_class_set_attr(PyObject* obj,char* str, PyObject* objSet)
 {
     FlyableClass* flyClass = (FlyableClass*) obj->ob_type;
+    FlyableClassAttr* attr;
+    if(hashmap_get(flyClass->attrMap,str,strlen(str),&attr))
+    {
+        if(attr != NULL)
+        {
+            PyObject** result =  (PyObject**) obj + attr->index;
+            *result = objSet;
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 int flyable_class_set_attro(PyObject* obj,PyObject* str, PyObject* objSet)
 {
-    FlyableClass* flyClass = (FlyableClass*) obj->ob_type;
+    if(PyUnicode_CheckExact(str))
+    {
+        FlyableClass* flyClass = (FlyableClass*) obj->ob_type;
+        size_t strSize;
+        char* txt = PyUnicode_AsUTF8AndSize(str,&strSize);
+        return flyable_class_set_attr(obj,txt,objSet);
+    }
+
+    return 0;
 }
 
 void flyable_class_dealloc(PyObject* obj)

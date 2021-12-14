@@ -381,13 +381,14 @@ class ParserVisitor(NodeVisitor):
                 second_index = self.__builder.const_int32(fly_obj.get_obj_attribute_start_index() + attr.get_id())
                 attr_index = self.__builder.gep(self.__last_value, first_index, second_index)
 
-                common_type = lang_type.get_most_common_type(self.__data, attr.get_type(), self.__assign_type)
-                if attr.get_type() != common_type:  # Type mismatch between the attribute and the new assign
-                    # Change the type of the attribute
-                    attr.set_type(common_type)
-                    self.__data.set_changed(True)  # Tell we changed an attribute to trigger a new compilation
-
                 if isinstance(node.ctx, ast.Store):
+
+                    common_type = lang_type.get_most_common_type(self.__data, attr.get_type(), self.__assign_type)
+                    if attr.get_type() != common_type:  # Type mismatch between the attribute and the new assign
+                        # Change the type of the attribute
+                        attr.set_type(common_type)
+                        self.__data.set_changed(True)  # Tell we changed an attribute to trigger a new compilation
+
                     if attr.get_type().is_python_obj():
                         self.__assign_type, self.__assign_value = runtime.value_to_pyobj(
                             self.__code_gen, self.__builder, self.__assign_value, self.__assign_type)

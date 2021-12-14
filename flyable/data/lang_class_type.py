@@ -52,10 +52,11 @@ class LangClassType:
             elif attribute.get_type().is_dec():
                 int_type = 2
             # The index suppose that every fields are 8 bytes long
-            attr_str = builder.global_str(attribute.get_name() + "\0")
+            attr_str = builder.global_str(attribute.get_name() + "\00")
             attr_str = builder.ptr_cast(attr_str, code_type.get_int8_ptr())
+            attr_index = (i * 8) + 16
             builder.call(set_attr_func,
-                         [type_instance, attr_str, builder.const_int32(i * 8), builder.const_int32(int_type)])
+                         [type_instance, attr_str, builder.const_int32(int_type), builder.const_int32(attr_index)])
 
     def set_type_global_instance(self, var):
         self.__type_global_instance = var
