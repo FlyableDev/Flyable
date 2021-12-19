@@ -10,9 +10,7 @@ import flyable.code_gen.runtime as runtime
 import flyable.code_gen.ref_counter as ref_counter
 
 
-def bin_op(visitor, op, type_left, value_left, type_right, value_right):
-    builder = visitor.get_builder()
-
+def __convert_type_to_match(visitor, op, type_left, value_left, type_right, value_right):
     # Check the primitive type conversion
     if type_left.is_dec():  # If left type is decimal, the right type must also be to return a decimal
         if type_right.is_int() or type_right.is_bool():
@@ -33,10 +31,20 @@ def bin_op(visitor, op, type_left, value_left, type_right, value_right):
             type_left = lang_type.get_dec_type()
             value_left = visitor.get_builder().float_cast(
                 value_left, type_left.to_code_type(visitor.get_code_gen()))
-        elif type_right.is_bool():
+        elif type_right.is_int():
             type_right = lang_type.get_bool_type()
             value_right = visitor.get_builder().int_cast(
                 value_left, type_right.to_code_type(visitor.get_code_gen()))
+
+    return type_left, value_left, type_right, value_right
+
+
+def bin_op(visitor, op, type_left, value_left, type_right, value_right):
+    builder = visitor.get_builder()
+
+    # Check the primitive type conversion
+    type_left, value_left, type_right, value_right = __convert_type_to_match(visitor, op, type_left, value_left,
+                                                                             type_right, value_right)
 
     if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
         args_types = [type_right]
@@ -84,8 +92,12 @@ def bin_op(visitor, op, type_left, value_left, type_right, value_right):
 
 def cond_op(visitor, op, type_left, first_value, type_right, second_value):
     builder = visitor.get_builder()
-    if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
 
+    # Check the primitive type conversion
+    type_left, first_value, type_right, second_value = __convert_type_to_match(visitor, op, type_left, first_value,
+                                                                               type_right, second_value)
+
+    if type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection() or type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection():
         """
         If one of the two values is a python object then both objects need to be a python object
         """
@@ -139,10 +151,10 @@ def unary_op_not(visitor, type, value):
         args_types = [type]
         args = [value]
         return caller.call_obj(visitor, "__not__", value, type, args, args_types)
-    
+
     builder = visitor.get_builder()
     bool_type = lang_type.get_bool_type()
-    
+
     const: Any
     if type.is_int():
         const = builder.const_int64(0)
@@ -152,7 +164,7 @@ def unary_op_not(visitor, type, value):
         const = builder.const_int1(0)
     else:
         raise TypeError()
-    
+
     return bool_type, builder.eq(value, const)
 
 
