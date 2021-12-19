@@ -7,6 +7,13 @@ import flyable.data.type_hint as hint
 import enum
 
 
+class FuncImplType(enum.IntEnum):
+    NOT_IMPL = 0
+    SPECIALIZATION = 1,
+    VEC_CALL = 2,
+    TP_CAL = 3
+
+
 class LangFuncImpl:
     """"
     Represents an actual implementation of a function.
@@ -43,11 +50,19 @@ class LangFuncImpl:
 
         self.__has_yield: bool = False
 
+        self.__impl_type: FuncImplType = FuncImplType.NOT_IMPL
+
     def set_id(self, _id: int):
         self.__id = _id
 
     def get_id(self):
         return self.__id
+
+    def set_impl_type(self, impl):
+        self.__impl_type = impl
+
+    def get_impl_type(self):
+        return self.__impl_type
 
     def add_arg(self, arg: type.LangType):
         arg = copy.deepcopy(arg)

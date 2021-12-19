@@ -42,8 +42,8 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
             raise Exception("Linking error")
 
         end_step()
-        
-        
+
+
 def run_code(output_dir: str, exec_name: str):
     """Runs the code
 
@@ -65,3 +65,4 @@ def run_code(output_dir: str, exec_name: str):
 if __name__ == '__main__':
     dir = f"./build/{plat.get_platform_folder()}"
     main("test.py", dir, "a")
+    run_code("./build/win64/", "a")
