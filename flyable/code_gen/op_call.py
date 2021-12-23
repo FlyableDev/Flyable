@@ -23,9 +23,8 @@ def __convert_type_to_match(visitor, op, type_left, value_left, type_right, valu
             value_left = visitor.get_builder().float_cast(
                 value_left, type_left.to_code_type(visitor.get_code_gen()))
         elif type_right.is_bool():
-            type_right = lang_type.get_bool_type()
-            value_right = visitor.get_builder().int_cast(
-                value_left, type_right.to_code_type(visitor.get_code_gen()))
+            type_right = lang_type.get_int_type()
+            value_right = visitor.get_builder().int_cast(value_left, type_left.to_code_type(visitor.get_code_gen()))
     elif type_left.is_bool():
         if type_right.is_dec():
             type_left = lang_type.get_dec_type()
@@ -125,10 +124,13 @@ def cond_op(visitor, op, type_left, first_value, type_right, second_value):
         apply_op = builder.gt
     elif isinstance(op, ast.GtE):
         apply_op = builder.gte
+    elif isinstance(op, ast.Is):
+        apply_op = builder.eq
     else:
-        raise NotImplementedError("Compare op not supported")
+        raise NotImplementedError("Compare op " + str(type(op)) + " not supported")
 
-    return lang_type.get_bool_type(), apply_op(first_value, second_value)
+    result_type, result_value = lang_type.get_bool_type(), apply_op(first_value, second_value)
+    return result_type, result_value
 
 
 def unary_op(visitor, type, value, node):

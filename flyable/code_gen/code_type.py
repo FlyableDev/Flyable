@@ -157,6 +157,7 @@ class CodeType:
             CodeType.CodePrimitive.VOID: "void",
             CodeType.CodePrimitive.INT64: "int64",
             CodeType.CodePrimitive.INT8: "int8",
+            CodeType.CodePrimitive.INT1: "int1",
             CodeType.CodePrimitive.INT16: "int16",
             CodeType.CodePrimitive.INT32: "int32",
             CodeType.CodePrimitive.FLOAT: "float",
