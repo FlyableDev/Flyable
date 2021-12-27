@@ -21,6 +21,22 @@ void flyable_class_set_attr_index(FlyableClass* flyClass,char* attr,int type,int
     hashmap_set(flyClass->attrMap,attr,strlen(attr),newAttr);
 }
 
+void flyable_class_set_method(FlyableClass* flyClass,char* attr,void* tp,void* vec)
+{
+    //for every method we need a class the describes it
+    PyTypeObject* object = (PyTypeObject*) calloc(sizeof(PyObject),1);
+    object->ob_base.ob_base.ob_refcnt = 1;
+    object->tp_vectorcall = vec;
+    object->tp_call = tp;
+
+
+
+    FlyableClassAttr* newAttr = (FlyableClassAttr*) malloc(sizeof(FlyableClassAttr));
+    newAttr->type = FLYABLE_ATTR_TYPE_METHOD;
+    newAttr->ptr = object;
+    hashmap_set(flyClass->attrMap,attr,strlen(attr),newAttr);
+}
+
 PyObject* flyable_class_get_attr(PyObject* obj,char* str)
 {
     FlyableClass* flyClass = (FlyableClass*) obj->ob_type;
@@ -40,6 +56,17 @@ PyObject* flyable_class_get_attr(PyObject* obj,char* str)
             else if(attrType == FLYABLE_ATTR_TYPE_DEC)
             {
                 return PyFloat_FromDouble((*(double*) result));
+            }
+            else if(attrType == FLYABLE_ATTR_TYPE_METHOD)
+            {
+                PyMethodObject* method = (PyMethodObject*) malloc(sizeof(PyMethodObject));
+                method->im_self = obj;
+                method->im_func = flyClass;
+                method->im_weakreflist = NULL;
+                method->vectorcall = attr->ptr;
+                method->ob_base.ob_refcnt = 1;
+                method->ob_base.ob_type = &PyInstanceMethod_Type;
+                return method;
             }
             else
             {

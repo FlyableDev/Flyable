@@ -35,6 +35,7 @@ def adapt_func(func, args, comp_data, parser):
                 parser.parse_func(func)
         else:  # Need to create a new implementation
             adapted_impl = lang_func_impl.LangFuncImpl()
+            adapted_impl.set_impl_type(lang_func_impl.FuncImplType.SPECIALIZATION)
             for i, e in enumerate(args):
                 new_arg = copy.deepcopy(e)
                 hint.remove_hint_type(new_arg, hint.TypeHintRefIncr)
@@ -43,10 +44,34 @@ def adapt_func(func, args, comp_data, parser):
             parser.get_code_gen().gen_func(adapted_impl)
             parser.parse_impl(adapted_impl)
 
-
         return adapted_impl
 
     return None
+
+
+def adapt_all_python_impl(comp_data, parser):
+    """
+    Create an adaption of all functions and methods
+    """
+    # Start by class impl
+    for _class in comp_data.iter_class():
+        for current_func in _class.iter_func():
+            __adapt_python_impl(current_func, comp_data, parser)
+
+    # And now all functions
+    for current_func in comp_data.iter_funcs():
+        __adapt_python_impl(current_func, comp_data, parser)
+
+
+def __adapt_python_impl(func, comp_data, parser):
+    tp_adapted_impl = func.get_tp_call_impl()
+    vec_adapted_impl = func.get_vec_call_impl()
+
+    parser.get_code_gen().gen_func(tp_adapted_impl)
+    parser.parse_impl(tp_adapted_impl)
+
+    parser.get_code_gen().gen_func(vec_adapted_impl)
+    parser.parse_impl(vec_adapted_impl)
 
 
 def __validate(func, args):

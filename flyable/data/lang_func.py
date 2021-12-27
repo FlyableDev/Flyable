@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 import flyable.data.lang_file as lang_file
 
-from flyable.data.lang_func_impl import LangFuncImpl
+from flyable.data.lang_func_impl import LangFuncImpl, FuncImplType
 import flyable.data.lang_type as type
 
 
@@ -22,6 +22,7 @@ class LangFunc:
         self.__id = -1
         # Setup args
         self.__setup_unknown_impl()
+        self.__setup_python_impl()
 
         self.__class_lang = None
         self.__file = None
@@ -122,6 +123,19 @@ class LangFunc:
     def clear_info(self):
         self.__impls.clear()
         self.__setup_unknown_impl()
+        self.__setup_python_impl()
+
+    def get_tp_call_impl(self):
+        for e in self.__impls:
+            if e.get_impl_type() == FuncImplType.TP_CALL:
+                return e
+        return None
+
+    def get_vec_call_impl(self):
+        for e in self.__impls:
+            if e.get_impl_type() == FuncImplType.VEC_CALL:
+                return e
+        return None
 
     def __setup_unknown_impl(self):
         # Setup args
@@ -130,3 +144,19 @@ class LangFunc:
         self.__impls[0].set_unknown(True)
         for e in self.args_iter():
             self.get_unknown_impl().add_arg(type.get_unknown_type())
+
+    def __setup_python_impl(self):
+
+        python_impl = LangFuncImpl()
+        self.__impls.append(python_impl)
+        python_impl.set_parent_func(self)
+        python_impl.set_unknown(False)
+        python_impl.set_impl_type(FuncImplType.TP_CALL)
+        python_impl.set_return_type(type.get_python_obj_type())
+
+        python_impl = LangFuncImpl()
+        self.__impls.append(python_impl)
+        python_impl.set_parent_func(self)
+        python_impl.set_unknown(False)
+        python_impl.set_impl_type(FuncImplType.VEC_CALL)
+        python_impl.set_return_type(type.get_python_obj_type())

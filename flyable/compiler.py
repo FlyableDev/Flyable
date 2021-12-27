@@ -29,7 +29,7 @@ class Compiler(ErrorThrower):
 
     def compile(self):
         self.__pre_parse()
-        
+
         if not self.has_error():
             self.__parse()
 
@@ -61,7 +61,13 @@ class Compiler(ErrorThrower):
             self.__data.set_changed(False)
 
             try:
+
+                # Create a specialization for the main module to execute
                 adapter.adapt_func(self.__data.get_file(0).get_global_func(), [], self.__data, self.__parser)
+
+                # Then generate an implementation for all python methods / funcs
+                adapter.adapt_all_python_impl(self.__data, self.__parser)
+
             except Exception as exception:
                 if not self.__parser.has_error():  # If there is no error we launch the exception as a failure
                     raise exception

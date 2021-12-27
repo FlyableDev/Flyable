@@ -11,7 +11,7 @@ class FuncImplType(enum.IntEnum):
     NOT_IMPL = 0
     SPECIALIZATION = 1,
     VEC_CALL = 2,
-    TP_CAL = 3
+    TP_CALL = 3
 
 
 class LangFuncImpl:

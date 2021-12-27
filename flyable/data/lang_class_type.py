@@ -58,15 +58,18 @@ class LangClassType:
             builder.call(set_attr_func,
                          [type_instance, attr_str, builder.const_int32(int_type), builder.const_int32(attr_index)])
 
-        # Set all the methods into the class map
-
+        # Set all the methods tp/vec into the class map
         set_method_func = code_gen.get_or_create_func("flyable_class_set_method", code_type.get_void(),
                                                       [code_type.get_py_type(code_gen).get_ptr_to(),
                                                        code_type.get_int8_ptr(), code_type.get_int8_ptr()],
                                                       gen.Linkage.EXTERNAL)
+
         for i, current_func in enumerate(_class.funcs_iter()):
+            vec_impl = current_func.get_vec_call_impl()
+            tp_impl = current_func.get_tp_call_impl()
             method_str = builder.global_str(current_func.get_name() + "\00")
-            builder.call(set_method_func, [type_instance, method_str, current_func.get_func()])
+            builder.call(set_method_func,
+                         [type_instance, method_str, tp_impl.get_code_func(), vec_impl.get_code_func()])
 
     def set_type_global_instance(self, var):
         self.__type_global_instance = var

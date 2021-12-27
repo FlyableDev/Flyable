@@ -13,6 +13,7 @@ import flyable.code_gen.module as gen_module
 from collections import OrderedDict
 import enum
 import flyable.code_gen.ref_counter as ref_counter
+import flyable.data.lang_func_impl as lang_func_impl
 
 
 class Linkage(enum.IntEnum):
@@ -520,7 +521,19 @@ class CodeGen:
         func_name = "@flyable@__" + class_name + "@" + impl.get_parent_func().get_name() + "@" + \
                     str(impl.get_id()) + "@" + str(impl.get_parent_func().get_id()) + "@" + str(impl.get_id())
         return_type = impl.get_return_type().to_code_type(self)
-        func_args = lang_type.to_code_type(self, list(impl.args_iter()))
+
+        if impl.get_impl_type() == lang_func_impl.FuncImplType.SPECIALIZATION:
+            func_args = lang_type.to_code_type(self, list(impl.args_iter()))
+        elif impl.get_impl_type() == lang_func_impl.FuncImplType.TP_CALL:
+            func_args = [code_type.get_py_obj_ptr(self)] * 3
+            return_type = self.get_python_type().get_ptr_to()
+        elif impl.get_impl_type() == lang_func_impl.FuncImplType.VEC_CALL:
+            func_args = [code_type.get_py_obj_ptr(self), code_type.get_py_obj_ptr(self).get_ptr_to(),
+                         code_type.get_int64(), code_type.get_py_obj_ptr(self)]
+            return_type = self.get_python_type().get_ptr_to()
+        else:
+            raise ValueError("Only spec, tp, of vec function can be code generate")
+
         new_func = self.get_or_create_func(func_name, return_type, func_args)
         impl.set_code_func(new_func)
         return new_func
