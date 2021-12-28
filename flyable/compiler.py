@@ -18,6 +18,7 @@ class Compiler(ErrorThrower):
         self.__code_gen: CodeGen = gen.CodeGen(self.__data)
         self.__code_gen.setup()
         self.__parser: par.Parser = par.Parser(self.__data, self.__code_gen)
+        self.__main_impl = None
 
     def add_file(self, path: str):
         new_file: lang_file.LangFile = lang_file.LangFile()
@@ -40,7 +41,7 @@ class Compiler(ErrorThrower):
 
         if not self.has_error():
             self.__code_gen.setup_struct()
-            self.__code_gen.generate_main()
+            self.__code_gen.generate_main(self.__main_impl)
             self.__code_gen.write()
 
     def __pre_parse(self):
@@ -63,7 +64,8 @@ class Compiler(ErrorThrower):
             try:
 
                 # Create a specialization for the main module to execute
-                adapter.adapt_func(self.__data.get_file(0).get_global_func(), [], self.__data, self.__parser)
+                self.__main_impl = adapter.adapt_func(self.__data.get_file(0).get_global_func(), [], self.__data,
+                                                      self.__parser)
 
                 # Then generate an implementation for all python methods / funcs
                 adapter.adapt_all_python_impl(self.__data, self.__parser)

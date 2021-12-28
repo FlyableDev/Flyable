@@ -526,11 +526,11 @@ class CodeGen:
             func_args = lang_type.to_code_type(self, list(impl.args_iter()))
         elif impl.get_impl_type() == lang_func_impl.FuncImplType.TP_CALL:
             func_args = [code_type.get_py_obj_ptr(self)] * 3
-            return_type = self.get_python_type().get_ptr_to()
+            return_type = code_type.get_py_obj_ptr(self)
         elif impl.get_impl_type() == lang_func_impl.FuncImplType.VEC_CALL:
             func_args = [code_type.get_py_obj_ptr(self), code_type.get_py_obj_ptr(self).get_ptr_to(),
                          code_type.get_int64(), code_type.get_py_obj_ptr(self)]
-            return_type = self.get_python_type().get_ptr_to()
+            return_type = code_type.get_py_obj_ptr(self)
         else:
             raise ValueError("Only spec, tp, of vec function can be code generate")
 
@@ -584,7 +584,7 @@ class CodeGen:
 
         loader.call_code_generation_layer(writer, self.__data.get_config("output"))
 
-    def generate_main(self):
+    def generate_main(self, main_impl):
         """
         Generate Flyable program entry point.
         """
@@ -650,9 +650,8 @@ class CodeGen:
         for _class in self.__data.classes_iter():
             _class.get_class_type().generate(_class, self, builder)
 
-        main_func = self.__data.get_file(0).get_global_func().get_impl(1)
-        return_value = builder.call(main_func.get_code_func(), [])
-        if main_func.get_return_type().is_int():
+        return_value = builder.call(main_impl.get_code_func(), [])
+        if main_impl.get_return_type().is_int():
             builder.ret(builder.int_cast(return_value, code_type.get_int32()))
         else:
             builder.ret(builder.const_int32(0))

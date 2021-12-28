@@ -69,7 +69,8 @@ class LangClassType:
             tp_impl = current_func.get_tp_call_impl()
             method_str = builder.global_str(current_func.get_name() + "\00")
             builder.call(set_method_func,
-                         [type_instance, method_str, tp_impl.get_code_func(), vec_impl.get_code_func()])
+                         [type_instance, method_str, builder.func_ptr(tp_impl.get_code_func()),
+                          builder.func_ptr(vec_impl.get_code_func())])
 
     def set_type_global_instance(self, var):
         self.__type_global_instance = var

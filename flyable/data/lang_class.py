@@ -39,6 +39,9 @@ class LangClass:
                 if e.get_name() == index:
                     return e
 
+    def get_funcs_count(self):
+        return len(self.__funcs)
+
     def funcs_iter(self):
         return iter(self.__funcs)
 

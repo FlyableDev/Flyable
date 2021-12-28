@@ -67,6 +67,10 @@ class LangFunc:
                 for j in range(i.get_args_count()):
                     if i.get_arg(j) != args_type[j]:
                         same_signature = False
+
+                if not i.get_impl_type() == FuncImplType.SPECIALIZATION:
+                    same_signature = False
+
                 if same_signature:
                     return i
 
@@ -147,16 +151,22 @@ class LangFunc:
 
     def __setup_python_impl(self):
 
+        # setup the tp call
         python_impl = LangFuncImpl()
         self.__impls.append(python_impl)
         python_impl.set_parent_func(self)
         python_impl.set_unknown(False)
         python_impl.set_impl_type(FuncImplType.TP_CALL)
         python_impl.set_return_type(type.get_python_obj_type())
+        for e in self.args_iter():
+            python_impl.add_arg(type.get_python_obj_type())
 
+        # setup the vec call
         python_impl = LangFuncImpl()
         self.__impls.append(python_impl)
         python_impl.set_parent_func(self)
         python_impl.set_unknown(False)
         python_impl.set_impl_type(FuncImplType.VEC_CALL)
         python_impl.set_return_type(type.get_python_obj_type())
+        for e in self.args_iter():
+            python_impl.add_arg(type.get_python_obj_type())

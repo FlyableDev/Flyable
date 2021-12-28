@@ -422,6 +422,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                     llvm::Value* value = values[current->readInt32()];
                     llvm::Value* store = values[current->readInt32()];
                     values[current->readInt32()] = mBuilder.CreateStore(value,store);
+
                 }
                 break;
 
@@ -683,6 +684,13 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                     values[current->readInt32()] = mBuilder.CreateGlobalString(llvm::StringRef(txt));
                 }
                 break;
+
+                case 3002:
+                {
+                    int funcId = current->readInt32();
+                    llvm::Function* value = mFuncs[current->readInt32()];
+                    values[current->readInt32()] = value;
+                }
 
                 case 9998:
                 {

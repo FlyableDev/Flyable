@@ -631,7 +631,7 @@ class ParserVisitor(NodeVisitor):
     # TODO: fix issues #39 & #41 and then complete the visitor
     def visit_Global(self, node: Global) -> Any:
         global_func = self.__func.get_parent_func().get_file().get_global_func()
-        impl = global_func.get_impl(1)
+        impl = global_func.get_impl(3)
         for name in node.names:
             result = impl.get_context().find_active_var(name)
 
@@ -1244,7 +1244,7 @@ class ParserVisitor(NodeVisitor):
         if result is None:
             parent_func = self.__func.get_parent_func().get_file().get_global_func()
             if parent_func is not None:
-                impl = parent_func.get_impl(1)
+                impl = parent_func.get_impl(3)
                 result = impl.get_context().find_active_var(name)
         return result
 
