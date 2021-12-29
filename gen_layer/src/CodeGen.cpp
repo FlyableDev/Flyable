@@ -688,9 +688,10 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 case 3002:
                 {
                     int funcId = current->readInt32();
-                    llvm::Function* value = mFuncs[current->readInt32()];
+                    llvm::Function* value = mFuncs[funcId];
                     values[current->readInt32()] = value;
                 }
+                break;
 
                 case 9998:
                 {

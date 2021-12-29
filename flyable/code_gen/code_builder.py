@@ -208,9 +208,7 @@ class CodeBuilder:
         return self.__gen_value()
 
     def func_ptr(self, func):
-        self.__writer.add_int32(3002)
-        self.__writer.add_int32(func.get_id())
-        return self.__gen_value()
+        return self.__make_op(3002, func.get_id())
 
     def size_of_type(self, type):
         self.__writer.add_int32(9998)

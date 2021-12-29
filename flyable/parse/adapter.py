@@ -54,12 +54,15 @@ def adapt_all_python_impl(comp_data, parser):
     Create an adaption of all functions and methods
     """
     # Start by class impl
-    for _class in comp_data.iter_class():
-        for current_func in _class.iter_func():
+    for i in range(comp_data.get_classes_count()):
+        _class = comp_data.get_class(i)
+        for j in range(_class.get_funcs_count()):
+            current_func = _class.get_func(j)
             __adapt_python_impl(current_func, comp_data, parser)
 
     # And now all functions
-    for current_func in comp_data.iter_funcs():
+    for i in range(comp_data.get_funcs_count()):
+        current_func = comp_data.get_func(i)
         __adapt_python_impl(current_func, comp_data, parser)
 
 

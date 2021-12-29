@@ -433,7 +433,7 @@ class CodeGen:
 
     def get_python_type(self):
         """
-        return the global variable containing the Python type struct
+        return the variable containing the Python type struct
         """
         return self.__python_type_struct
 
