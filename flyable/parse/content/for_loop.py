@@ -58,10 +58,22 @@ def __for_loop_with_range_opt(node, visitor, var_name, args_types, args_values):
     new_var.set_code_gen_value(var_iter_value)
 
     if len(args_types) == 1:
+
+        if args_types[0].is_int() and args_types[0].get_hint(hint.TypeHintConstInt) is not None:
+            new_var.get_type().add_hint(
+                hint.TypeHintIntRange(0, args_types[0].get_hint(hint.TypeHintConstInt).get_value()))
+
         builder.store(builder.const_int64(0), iter_value)
         var_reach = args_values[0]
         var_incr = builder.const_int64(1)
     elif len(args_types) == 2:
+
+        if args_types[0].is_int() and args_types[0].get_hint(hint.TypeHintConstInt) is not None:
+            if args_types[1].is_int() and args_types[1].get_hint(hint.TypeHintConstInt) is not None:
+                new_var.get_type().add_hint(
+                    hint.TypeHintIntRange(args_types[0].get_hint(hint.TypeHintConstInt).get_value(),
+                                          args_types[1].get_hint(hint.TypeHintConstInt).get_value()))
+
         builder.store(args_values[0], iter_value)
         var_reach = args_values[1]
         var_incr = builder.const_int64(1)

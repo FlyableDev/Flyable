@@ -110,6 +110,30 @@ class TypeHintCollectionContentHint(TypeHint):
         return result
 
 
+class TypeHintCollectionContentRange(TypeHint):
+    """
+    Hint representing what content collection has inside for a specific range of int
+    """
+
+    def __init__(self, minimum=0, maximum=0, type = None):
+        self.__min_range = minimum
+        self.__max_range = maximum
+        self.__type = type
+
+    def set_range(self, minimum, maximum):
+        self.__min_range = minimum
+        self.__max_range = maximum
+
+    def get_min(self):
+        self.__min_range
+
+    def get_max(self):
+        return self.__max_range
+
+    def get_type(self):
+        return self.__type
+
+
 """
 Memory management hint
 """
@@ -182,3 +206,28 @@ class TypeHintSourceAttribute(TypeHintDataSource):
 
     def __init__(self, attribute):
         super().__init__(attribute)
+
+
+"""
+Range hints
+"""
+
+
+class TypeHintIntRange(TypeHint):
+    """
+    Hints that represents stuff
+    """
+
+    def __init__(self, minimum=0, maximum=0):
+        self.__min_range = minimum
+        self.__max_range = maximum
+
+    def set_range(self, minimum, maximum):
+        self.__min_range = minimum
+        self.__max_range = maximum
+
+    def get_min(self):
+        self.__min_range
+
+    def get_max(self):
+        return self.__max_range
