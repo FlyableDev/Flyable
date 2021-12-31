@@ -25,10 +25,11 @@ void flyable_class_set_method(FlyableClass* flyClass,char* attr,void* tp,void* v
 {
     //for every method we need a class the describes it
     PyTypeObject* object = (PyTypeObject*) calloc(sizeof(PyObject),1);
+    object->tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_VECTORCALL;
+    object->tp_vectorcall_offset = sizeof(PyMethodObject) - sizeof(void*); //the ptr is at the end of the struct
     object->ob_base.ob_base.ob_refcnt = 1;
     object->tp_vectorcall = vec;
     object->tp_call = tp;
-
 
 
     FlyableClassAttr* newAttr = (FlyableClassAttr*) malloc(sizeof(FlyableClassAttr));
@@ -59,13 +60,15 @@ PyObject* flyable_class_get_attr(PyObject* obj,char* str)
             }
             else if(attrType == FLYABLE_ATTR_TYPE_METHOD)
             {
+                PyTypeObject* object = (PyTypeObject*) attr->ptr;
                 PyMethodObject* method = (PyMethodObject*) malloc(sizeof(PyMethodObject));
                 method->im_self = obj;
                 method->im_func = flyClass;
                 method->im_weakreflist = NULL;
-                method->vectorcall = attr->ptr;
-                method->ob_base.ob_refcnt = 1;
-                method->ob_base.ob_type = &PyInstanceMethod_Type;
+                method->vectorcall = object->tp_vectorcall;
+                method->ob_base.ob_refcnt = 2;
+                method->ob_base.ob_type = &PyMethod_Type;
+                ++PyInstanceMethod_Type.ob_base.ob_base.ob_refcnt;
                 return method;
             }
             else
