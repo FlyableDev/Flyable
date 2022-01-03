@@ -144,6 +144,8 @@ class LangFuncImpl:
         # We need to keep global variable for global funcs
         if not self.get_parent_func().is_global():
             self.__context = context.Context()
+        else:
+            self.__context.clear_info()
         self.__code_func = None
 
     def __str__(self):

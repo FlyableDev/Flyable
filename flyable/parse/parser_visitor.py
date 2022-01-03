@@ -324,7 +324,6 @@ class ParserVisitor(NodeVisitor):
 
                     # The variable might have a new type
                     var_type = lang_type.get_most_common_type(self.__data, found_var.get_type(), self.__assign_type)
-
                     if found_var.get_type() != var_type:
                         found_var.set_type(var_type)
                         if found_var.is_global():

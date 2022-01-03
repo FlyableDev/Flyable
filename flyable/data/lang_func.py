@@ -125,9 +125,18 @@ class LangFunc:
         return self.__is_global
 
     def clear_info(self):
+
+        global_impl = None
+        if self.is_global():
+            global_impl = self.__impls[2]
+            global_impl.clear_info()
+
         self.__impls.clear()
         self.__setup_unknown_impl()
         self.__setup_python_impl()
+
+        if global_impl is not None:
+            self.__impls.append(global_impl)
 
     def get_tp_call_impl(self):
         for e in self.__impls:

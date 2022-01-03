@@ -67,4 +67,6 @@ class Context:
     def get_vars_count(self):
         return len(self.__vars)
 
-
+    def clear_info(self):
+        for e in self.__vars:
+            e.set_use(True)

@@ -190,6 +190,9 @@ class LangType:
     def get_id(self):
         return self.__id
 
+    def get_type(self):
+        return self.__type
+
     def to_code_type(self, code_gen):
         result = CodeType()
         if self.is_list() or self.is_dict() or self.is_tuple() or self.is_set():
