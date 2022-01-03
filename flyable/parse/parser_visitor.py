@@ -323,8 +323,14 @@ class ParserVisitor(NodeVisitor):
                     ref_counter.ref_decr_nullable(self, found_var.get_type(), old_content)
 
                     # The variable might have a new type
-                    found_var.set_type(
-                        lang_type.get_most_common_type(self.__data, found_var.get_type(), self.__assign_type))
+                    var_type = lang_type.get_most_common_type(self.__data, found_var.get_type(), self.__assign_type)
+
+                    if found_var.get_type() != var_type:
+                        found_var.set_type(var_type)
+                        if found_var.is_global():
+                            self.__data.set_changed(True)
+                        else:
+                            self.__reset_visit = True
 
                     # Store the new content
                     self.__builder.store(self.__assign_value, self.__last_value)

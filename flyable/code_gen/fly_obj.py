@@ -109,6 +109,7 @@ def allocate_flyable_instance(visitor, lang_class):
     class_lang_type = lang_class.get_lang_type()
     ptr_type = class_lang_type.to_code_type(visitor.get_code_gen())
     alloc_size = visitor.get_builder().size_of_type_ptr_element(ptr_type)
+
     value = runtime.malloc_call(visitor.get_code_gen(), visitor.get_builder(), alloc_size)
     value = visitor.get_builder().ptr_cast(value, ptr_type)
 
@@ -121,5 +122,4 @@ def allocate_flyable_instance(visitor, lang_class):
     ref_counter.ref_incr(visitor.get_builder(), lang_type.get_python_obj_type(), type_instance)
     type_ptr = get_py_obj_type_ptr(visitor.get_builder(), value)
     visitor.get_builder().store(type_instance, type_ptr)
-
     return value

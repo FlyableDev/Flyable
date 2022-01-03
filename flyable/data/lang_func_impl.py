@@ -141,6 +141,9 @@ class LangFuncImpl:
         return self.__has_yield
 
     def clear_info(self):
+        # We need to keep global variable for global funcs
+        if not self.get_parent_func().is_global():
+            self.__context = context.Context()
         self.__code_func = None
 
     def __str__(self):
