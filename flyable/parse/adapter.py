@@ -83,6 +83,7 @@ def __validate(func, args):
     """
     min_args = func.get_min_args()
     max_args = func.get_max_args()
-    if len(args) >= min_args and (len(args) <= max_args or max_args == -1):
+    args_size = len(args)
+    if min_args <= args_size <= max_args or max_args == -1:
         return True
     return False

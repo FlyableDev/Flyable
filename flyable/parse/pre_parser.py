@@ -40,9 +40,9 @@ class PreParser(ast.NodeVisitor, ErrorThrower):
     def visit_FunctionDef(self, node):
         new_func = func.LangFunc(node)
         new_func.set_file(self.__current_file)
-        self.__current_file.add_func(new_func)
         if self.__current_class is None:
             self.__data.add_func(new_func)
+            self.__current_file.add_func(new_func)
         else:
             self.__current_class.add_func(new_func)
         super().generic_visit(node)

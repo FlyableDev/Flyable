@@ -655,7 +655,10 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 break;
 
                 case 2000:
-                    mBuilder.CreateRet(values[current->readInt32()]);
+                {
+                    llvm::Value* value = values[current->readInt32()];
+                    mBuilder.CreateRet(value);
+                }
                 break;
 
                 case 2001:
