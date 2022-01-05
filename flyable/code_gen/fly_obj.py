@@ -74,10 +74,11 @@ def py_obj_set_attr(visitor, obj, name, obj_set, obj_type=None):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
+    obj_set = builder.ptr_cast(obj_set, code_type.get_py_obj_ptr(code_gen))
+
     # set attr : replicate https://github.com/python/cpython/blob/main/Objects/object.c#L903
     # First need to call set_attro, then the set_attr if set_attro is null
 
-    attr_found_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
     set_attro_block = builder.create_block()
     set_attr_block = builder.create_block()
     continue_block = builder.create_block()
@@ -96,28 +97,25 @@ def py_obj_set_attr(visitor, obj, name, obj_set, obj_type=None):
     builder.cond_br(is_attr_null, set_attr_block, set_attro_block)
 
     builder.set_insert_block(set_attro_block)
-    set_attro_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen),
-                                        [code_type.get_py_obj_ptr(code_gen)] * 2).get_ptr_to()
+    set_attro_type = code_type.get_func(code_type.get_int32(), [code_type.get_py_obj_ptr(code_gen)] * 3).get_ptr_to()
     set_attro_func = builder.ptr_cast(set_attro, set_attro_type)
     attribute_py_str = builder.global_var(code_gen.get_or_insert_str(name))
     attribute_py_str = builder.load(attribute_py_str)
-    found_attro = builder.call_ptr(set_attro_func, [obj, attribute_py_str])
-    builder.store(found_attro, attr_found_var)
+    builder.call_ptr(set_attro_func, [obj, attribute_py_str, obj_set])
     builder.br(continue_block)
 
     builder.set_insert_block(set_attr_block)
     get_attr = get_py_obj_type_getattr_ptr(visitor, obj_type)
     get_attr = builder.load(get_attr)
-    get_attr_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen),
-                                       [code_type.get_py_obj_ptr(code_gen), code_type.get_int8_ptr()]).get_ptr_to()
+    get_attr_type = code_type.get_func(code_type.get_int32(),
+                                       [code_type.get_py_obj_ptr(code_gen), code_type.get_int8_ptr(),
+                                        code_type.get_py_obj_ptr(code_gen)]).get_ptr_to()
     get_attr_func = builder.ptr_cast(get_attr, get_attr_type)
     str_attr = builder.ptr_cast(builder.global_str(name), code_type.get_int8_ptr())
-    found_attr = builder.call_ptr(get_attr_func, [obj, str_attr, obj_set])
-    builder.store(found_attr, attr_found_var)
+    builder.call_ptr(get_attr_func, [obj, str_attr, obj_set])
     builder.br(continue_block)
 
     builder.set_insert_block(continue_block)
-    return builder.load(attr_found_var)
 
 
 def py_obj_del_attr(visitor, obj, name):

@@ -7,8 +7,8 @@ FlyableClass* flyable_class_alloc()
     result->type.ob_base.ob_base.ob_refcnt = 2; //avoid the object destruction
     result->type.tp_getattr = &flyable_class_get_attr;
     result->type.tp_getattro = &flyable_class_get_attro;
-    result->type.tp_setattr = &flyable_class_get_attr;
-    result->type.tp_setattro = &flyable_class_get_attro;
+    result->type.tp_setattr = &flyable_class_set_attr;
+    result->type.tp_setattro = &flyable_class_set_attro;
     result->type.tp_dealloc = &flyable_class_dealloc;
     return result;
 }
@@ -41,7 +41,6 @@ void flyable_class_set_method(FlyableClass* flyClass,char* attr,void* tp,void* v
 PyObject* flyable_class_get_attr(PyObject* obj,char* str)
 {
     FlyableClass* flyClass = (FlyableClass*) obj->ob_type;
-
     FlyableClassAttr* attr;
     if(hashmap_get(flyClass->attrMap,str,strlen(str),&attr))
     {
@@ -84,13 +83,56 @@ PyObject* flyable_class_get_attr(PyObject* obj,char* str)
     return Py_None;
 }
 
-PyObject* flyable_class_get_attro(PyObject* obj,PyObject* str)
+PyObject* flyable_class_get_attro(PyObject* obj,PyObject* pyStr)
 {
-    if(PyUnicode_CheckExact(str))
+    if(PyUnicode_CheckExact(pyStr))
     {
-        size_t strSize;
-        char* txt = PyUnicode_AsUTF8AndSize(str,&strSize);
-        return flyable_class_get_attr(obj,txt);
+        PyUnicodeObject* unicodeObj = (PyUnicodeObject*) pyStr;
+        char* str = (char*) &unicodeObj->any;
+        size_t size = unicodeObj->_base._base.length;
+
+
+        FlyableClass* flyClass = (FlyableClass*) obj->ob_type;
+        FlyableClassAttr* attr;
+        printf("%.*s", size, str);
+        if(hashmap_get(flyClass->attrMap,str,size,&attr))
+        {
+            if(attr != NULL)
+            {
+                PyObject** result =  (PyObject**) obj + (attr->index / sizeof(PyObject*));
+                int attrType = attr->type;
+
+                if(attrType == FLYABLE_ATTR_TYPE_INT)
+                {
+                    return PyLong_FromLongLong(*((long long*) result));
+                }
+                else if(attrType == FLYABLE_ATTR_TYPE_DEC)
+                {
+                    return PyFloat_FromDouble((*(double*) result));
+                }
+                else if(attrType == FLYABLE_ATTR_TYPE_METHOD)
+                {
+                    PyTypeObject* object = (PyTypeObject*) attr->ptr;
+                    PyMethodObject* method = (PyMethodObject*) malloc(sizeof(PyMethodObject));
+                    method->im_self = obj;
+                    method->im_func = flyClass;
+                    method->im_weakreflist = NULL;
+                    method->vectorcall = object->tp_vectorcall;
+                    method->ob_base.ob_refcnt = 2;
+                    method->ob_base.ob_type = &PyMethod_Type;
+                    ++PyInstanceMethod_Type.ob_base.ob_base.ob_refcnt;
+                    return method;
+                }
+                else
+                {
+                    const PyObject* loadResult = *result;
+                    Py_IncRef(loadResult);
+                    return loadResult;
+                }
+            }
+        }
+
+
     }
 
     Py_INCREF(Py_None);
@@ -107,6 +149,7 @@ int flyable_class_set_attr(PyObject* obj,char* str, PyObject* objSet)
         {
             PyObject** result =  (PyObject**) obj + (attr->index / sizeof(PyObject*));
             *result = objSet;
+            ++objSet->ob_refcnt;
             return 1;
         }
     }

@@ -20,7 +20,7 @@ def value_to_cond(visitor, value_type, value):
         return lang_type.get_bool_type(), test_obj_true(visitor, value_type, value)
     elif value_type.is_list():
         list_len = _list.python_list_len(visitor, value)
-        return lang_type.get_int_type(), builder.gt(list_len, builder.const_int64(0))
+        return lang_type.get_bool_type(), builder.gt(list_len, builder.const_int64(0))
     elif value_type.is_dict():
         dict_len = _dict.python_dict_len(visitor, value)
         return lang_type.get_bool_type(), builder.gt(dict_len, builder.const_int(0))

@@ -372,7 +372,7 @@ class ParserVisitor(NodeVisitor):
             if isinstance(node.ctx, ast.Store):
                 _, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, self.__assign_value,
                                                    self.__assign_type)
-                runtime.py_runtime_set_attr(self.__code_gen, self.__builder, self.__last_value, str_value, py_obj)
+                fly_obj.py_obj_set_attr(self, self.__last_value, str_value, py_obj)
                 self.__last_become_assign()
             elif isinstance(node.ctx, ast.Del):
                 fly_obj.py_obj_del_attr(self, self.__last_value, str_value)
@@ -682,7 +682,8 @@ class ParserVisitor(NodeVisitor):
         test_type, test_value = self.__visit_node(node.test)
         self.__reset_last()
 
-        self.__builder.cond_br(test_value, true_cond, false_cond)
+        cond_type, cond_value = cond.value_to_cond(self, test_type, test_value)
+        self.__builder.cond_br(cond_value, true_cond, false_cond)
 
         # If true put the true value in the internal var
         self.__builder.set_insert_block(true_cond)
