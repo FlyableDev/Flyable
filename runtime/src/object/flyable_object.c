@@ -67,7 +67,9 @@ PyObject* flyable_class_get_attr(PyObject* obj,char* str)
                 method->vectorcall = object->tp_vectorcall;
                 method->ob_base.ob_refcnt = 2;
                 method->ob_base.ob_type = &PyMethod_Type;
-                ++PyInstanceMethod_Type.ob_base.ob_base.ob_refcnt;
+                ++PyMethod_Type.ob_base.ob_base.ob_refcnt;
+                ++flyClass->type.ob_base.ob_base.ob_refcnt;
+                ++obj->ob_refcnt;
                 return method;
             }
             else
@@ -88,13 +90,12 @@ PyObject* flyable_class_get_attro(PyObject* obj,PyObject* pyStr)
     if(PyUnicode_CheckExact(pyStr))
     {
         PyUnicodeObject* unicodeObj = (PyUnicodeObject*) pyStr;
-        char* str = (char*) &unicodeObj->any;
+        char* str = (char*) PyUnicode_DATA(pyStr);
         size_t size = unicodeObj->_base._base.length;
 
 
         FlyableClass* flyClass = (FlyableClass*) obj->ob_type;
         FlyableClassAttr* attr;
-        printf("%.*s", size, str);
         if(hashmap_get(flyClass->attrMap,str,size,&attr))
         {
             if(attr != NULL)
@@ -120,7 +121,9 @@ PyObject* flyable_class_get_attro(PyObject* obj,PyObject* pyStr)
                     method->vectorcall = object->tp_vectorcall;
                     method->ob_base.ob_refcnt = 2;
                     method->ob_base.ob_type = &PyMethod_Type;
-                    ++PyInstanceMethod_Type.ob_base.ob_base.ob_refcnt;
+                    ++PyMethod_Type.ob_base.ob_base.ob_refcnt;
+                    ++flyClass->type.ob_base.ob_base.ob_refcnt;
+                    ++obj->ob_refcnt;
                     return method;
                 }
                 else
