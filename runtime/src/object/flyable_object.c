@@ -24,13 +24,12 @@ void flyable_class_set_attr_index(FlyableClass* flyClass,char* attr,int type,int
 void flyable_class_set_method(FlyableClass* flyClass,char* attr,void* tp,void* vec)
 {
     //for every method we need a class the describes it
-    PyTypeObject* object = (PyTypeObject*) calloc(sizeof(PyObject),1);
+    PyTypeObject* object = (PyTypeObject*) calloc(sizeof(PyTypeObject),1);
     object->tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_VECTORCALL;
     object->tp_vectorcall_offset = sizeof(PyMethodObject) - sizeof(void*); //the ptr is at the end of the struct
     object->ob_base.ob_base.ob_refcnt = 1;
     object->tp_vectorcall = vec;
     object->tp_call = tp;
-
 
     FlyableClassAttr* newAttr = (FlyableClassAttr*) malloc(sizeof(FlyableClassAttr));
     newAttr->type = FLYABLE_ATTR_TYPE_METHOD;

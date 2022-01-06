@@ -65,13 +65,31 @@ class ParserVisitor(NodeVisitor):
         self.__setup_default_args()
 
         # Setup argument as var
-        for i, var in enumerate(self.__func.get_context().vars_iter()):
-            if var.is_arg():
-                var.set_code_gen_value(i)
+        impl_type = self.__func.get_impl_type()
+        if impl_type == lang_func.FuncImplType.SPECIALIZATION:
+            for i, var in enumerate(self.__func.get_context().vars_iter()):
+                if var.is_arg():
+                    var.set_code_gen_value(i)
+                    self.__func.get_code_func().increment_value()
+        elif impl_type == lang_func.FuncImplType.TP_CALL:
+            for _ in range(3):
+                self.__func.get_code_func().increment_value()
+        elif impl_type == lang_func.FuncImplType.VEC_CALL:
+            for _ in range(4):
                 self.__func.get_code_func().increment_value()
 
         self.__content_block = self.__builder.create_block()
         self.__builder.set_insert_block(self.__content_block)
+
+        # For vec and tp functions, arguments are actually inside the array
+        if impl_type == lang_func.FuncImplType.SPECIALIZATION or impl_type == lang_func.FuncImplType.VEC_CALL:
+            for i, var in enumerate(self.__func.get_context().vars_iter()):
+                if var.is_arg():
+                    index_value = self.__builder.const_int32(i)
+                    # 1 is the codegen value of the list argument
+                    found_ptr = gen_list.python_list_array_get_item(self, lang_type.get_list_of_python_obj_type(), 1,
+                                                                    index_value)
+                    var.set_code_gen_value(self.__builder.load(found_ptr))
 
     def parse(self):
         self.__last_type = None
@@ -79,8 +97,12 @@ class ParserVisitor(NodeVisitor):
         while self.__reset_visit:
             self.__reset_info()
             self.__reset_visit = False
+            self.__parse_begin()
             self.visit(self.__func.get_parent_func().get_node().body)
             self.__parse_over()
+
+    def __parse_begin(self):
+        pass
 
     def __parse_over(self):
         # When parsing is done we can put the final br of the entry block
