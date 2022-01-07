@@ -112,6 +112,16 @@ def python_list_array_get_item(visitor, list_type, list, index):
     return result
 
 
+def python_list_array_get_item_unsafe(visitor, list_type, list, index):
+    builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
+    content = python_list_get_content_ptr(visitor, list)
+    content = builder.load(content)
+    content = builder.ptr_cast(content, list_type.get_content().to_code_type(visitor.get_code_gen()).get_ptr_to())
+    content = builder.gep2(content, list_type.get_content().to_code_type(visitor.get_code_gen()), [index])
+    result = builder.load(content)
+    return result
+
+
 def python_list_len_ptr(visitor, list):
     list = visitor.get_builder().ptr_cast(list, code_type.get_list_obj_ptr(visitor.get_code_gen()))
     return visitor.get_builder().gep(list, visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(2))
