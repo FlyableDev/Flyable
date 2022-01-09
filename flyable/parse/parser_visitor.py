@@ -57,41 +57,12 @@ class ParserVisitor(NodeVisitor):
         self.__cond_blocks = []  # Hierarchy of current blocks that might not get executed
         self.__exception_blocks = []  # Hierarchy of blocks to jump when an exception occur to dispatch it
 
+        self.__func.get_code_func().clear_blocks()
+
         self.__entry_block = func_impl.get_code_func().add_block()
 
         self.__builder: CodeBuilder = func_impl.get_code_func().get_builder()
         self.__builder.set_insert_block(self.__entry_block)
-
-        self.__setup_default_args()
-
-        # Setup argument as var
-        impl_type = self.__func.get_impl_type()
-        if impl_type == lang_func.FuncImplType.SPECIALIZATION:
-            for i, var in enumerate(self.__func.get_context().vars_iter()):
-                if var.is_arg():
-                    var.set_code_gen_value(i)
-                    self.__func.get_code_func().increment_value()
-        elif impl_type == lang_func.FuncImplType.TP_CALL:
-            for _ in range(3):
-                self.__func.get_code_func().increment_value()
-        elif impl_type == lang_func.FuncImplType.VEC_CALL:
-            for _ in range(4):
-                self.__func.get_code_func().increment_value()
-
-        # For vec and tp functions, arguments are actually inside the array
-        # We load them when we start the function
-        if impl_type == lang_func.FuncImplType.TP_CALL or impl_type == lang_func.FuncImplType.VEC_CALL:
-            for i, var in enumerate(self.__func.get_context().vars_iter()):
-                if var.is_arg():
-                    index_value = self.__builder.const_int32(i)
-                    # 1 is the codegen value of the list argument
-                    found_ptr = gen_list.python_list_array_get_item_unsafe(self,
-                                                                           lang_type.get_list_of_python_obj_type(), 1,
-                                                                           index_value)
-                    var.set_code_gen_value(self.__builder.load(found_ptr))
-
-        self.__content_block = self.__builder.create_block()
-        self.__builder.set_insert_block(self.__content_block)
 
     def parse(self):
         self.__last_type = None
@@ -104,7 +75,36 @@ class ParserVisitor(NodeVisitor):
             self.__parse_over()
 
     def __parse_begin(self):
-        pass
+
+        self.__setup_default_args()
+
+        # Setup argument as var
+
+        impl_type = self.__func.get_impl_type()
+        if impl_type == lang_func.FuncImplType.SPECIALIZATION:
+            for i, var in enumerate(self.__func.get_context().vars_iter()):
+                if var.is_arg():
+                    var.set_code_gen_value(i)
+
+        # For vec and tp functions, arguments are actually inside the array
+        # We load them when we start the function
+        # 1 is the codegen value of the list argument
+        for i, var in enumerate(self.__func.get_context().vars_iter()):
+            if var.is_arg():
+                if impl_type == lang_func.FuncImplType.TP_CALL:
+                    index_value = self.__builder.const_int32(i)
+                    found_ptr = gen_list.python_list_array_get_item_unsafe(self,
+                                                                           lang_type.get_list_of_python_obj_type(), 1,
+                                                                           index_value)
+                    var.set_code_gen_value(found_ptr)
+                elif impl_type == lang_func.FuncImplType.VEC_CALL:
+                    index_value = self.__builder.const_int32(i)
+                    found_ptr = self.__builder.gep2(1, code_type.get_py_obj_ptr(self.__code_gen), [index_value])
+                    found_ptr = self.__builder.load(found_ptr)
+                    var.set_code_gen_value(found_ptr)
+
+        self.__content_block = self.__builder.create_block()
+        self.__builder.set_insert_block(self.__content_block)
 
     def __parse_over(self):
         # When parsing is done we can put the final br of the entry block

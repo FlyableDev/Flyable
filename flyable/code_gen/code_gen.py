@@ -520,6 +520,10 @@ class CodeGen:
             class_name = impl.get_parent_func().get_class().get_name()
         func_name = "@flyable@__" + class_name + "@" + impl.get_parent_func().get_name() + "@" + \
                     str(impl.get_id()) + "@" + str(impl.get_parent_func().get_id()) + "@" + str(impl.get_id())
+        if impl.get_impl_type() == impl.get_impl_type() == lang_func_impl.FuncImplType.TP_CALL:
+            func_name += "@tp@"
+        elif impl.get_impl_type() == lang_func_impl.FuncImplType.VEC_CALL:
+            func_name += "@vec@"
         return_type = impl.get_return_type().to_code_type(self)
 
         if impl.get_impl_type() == lang_func_impl.FuncImplType.SPECIALIZATION:

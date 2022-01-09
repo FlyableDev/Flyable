@@ -224,6 +224,12 @@ class CodeBuilder:
         self.__writer.add_int32(10000)
         self.__writer.add_int32(value)
 
+    def debug_op(self):
+        self.__writer.add_int32(10001)
+
+    def debug_op2(self):
+        self.__writer.add_int32(10002)
+
     def get_total_value(self):
         return self.__current_id
 
