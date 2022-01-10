@@ -448,7 +448,8 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
 
                 case 152:
                 {
-                    llvm::Value* element = values[current->readInt32()];
+                    int elementId = current->readInt32();
+                    llvm::Value* element = values[elementId];
                     llvm::Value* firstIndice = values[current->readInt32()];
                     llvm::Value* secondIndice = values[current->readInt32()];
                     auto indices = std::vector<llvm::Value*>({firstIndice,secondIndice});
@@ -457,7 +458,10 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                     if(ptrType != nullptr)
                         values[current->readInt32()] = mBuilder.CreateGEP(ptrType->getElementType(),element,indices);
                     else
+                    {
                         values[current->readInt32()] = mBuilder.CreateGEP(type,element,indices);
+                    }
+
                 }
                 break;
 
@@ -723,6 +727,14 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
 
                 case 10000:
                     printType(values[current->readInt32()]->getType());
+                break;
+
+                case 10001:
+                    std::cout<<"Hello world!"<<std::endl;
+                break;
+
+                case 10002:
+                    std::cout<<"Bye bye world!"<<std::endl;
                 break;
 
                 default:

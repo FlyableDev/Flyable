@@ -89,13 +89,22 @@ class ParserVisitor(NodeVisitor):
         # For vec and tp functions, arguments are actually inside the array
         # We load them when we start the function
         # 1 is the codegen value of the list argument
+        # If it's a method and we load the first argument from the callable object (id 0)
+        is_method = self.__func.get_parent_func().get_class() is not None
         for i, var in enumerate(self.__func.get_context().vars_iter()):
             if var.is_arg():
-                if impl_type == lang_func.FuncImplType.TP_CALL:
+                if (impl_type == lang_func.FuncImplType.TP_CALL or impl_type == lang_func.FuncImplType.VEC_CALL) \
+                        and is_method and i == 0:
+                    method_instance = self.__builder.ptr_cast(0, code_type.get_py_obj_ptr(
+                        self.__code_gen).get_ptr_to())
+                    self_ptr = self.__builder.gep2(method_instance, code_type.get_py_obj_ptr(self.__code_gen),
+                                                   [self.__builder.const_int32(3)])
+                    var.set_code_gen_value(self.__builder.load(self_ptr))
+                elif impl_type == lang_func.FuncImplType.TP_CALL:
                     index_value = self.__builder.const_int32(i)
                     found_ptr = gen_list.python_list_array_get_item_unsafe(self,
-                                                                           lang_type.get_list_of_python_obj_type(), 1,
-                                                                           index_value)
+                                                                           lang_type.get_list_of_python_obj_type(),
+                                                                           1, index_value)
                     var.set_code_gen_value(found_ptr)
                 elif impl_type == lang_func.FuncImplType.VEC_CALL:
                     index_value = self.__builder.const_int32(i)
