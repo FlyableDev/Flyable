@@ -101,13 +101,13 @@ class ParserVisitor(NodeVisitor):
                                                    [self.__builder.const_int32(3)])
                     var.set_code_gen_value(self.__builder.load(self_ptr))
                 elif impl_type == lang_func.FuncImplType.TP_CALL:
-                    index_value = self.__builder.const_int32(i)
+                    index_value = self.__builder.const_int32(i - 1 if is_method else i)
                     found_ptr = gen_list.python_list_array_get_item_unsafe(self,
                                                                            lang_type.get_list_of_python_obj_type(),
                                                                            1, index_value)
                     var.set_code_gen_value(found_ptr)
                 elif impl_type == lang_func.FuncImplType.VEC_CALL:
-                    index_value = self.__builder.const_int32(i)
+                    index_value = self.__builder.const_int32(i - 1 if is_method else i)
                     found_ptr = self.__builder.gep2(1, code_type.get_py_obj_ptr(self.__code_gen), [index_value])
                     found_ptr = self.__builder.load(found_ptr)
                     var.set_code_gen_value(found_ptr)
@@ -724,6 +724,7 @@ class ParserVisitor(NodeVisitor):
         # If true put the true value in the internal var
         self.__builder.set_insert_block(true_cond)
         true_type, true_value = self.__visit_node(node.body)
+        self.__builder.br(continue_cond)
         self.__reset_last()
 
         # If false put the false value in the internal var
@@ -1286,7 +1287,7 @@ class ParserVisitor(NodeVisitor):
         if result is None:
             parent_func = self.__func.get_parent_func().get_file().get_global_func()
             if parent_func is not None:
-                impl = parent_func.get_impl(3)
+                impl = parent_func.get_impl(4)
                 result = impl.get_context().find_active_var(name)
         return result
 
@@ -1308,6 +1309,3 @@ class ParserVisitor(NodeVisitor):
         self.__entry_block = self.__func.get_code_func().add_block()
 
         self.__builder.set_insert_block(self.__entry_block)
-
-        self.__content_block = self.__builder.create_block()
-        self.__builder.set_insert_block(self.__content_block)
