@@ -596,10 +596,10 @@ class CodeGen:
         # On Windows, an executable starts on the WinMain symbol
         if platform.uname()[0] == "Windows":
             main_name = "WinMain"
-        elif platform.uname()[0] == "Linux":
+        elif platform.uname()[0] == "Linux" or platform.uname()[0] == "Darwin":
             main_name = "main"
         else:
-            raise NotImplemented(platform.uname()[0] + " not supported")
+            raise Exception(platform.uname()[0] + " not supported")
 
         main_func = self.get_or_create_func(main_name, code_type.get_int32(), [], Linkage.EXTERNAL)
         builder = CodeBuilder(main_func)
