@@ -136,3 +136,18 @@ dmypy.json
 cython_debug/
 .vscode/
 build3/win64/
+
+.DS_Store
+
+# Cmake
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
