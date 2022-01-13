@@ -1033,7 +1033,7 @@ class ParserVisitor(NodeVisitor):
         new_set = gen_set.instanciate_python_set(self, null_value)
         for e in node.elts:
             type, value = self.__visit_node(e)
-            py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, value, type)
+            py_typ, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, value, type)
             gen_set.python_set_add(self, new_set, py_obj)
         self.__last_value = new_set
         self.__last_type = set_type
