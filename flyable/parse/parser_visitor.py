@@ -34,6 +34,7 @@ import flyable.code_gen.fly_obj as fly_obj
 import flyable.code_gen.module as gen_module
 import flyable.code_gen.slice as gen_slice
 import flyable.code_gen.debug as debug
+import flyable.code_gen.unpack as unpack
 
 
 class ParserVisitor(NodeVisitor):
@@ -146,13 +147,13 @@ class ParserVisitor(NodeVisitor):
         targets = []
         values = []
 
-        if isinstance(node.targets[0], ast.Tuple):  # mult assign
+        if isinstance(node.targets[0], ast.Tuple) or isinstance(node.targets[0], ast.List):  # mult assign
             for e in node.targets[0].elts:
                 targets.append(e)
         else:
             targets.append(node.targets)
 
-        if isinstance(node.value, ast.Tuple):
+        if isinstance(node.value, ast.Tuple) or isinstance(node.value, ast.List):
             for e in node.value.elts:
                 values.append(e)
         else:
@@ -168,6 +169,7 @@ class ParserVisitor(NodeVisitor):
             self.__reset_last()
             self.__last_type, self.__last_value = self.__visit_node(node.targets)
         else:  # Mult assign
+            """
             if len(targets) == len(values):
                 for i, e in enumerate(targets):
                     self.__reset_last()
@@ -179,8 +181,10 @@ class ParserVisitor(NodeVisitor):
 
                     self.__reset_last()
                     value_type, value = self.__visit_node(targets[i])
-            elif len(targets) > 1 and len(values) == 1:  # unpack
-                raise NotImplementedError("Unpack assignation not implemented")
+            """
+            if len(targets) >= len(values):  # unpack
+                value_type, value_value = self.__visit_node(node.value)
+                unpack.unpack_assignation(self, targets, value_type, value_value, node)
             else:
                 self.__parser.throw_error("Incorrect amount of value to unpack", node.lineno, node.end_col_offset)
 
@@ -1260,6 +1264,12 @@ class ParserVisitor(NodeVisitor):
 
     def reset_last(self):
         self.__reset_last()
+
+    def set_assign_type(self, assign_type):
+        self.__assign_type = assign_type
+
+    def set_assign_value(self, assign_value):
+        self.__assign_value = assign_value
 
     def __reset_last(self):
         self.__last_type = None
