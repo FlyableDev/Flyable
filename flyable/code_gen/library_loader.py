@@ -21,6 +21,11 @@ def __load_lib():
         path += "/../dyn_lib/linux64/"
         lib_path = path
         return load_lib_and_dependecies(lib_path, lib_name)
+    elif platform.system() == "Darwin" and platform.machine() == "arm64":
+        lib_name = "libFlyableCodeGen.dylib"
+        path += "/../dyn_lib/macos-arm64/"
+        lib_path = path
+        return load_lib_and_dependecies(lib_path, lib_name)
     else:
         raise OSError("OS not supported")
 
