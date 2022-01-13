@@ -665,7 +665,13 @@ class CodeGen:
             return runtime.value_to_pyobj(self, builder, value, type_from)[1]
         elif type_to.is_obj():
             return builder.ptr_cast(type_to.get_id())
-        raise ValueError("Impossible to convert the type")
+        elif type_to.is_primitive():
+            if type_to.is_int():
+                return builder.int_cast(value, code_type.get_int64())
+            elif type_to.is_dec():
+                return builder.float_cast(value, code_type.get_double())
+        else:
+            raise ValueError("Impossible to convert the type")
 
     def get_null_from_type(self, builder, type):
         if type.is_int():

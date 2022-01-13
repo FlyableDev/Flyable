@@ -152,11 +152,11 @@ int flyable_class_set_attr(PyObject* obj,char* str, PyObject* objSet)
             PyObject** result =  (PyObject**) obj + (attr->index / sizeof(PyObject*));
             *result = objSet;
             ++objSet->ob_refcnt;
-            return 1;
+            return 0;
         }
     }
 
-    return 0;
+    return -1;
 }
 
 int flyable_class_set_attro(PyObject* obj,PyObject* str, PyObject* objSet)
@@ -169,7 +169,8 @@ int flyable_class_set_attro(PyObject* obj,PyObject* str, PyObject* objSet)
         return flyable_class_set_attr(obj,txt,objSet);
     }
 
-    return 0;
+
+    return -1;
 }
 
 void flyable_class_dealloc(PyObject* obj)
