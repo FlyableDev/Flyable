@@ -24,6 +24,9 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     elif is_number_binary_func(func_name):
         func_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2)
         protocol_result = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
+    else:
+        raise Exception("Unsupported protocol for function name " + func_name)
+    
     func_type = func_type.get_ptr_to()
 
     num_call_args = []
