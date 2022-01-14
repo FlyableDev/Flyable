@@ -18,7 +18,13 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
-    protocol_result = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
+    if is_number_func_inquiry(func_name):
+        func_type = code_type.get_func(code_type.get_int32(), [code_type.get_py_obj_ptr(code_gen)])
+        protocol_result = visitor.generate_entry_block_var(code_type.get_int32())
+    elif is_number_binary_func(func_name):
+        func_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2)
+        protocol_result = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
+    func_type = func_type.get_ptr_to()
 
     num_call_args = []
     num_call_args_types = []
@@ -32,14 +38,10 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     slot_id = get_number_slot_from_func_name(func_name)
     slot = builder.const_int64(slot_id)
 
-    as_number = gen_type.py_object_type_get_tp_as_number_ptr(
-        visitor, instance_type)
+    as_number = gen_type.py_object_type_get_tp_as_number_ptr(visitor, instance_type)
     as_number = builder.load(as_number)
-    as_number = builder.ptr_cast(
-        as_number, code_type.get_int8_ptr().get_ptr_to())
-
-    is_number_null = builder.eq(as_number, builder.const_null(
-        code_type.get_int8_ptr().get_ptr_to()))
+    as_number = builder.ptr_cast(as_number, code_type.get_int8_ptr().get_ptr_to())
+    is_number_null = builder.eq(as_number, builder.const_null(code_type.get_int8_ptr().get_ptr_to()))
 
     basic_call_block = builder.create_block()
     number_call_block = builder.create_block()
@@ -48,8 +50,6 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     builder.set_insert_block(number_call_block)
     func_to_call = builder.gep2(as_number, code_type.get_int8_ptr(), [slot])
     func_to_call = builder.load(func_to_call)
-    func_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2)
-    func_type = func_type.get_ptr_to()
     func_to_call = builder.ptr_cast(func_to_call, func_type)
 
     # Check if the function that we got from the slot is not null
@@ -63,16 +63,27 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     builder.br(continue_block)
 
     builder.set_insert_block(basic_call_block)
-    basic_call_type, basic_call_value = caller.call_obj(visitor, func_name, obj, obj_type, num_call_args,
-                                                        num_call_args_types, False, False)
-    builder.store(basic_call_value, protocol_result)
+
+    # If the inquiry call isn't supported, then we fail the inquiry
+    if is_number_func_inquiry(func_name):
+        builder.store(builder.const_int32(0), protocol_result)
+    else:
+        basic_call_type, basic_call_value = caller.call_obj(visitor, func_name, obj, obj_type, num_call_args,
+                                                            num_call_args_types, False, False)
+        builder.store(basic_call_value, protocol_result)
     builder.br(continue_block)
 
     builder.set_insert_block(continue_block)
     for i in range(len(num_call_args)):
         ref_counter.ref_decr_incr(
             visitor, num_call_args_types[i], num_call_args[i])
-    return builder.load(protocol_result)
+
+    if is_number_func_inquiry(func_name):
+        return builder.int_cast(builder.load(protocol_result), code_type.get_int1())
+    elif is_number_binary_func(func_name):
+        return builder.load(protocol_result)
+    else:
+        return NotImplemented("Unsupported call protocol")
 
 
 def is_py_obj_impl_number_protocol(visitor, obj_type, obj, instance_type=None):
@@ -86,10 +97,8 @@ def is_py_obj_impl_number_protocol(visitor, obj_type, obj, instance_type=None):
     if instance_type is None:
         instance_type = fly_obj.get_py_obj_type(builder, obj)
 
-    as_number = builder.load(
-        gen_type.py_object_type_get_tp_as_number_ptr(visitor, instance_type))
-    impl_number_protocol = builder.eq(
-        as_number, builder.const_null(code_type.get_py_obj_ptr(code_gen)))
+    as_number = builder.load(gen_type.py_object_type_get_tp_as_number_ptr(visitor, instance_type))
+    impl_number_protocol = builder.eq(as_number, builder.const_null(code_type.get_py_obj_ptr(code_gen)))
     return impl_number_protocol, as_number
 
 

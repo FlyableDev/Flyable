@@ -48,7 +48,6 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False,
         if obj_type.is_primitive():
             did_caller_conversion = True
             obj_type, obj = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), obj, obj_type)
-
         # Maybe there is a shortcut available to skip the python call
         found_shortcut = shortcut.get_obj_call_shortcuts(obj_type, args_type, func_name)
         if found_shortcut is not None:
@@ -61,6 +60,10 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False,
                                                                                                      instance_type,
                                                                                                      args_type, args)
             return result
+        elif protocol and num.is_number_func_inquiry(func_name) and len(args) == 0:
+            instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
+            result = lang_type.get_bool_type(), num.call_number_protocol(visitor, func_name, obj_type, obj,
+                                                                         instance_type, args_type, args)
         elif protocol and _iter.is_iter_func_name(func_name) and len(args) == 0:  # Iter protocol
             return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), _iter.call_iter_protocol(visitor, func_name,
                                                                                                    obj)

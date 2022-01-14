@@ -762,7 +762,10 @@ class ParserVisitor(NodeVisitor):
             other_block = self.__builder.create_block()
 
         cond_type_test, cond_value_test = self.__visit_node(node.test)
+
         cond_type, cond_value = cond.value_to_cond(self, cond_type_test, cond_value_test)
+
+        debug.flyable_debug_print_int64(self.__code_gen, self.__builder, self.__builder.const_int64(420))
 
         ref_counter.ref_decr_incr(self, cond_type_test, cond_value_test)
         ref_counter.ref_decr_incr(self, cond_type, cond_value)
@@ -1157,6 +1160,7 @@ class ParserVisitor(NodeVisitor):
     def visit_Import(self, node: Import) -> Any:
         for e in node.names:
             var_name = e.asname if e.asname is not None else e.name
+            var_name = var_name.split(".")[0]
             file = self.__data.get_file(e.name)
             if file is None:  # Python module
                 module_type = lang_type.get_python_obj_type()  # A Python module
