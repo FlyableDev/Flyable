@@ -867,28 +867,21 @@ class ParserVisitor(NodeVisitor):
         prev_for_block = None
 
         for i, e in enumerate(node.generators):
-            name = e.target.id
             iter_type, iter_value = self.__visit_node(e.iter)
-            new_var = self.__func.get_context().add_var(name, iter_type)
-            alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-            new_var.set_code_gen_value(alloca_value)
             iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [])
 
             block_for = self.__builder.create_block()
-            block_for_in = self.__builder.create_block()
-
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
             next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
-
-            self.__builder.store(next_value, new_var.get_code_gen_value())
 
             null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
             excp.py_runtime_clear_error(self.__code_gen, self.__builder)
 
             test = self.__builder.eq(next_value, null_ptr)
 
+            block_for_in = self.__builder.create_block()
             if i == 0:
                 self.__builder.cond_br(test, block_continue, block_for_in)
             else:
@@ -897,18 +890,30 @@ class ParserVisitor(NodeVisitor):
             # inside for loop
             self.__builder.set_insert_block(block_for_in)
 
+            if isinstance(e.target, ast.Name):
+                name = e.target.id
+                new_var = self.__func.get_context().add_var(name, iter_type)
+                alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
+                new_var.set_code_gen_value(alloca_value)
+                self.__builder.store(next_value, new_var.get_code_gen_value())
+            elif isinstance(e.target, ast.Tuple) or isinstance(e.target, ast.List):
+                targets = []
+                for t in e.target.elts:
+                    targets.append(t)
+                unpack.unpack_assignation(self, targets, next_type, next_value, node)
+
             # validate that each if is true
             for j, test in enumerate(e.ifs):
                 block_cond = self.__builder.create_block()
-                cond_type, cond_value = self.__visit_node(test)
-                cond_type, cond_value = cond.value_to_cond(self, cond_type, cond_value)
+                cond_type_test, cond_value_test = self.__visit_node(test)
+                cond_type, cond_value = cond.value_to_cond(self, cond_type_test, cond_value_test)
                 self.__builder.cond_br(cond_value, block_cond, block_for)
                 self.__builder.set_insert_block(block_cond)
-
+            
             if i == len(node.generators) - 1:
                 elt_type, elt_value = self.__visit_node(node.elt)
-                obj_to_list = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
-                gen_list.python_list_append(self, result_array, lang_type.get_python_obj_type(), obj_to_list)
+                py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
+                gen_list.python_list_append(self, result_array, py_obj_type, py_obj)
                 self.__builder.br(block_for)
 
             prev_for_block = block_for
@@ -916,6 +921,7 @@ class ParserVisitor(NodeVisitor):
         self.__builder.set_insert_block(block_continue)
         self.__last_type = lang_type.get_list_of_python_obj_type()
         self.__last_value = result_array
+
 
     def visit_List(self, node: List) -> Any:
         elts_types = []
@@ -980,28 +986,21 @@ class ParserVisitor(NodeVisitor):
         prev_for_block = None
 
         for i, e in enumerate(node.generators):
-            name = e.target.id
             iter_type, iter_value = self.__visit_node(e.iter)
-            new_var = self.__func.get_context().add_var(name, iter_type)
-            alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-            new_var.set_code_gen_value(alloca_value)
             iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [])
 
             block_for = self.__builder.create_block()
-            block_for_in = self.__builder.create_block()
-
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
             next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
-
-            self.__builder.store(next_value, new_var.get_code_gen_value())
 
             null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
             excp.py_runtime_clear_error(self.__code_gen, self.__builder)
 
             test = self.__builder.eq(next_value, null_ptr)
 
+            block_for_in = self.__builder.create_block()
             if i == 0:
                 self.__builder.cond_br(test, block_continue, block_for_in)
             else:
@@ -1009,6 +1008,18 @@ class ParserVisitor(NodeVisitor):
 
             # inside for loop
             self.__builder.set_insert_block(block_for_in)
+
+            if isinstance(e.target, ast.Name):
+                name = e.target.id
+                new_var = self.__func.get_context().add_var(name, iter_type)
+                alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
+                new_var.set_code_gen_value(alloca_value)
+                self.__builder.store(next_value, new_var.get_code_gen_value())
+            elif isinstance(e.target, ast.Tuple) or isinstance(e.target, ast.List):
+                targets = []
+                for t in e.target.elts:
+                    targets.append(t)
+                unpack.unpack_assignation(self, targets, next_type, next_value, node)
 
             # validate that each if is true
             for j, test in enumerate(e.ifs):
@@ -1020,8 +1031,8 @@ class ParserVisitor(NodeVisitor):
 
             if i == len(node.generators) - 1:
                 elt_type, elt_value = self.__visit_node(node.elt)
-                obj_to_set = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
-                gen_set.python_set_add(self, result_set, obj_to_set)
+                obj_to_set_type, obj_to_set_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
+                gen_set.python_set_add(self, result_set, obj_to_set_value)
                 self.__builder.br(block_for)
 
             prev_for_block = block_for
@@ -1049,28 +1060,22 @@ class ParserVisitor(NodeVisitor):
         prev_for_block = None
 
         for i, e in enumerate(node.generators):
-            name = e.target.id
             iter_type, iter_value = self.__visit_node(e.iter)
-            new_var = self.__func.get_context().add_var(name, iter_type)
-            alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-            new_var.set_code_gen_value(alloca_value)
+
             iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [])
 
             block_for = self.__builder.create_block()
-            block_for_in = self.__builder.create_block()
-
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
             next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
-
-            self.__builder.store(next_value, new_var.get_code_gen_value())
 
             null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
             excp.py_runtime_clear_error(self.__code_gen, self.__builder)
 
             test = self.__builder.eq(next_value, null_ptr)
 
+            block_for_in = self.__builder.create_block()
             if i == 0:
                 self.__builder.cond_br(test, block_continue, block_for_in)
             else:
@@ -1078,6 +1083,18 @@ class ParserVisitor(NodeVisitor):
 
             # inside for loop
             self.__builder.set_insert_block(block_for_in)
+
+            if isinstance(e.target, ast.Name):
+                name = e.target.id
+                new_var = self.__func.get_context().add_var(name, iter_type)
+                alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
+                new_var.set_code_gen_value(alloca_value)
+                self.__builder.store(next_value, new_var.get_code_gen_value())
+            elif isinstance(e.target, ast.Tuple) or isinstance(e.target, ast.List):
+                targets = []
+                for t in e.target.elts:
+                    targets.append(t)
+                unpack.unpack_assignation(self, targets, next_type, next_value, node)
 
             # validate that each if is true
             for j, test in enumerate(e.ifs):
@@ -1090,9 +1107,9 @@ class ParserVisitor(NodeVisitor):
             if i == len(node.generators) - 1:
                 key_type, key_value = self.__visit_node(node.key)
                 value_type, value_value = self.__visit_node(node.value)
-                obj_key = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
-                obj_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
-                gen_dict.python_dict_set_item(self, result_dict, obj_key, obj_value)
+                obj_key_type, obj_key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
+                obj_value_type, obj_value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
+                gen_dict.python_dict_set_item(self, result_dict, obj_key_value, obj_value_value)
                 self.__builder.br(block_for)
 
             prev_for_block = block_for
