@@ -109,7 +109,10 @@ def __for_loop_with_iterators(node, visitor, iter_type, iter_value):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
-    #iter_type, iter_value = visitor.visit_node(node.iter)
+    block_for = builder.create_block()
+    block_for_in = builder.create_block()
+    block_else = builder.create_block() if node.orelse is not None else None
+    block_continue = builder.create_block()
 
     if not hint.is_incremented_type(iter_type):
         ref_counter.ref_incr(builder, iter_type, iter_value)
@@ -120,8 +123,6 @@ def __for_loop_with_iterators(node, visitor, iter_type, iter_value):
         alloca_value = visitor.generate_entry_block_var(iter_type.to_code_type(code_gen))
         new_var.set_code_gen_value(alloca_value)
     iterable_type, iterator = caller.call_obj(visitor, "__iter__", iter_value, iter_type, [], [])
-
-    block_for = builder.create_block()
 
     builder.br(block_for)
     builder.set_insert_block(block_for)
@@ -134,10 +135,6 @@ def __for_loop_with_iterators(node, visitor, iter_type, iter_value):
     null_ptr = builder.const_null(code_type.get_py_obj_ptr(code_gen))
 
     test = builder.eq(next_value, null_ptr)
-
-    block_continue = builder.create_block()
-    block_for_in = builder.create_block()
-    block_else = builder.create_block() if node.orelse is not None else None
 
     if node.orelse is None:
         builder.cond_br(test, block_continue, block_for_in)
