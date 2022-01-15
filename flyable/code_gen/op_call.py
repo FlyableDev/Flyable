@@ -52,6 +52,27 @@ def bin_op(visitor, op, type_left, value_left, type_right, value_right):
             op), value_left, type_left, args, args_types)
         return result
 
+    if isinstance(op, ast.Pow):
+        if type_left.is_dec():
+            pow_args_types = [code_type.get_double(), code_type.get_double()]
+            pow_func = visitor.get_code_gen().get_or_create_func("llvm.pow.f64", code_type.get_double(),
+                                                        pow_args_types, gen.Linkage.EXTERNAL)
+            return lang_type.get_dec_type(), builder.call(pow_func, [value_left, value_right])
+        elif type_left.is_int():
+            type_left = code_type.get_double()
+            value_left = visitor.get_builder().float_cast(value_left, type_left)
+            type_right = code_type.get_int16()
+            value_right = visitor.get_builder().int_cast(value_right, type_right)
+            pow_args_types = [type_left, type_right]
+            pow_func = visitor.get_code_gen().get_or_create_func("llvm.powi.f64.i16", code_type.get_double(),
+                                                                 pow_args_types, gen.Linkage.EXTERNAL)
+            return_value = builder.call(pow_func, [value_left, value_right])
+            return_value = visitor.get_builder().int_cast(return_value, code_type.get_int64())
+            return_type = lang_type.get_int_type()
+            return return_type, return_value
+        else:
+            raise TypeError("Unsupported type for pow operator")
+
     if isinstance(op, ast.FloorDiv):
         if type_left.is_int() and type_right.is_int():
             result = builder.div(value_left, value_right)
