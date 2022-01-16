@@ -41,10 +41,12 @@ def parse_for_loop(node, visitor):
 
 
 def __for_node_matches_range_opt(iter_node):
-    if isinstance(iter_node, ast.Call) and iter_node.func.id == "range":
-        args_size = len(iter_node.args)
-        if 0 < args_size <= 3:
-            return True
+    if isinstance(iter_node, ast.Call):
+        if isinstance(iter_node.func, ast.Name):
+            if iter_node.func.id == "range":
+                args_size = len(iter_node.args)
+                if 0 < args_size <= 3:
+                    return True
     return False
 
 

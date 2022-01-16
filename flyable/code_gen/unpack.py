@@ -34,7 +34,7 @@ def unpack_assignation(visitor, targets, value_type, value, node):
             for t in target.elts:
                 new_targets.append(t)
             unpack_assignation(visitor, new_targets, value_type_i, value_i, node)
-        elif isinstance(target, ast.Name):
+        elif isinstance(target, ast.Name) or isinstance(target, ast.Subscript):
             visitor.set_assign_type(value_type_i)
             visitor.set_assign_value(value_i)
             visitor.visit_node(target)
