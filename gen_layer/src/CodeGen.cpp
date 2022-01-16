@@ -227,7 +227,7 @@ void CodeGen::readFuncs(FormatReader& reader)
         mFuncs[i] = llvm::Function::Create(funcType,link,name,mModule);
 
         size_t valuesCount = reader.readInt32();
-        values.push_back(std::vector<llvm::Value*>(valuesCount));
+        values.push_back(std::vector<llvm::Value*>(valuesCount,nullptr));
         size_t blocksCount = reader.readInt32();
         for(size_t j = 0;j < blocksCount;++j)
         {
@@ -255,497 +255,582 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
         ++i;
     }
 
-    for(size_t i = 0;i < readers.size();++i)
+    bool runConversion = true;
+
+    while(runConversion)
     {
-        FormatReader* current = &readers[i];
-        mBuilder.SetInsertPoint(blocks[i]);
-        while(!current->atEnd())
+        for(size_t i = 0;i < readers.size();++i)
         {
-            int opcode = current->readInt32();
-            switch(opcode)
+            if(!readers[i].atEnd())
             {
+                FormatReader* current = &readers[i];
+                mBuilder.SetInsertPoint(blocks[i]);
 
-                case 1:
+                int opcode = current->readInt32();
+
+                unsigned int beforeTryIndex = current->getCurrentIndex();
+                bool canRunBlock = tryOpcode(values,*current,opcode);
+
+                int computedAdvance = current->getCurrentIndex() - beforeTryIndex;
+
+                current->setCurrentIndex(beforeTryIndex);
+
+                if(canRunBlock)
                 {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-
-                    if(isDecimalType(left))
-                        values[current->readInt32()] = mBuilder.CreateFAdd(left,right);
-                    else
-                        values[current->readInt32()] = mBuilder.CreateAdd(left,right);
-                }
-                break;
-
-                case 2:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    if(isDecimalType(left))
-                        values[current->readInt32()] = mBuilder.CreateFSub(left,right);
-                    else
-                        values[current->readInt32()] = mBuilder.CreateSub(left,right);
-                }
-                break;
-
-                case 3:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    if(isDecimalType(left))
-                        values[current->readInt32()] = mBuilder.CreateFMul(left,right);
-                    else
-                        values[current->readInt32()] = mBuilder.CreateMul(left,right);
-                }
-                break;
-
-                case 4:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    if(isDecimalType(left))
-                        values[current->readInt32()] = mBuilder.CreateFDiv(left,right);
-                    else
-                        values[current->readInt32()] = mBuilder.CreateSDiv(left,right);
-                }
-                break;
-
-                case 5:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    if(isDecimalType(left))
-                        values[current->readInt32()] = mBuilder.CreateFCmpOEQ(left,right);
-                    else
-                        values[current->readInt32()] = mBuilder.CreateICmpEQ(left,right);
-                }
-                break;
-
-                case 6:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    if(isDecimalType(left))
-                        values[current->readInt32()] = mBuilder.CreateFCmpONE(left,right);
-                    else
-                        values[current->readInt32()] = mBuilder.CreateICmpNE(left,right);
-                }
-                break;
-
-                case 7:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    if(isDecimalType(left))
-                        values[current->readInt32()] = mBuilder.CreateFCmpOLT(left,right);
-                    else
-                        values[current->readInt32()] = mBuilder.CreateICmpSLT(left,right);
-                }
-                break;
-
-                case 8:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    if(isDecimalType(left))
-                        values[current->readInt32()] = mBuilder.CreateFCmpOLE(left,right);
-                    else
-                        values[current->readInt32()] = mBuilder.CreateICmpSLE(left,right);
-                }
-                break;
-
-                case 9:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    if(isDecimalType(left))
-                        values[current->readInt32()] = mBuilder.CreateFCmpOGT(left,right);
-                    else
-                        values[current->readInt32()] = mBuilder.CreateICmpSGT(left,right);
-                }
-                break;
-
-                case 10:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    if(isDecimalType(left))
-                        values[current->readInt32()] = mBuilder.CreateFCmpOGE(left,right);
-                    else
-                        values[current->readInt32()] = mBuilder.CreateICmpSGE(left,right);
-                }
-                break;
-
-                case 11:
-                {
-                      llvm::Value* value = values[current->readInt32()];
-                      if(isDecimalType(value))
-                        values[current->readInt32()] = mBuilder.CreateFNeg(value);
-                      else
-                        values[current->readInt32()] = mBuilder.CreateNeg(value);
-                }
-                break;
-
-                case 12:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    values[current->readInt32()] = mBuilder.CreateAnd(left,right);
-                }
-                break;
-
-                case 13:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    values[current->readInt32()] = mBuilder.CreateOr(left,right);
-                }
-                break;
-
-                case 14:
-                {
-                    llvm::Value* left = values[current->readInt32()];
-                    llvm::Value* right = values[current->readInt32()];
-                    values[current->readInt32()] = mBuilder.CreateSRem(left,right);
-                }
-                break;
-
-                case 15:
-                {
-                    llvm::Value* value = values[current->readInt32()];
-                    values[current->readInt32()] = mBuilder.CreateNot(value);
-                }
-                break;
-
-                case 100:
-                {
-                    llvm::Value* value = values[current->readInt32()];
-                    llvm::Value* store = values[current->readInt32()];
-                    values[current->readInt32()] = mBuilder.CreateStore(value,store);
-
-                }
-                break;
-
-                case 101:
-                {
-                    int id = current->readInt32();
-                    values[current->readInt32()] = mBuilder.CreateLoad(values[id]);
-                }
-                break;
-
-                case 150:
-                    mBuilder.CreateBr(blocks[current->readInt32()]);
-                break;
-
-                case 151:
-                {
-                    llvm::Value* value = values[current->readInt32()];
-                    llvm::BasicBlock* blockTrue = blocks[current->readInt32()];
-                    llvm::BasicBlock* blockFalse = blocks[current->readInt32()];
-                    mBuilder.CreateCondBr(value,blockTrue,blockFalse);
-                }
-                break;
-
-                case 152:
-                {
-                    int elementId = current->readInt32();
-                    llvm::Value* element = values[elementId];
-                    llvm::Value* firstIndice = values[current->readInt32()];
-                    llvm::Value* secondIndice = values[current->readInt32()];
-                    auto indices = std::vector<llvm::Value*>({firstIndice,secondIndice});
-                    llvm::Type* type = element->getType();
-                    auto* ptrType = llvm::dyn_cast_or_null<llvm::PointerType>(type);
-                    if(ptrType != nullptr)
-                        values[current->readInt32()] = mBuilder.CreateGEP(ptrType->getElementType(),element,indices);
-                    else
+                    switch(opcode)
                     {
-                        values[current->readInt32()] = mBuilder.CreateGEP(type,element,indices);
+
+                        case 1:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+
+                            if(isDecimalType(left))
+                                values[current->readInt32()] = mBuilder.CreateFAdd(left,right);
+                            else
+                                values[current->readInt32()] = mBuilder.CreateAdd(left,right);
+                        }
+                        break;
+
+                        case 2:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            if(isDecimalType(left))
+                                values[current->readInt32()] = mBuilder.CreateFSub(left,right);
+                            else
+                                values[current->readInt32()] = mBuilder.CreateSub(left,right);
+                        }
+                        break;
+
+                        case 3:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            if(isDecimalType(left))
+                                values[current->readInt32()] = mBuilder.CreateFMul(left,right);
+                            else
+                                values[current->readInt32()] = mBuilder.CreateMul(left,right);
+                        }
+                        break;
+
+                        case 4:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            if(isDecimalType(left))
+                                values[current->readInt32()] = mBuilder.CreateFDiv(left,right);
+                            else
+                                values[current->readInt32()] = mBuilder.CreateSDiv(left,right);
+                        }
+                        break;
+
+                        case 5:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            if(isDecimalType(left))
+                                values[current->readInt32()] = mBuilder.CreateFCmpOEQ(left,right);
+                            else
+                                values[current->readInt32()] = mBuilder.CreateICmpEQ(left,right);
+                        }
+                        break;
+
+                        case 6:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            if(isDecimalType(left))
+                                values[current->readInt32()] = mBuilder.CreateFCmpONE(left,right);
+                            else
+                                values[current->readInt32()] = mBuilder.CreateICmpNE(left,right);
+                        }
+                        break;
+
+                        case 7:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            if(isDecimalType(left))
+                                values[current->readInt32()] = mBuilder.CreateFCmpOLT(left,right);
+                            else
+                                values[current->readInt32()] = mBuilder.CreateICmpSLT(left,right);
+                        }
+                        break;
+
+                        case 8:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            if(isDecimalType(left))
+                                values[current->readInt32()] = mBuilder.CreateFCmpOLE(left,right);
+                            else
+                                values[current->readInt32()] = mBuilder.CreateICmpSLE(left,right);
+                        }
+                        break;
+
+                        case 9:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            if(isDecimalType(left))
+                                values[current->readInt32()] = mBuilder.CreateFCmpOGT(left,right);
+                            else
+                                values[current->readInt32()] = mBuilder.CreateICmpSGT(left,right);
+                        }
+                        break;
+
+                        case 10:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            if(isDecimalType(left))
+                                values[current->readInt32()] = mBuilder.CreateFCmpOGE(left,right);
+                            else
+                                values[current->readInt32()] = mBuilder.CreateICmpSGE(left,right);
+                        }
+                        break;
+
+                        case 11:
+                        {
+                              llvm::Value* value = values[current->readInt32()];
+                              if(isDecimalType(value))
+                                values[current->readInt32()] = mBuilder.CreateFNeg(value);
+                              else
+                                values[current->readInt32()] = mBuilder.CreateNeg(value);
+                        }
+                        break;
+
+                        case 12:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            values[current->readInt32()] = mBuilder.CreateAnd(left,right);
+                        }
+                        break;
+
+                        case 13:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            values[current->readInt32()] = mBuilder.CreateOr(left,right);
+                        }
+                        break;
+
+                        case 14:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            values[current->readInt32()] = mBuilder.CreateSRem(left,right);
+                        }
+                        break;
+
+                        case 15:
+                        {
+                            llvm::Value* value = values[current->readInt32()];
+                            values[current->readInt32()] = mBuilder.CreateNot(value);
+                        }
+                        break;
+
+                        case 100:
+                        {
+                            int valueId = current->readInt32();
+                            llvm::Value* value = values[valueId];
+                            llvm::Value* store = values[current->readInt32()];
+                            values[current->readInt32()] = mBuilder.CreateStore(value,store);
+
+                        }
+                        break;
+
+                        case 101:
+                        {
+                            int id = current->readInt32();
+                            int newId = current->readInt32();
+                            values[newId] = mBuilder.CreateLoad(values[id]);
+                        }
+                        break;
+
+                        case 150:
+                            mBuilder.CreateBr(blocks[current->readInt32()]);
+                        break;
+
+                        case 151:
+                        {
+                            int valudId = current->readInt32();
+                            llvm::Value* value = values[valudId];
+                            llvm::BasicBlock* blockTrue = blocks[current->readInt32()];
+                            llvm::BasicBlock* blockFalse = blocks[current->readInt32()];
+                            mBuilder.CreateCondBr(value,blockTrue,blockFalse);
+                        }
+                        break;
+
+                        case 152:
+                        {
+                            int elementId = current->readInt32();
+                            llvm::Value* element = values[elementId];
+                            llvm::Value* firstIndice = values[current->readInt32()];
+                            llvm::Value* secondIndice = values[current->readInt32()];
+                            auto indices = std::vector<llvm::Value*>({firstIndice,secondIndice});
+                            llvm::Type* type = element->getType();
+                            auto* ptrType = llvm::dyn_cast_or_null<llvm::PointerType>(type);
+                            if(ptrType != nullptr)
+                                values[current->readInt32()] = mBuilder.CreateGEP(ptrType->getElementType(),element,indices);
+                            else
+                            {
+                                values[current->readInt32()] = mBuilder.CreateGEP(type,element,indices);
+                            }
+
+                        }
+                        break;
+
+                        case 153:
+                        {
+                            llvm::Type* type = readType(*current);
+                            llvm::Value* element = values[current->readInt32()];
+                            int indicesCount = current->readInt32();
+                            std::vector<llvm::Value*> indices(indicesCount);
+                            for(int i = 0;i < indicesCount;++i)
+                                indices[i] = values[current->readInt32()];
+                            values[current->readInt32()] = mBuilder.CreateGEP(type,element,llvm::ArrayRef<llvm::Value*>(indices));
+                        }
+                        break;
+
+                        case 170:
+                        {
+                            llvm::Function* funcToCall = mFuncs[current->readInt32()];
+                            std::vector<llvm::Value*> args(current->readInt32());
+                            for(size_t i = 0;i < args.size();++i)
+                            {
+                                int id = current->readInt32();
+                                args[i] = values[id];
+                            }
+
+                            values[current->readInt32()] = mBuilder.CreateCall(funcToCall,llvm::ArrayRef<llvm::Value*>(args));
+                        }
+                        break;
+
+                        case 171:
+                        {
+                            llvm::Value* funcToCall = values[current->readInt32()];
+                            llvm::CallingConv::ID conv = readConv(*current);
+                            std::vector<llvm::Value*> args(current->readInt32());
+                            for(size_t i = 0;i < args.size();++i)
+                            {
+                                int id = current->readInt32();
+                                args[i] = values[id];
+                            }
+
+                            llvm::PointerType* ptrType = (llvm::PointerType*) funcToCall->getType();
+                            llvm::FunctionType* funcType = (llvm::FunctionType*) ptrType->getElementType();
+                            llvm::CallInst* callInst = mBuilder.CreateCall(funcType,funcToCall,llvm::ArrayRef<llvm::Value*>(args));
+                            callInst->setCallingConv(conv);
+                            values[current->readInt32()] = callInst;
+                        }
+                        break;
+
+                        case 1000:
+                        {
+                            long long constVal = current->readInt64();
+                            values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),constVal,true);
+                        }
+                        break;
+
+                        case 1001:
+                        {
+                            int constVal = current->readInt32();
+                            values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt32Ty(mContext),constVal,true);
+                        }
+                        break;
+
+                        case 1002:
+                        {
+                            int constVal = current->readInt32();
+                            values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt16Ty(mContext),constVal,true);
+                        }
+                        break;
+
+                        case 1003:
+                        {
+                            int constVal = current->readInt32();
+                            values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt8Ty(mContext),constVal,true);
+                        }
+                        break;
+
+                        case 1004:
+                        {
+                            float constVal = current->readFloat();
+                            values[current->readInt32()] = llvm::ConstantFP::get(llvm::Type::getFloatTy(mContext),llvm::APFloat(constVal));
+                        }
+                        break;
+
+                        case 1005:
+                        {
+                            double constVal = current->readDouble();
+                            values[current->readInt32()] = llvm::ConstantFP::get(llvm::Type::getDoubleTy(mContext),llvm::APFloat(constVal));
+                        }
+                        break;
+
+                        case 1007:
+                        {
+                            int constVal = current->readInt32();
+                            values[current->readInt32()] = mBuilder.getInt1(constVal);
+                        }
+                        break;
+
+                        case 1006:
+                        {
+                            llvm::Value* value;
+                            llvm::Type* type = readType(*current);
+                             if(type == llvm::Type::getInt64Ty(mContext))
+                                value = llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),llvm::APInt(64,0));
+                            else if(type == llvm::Type::getInt32Ty(mContext))
+                                value = llvm::ConstantInt::get(llvm::Type::getInt32Ty(mContext),llvm::APInt(32,0));
+                            else if(type == llvm::Type::getInt16Ty(mContext))
+                                value = llvm::ConstantInt::get(llvm::Type::getInt16Ty(mContext),llvm::APInt(16,0));
+                            else if(type == llvm::Type::getInt8Ty(mContext))
+                                value = llvm::ConstantInt::get(llvm::Type::getInt8Ty(mContext),llvm::APInt(8,0));
+                            else if(type == llvm::Type::getFloatTy(mContext))
+                                value = llvm::ConstantFP::get(llvm::Type::getFloatTy(mContext),llvm::APFloat(0.0));
+                            else if(type == llvm::Type::getDoubleTy(mContext))
+                                value = llvm::ConstantFP::get(llvm::Type::getDoubleTy(mContext),llvm::APFloat(0.0));
+                            else if(type == llvm::Type::getInt1Ty(mContext))
+                                value = llvm::ConstantInt::get(mContext,llvm::APInt(1,0));
+                            else
+                                value = llvm::ConstantPointerNull::get((llvm::PointerType*) type);
+
+                            values[current->readInt32()] = value;
+                        }
+                        break;
+
+                        case 1010:
+                        {
+                            llvm::Value* value = values[current->readInt32()];
+                            llvm::Type* type = readType(*current);
+                            if(value->getType() != type)
+                                values[current->readInt32()] = mBuilder.CreatePointerCast(value,type);
+                            else
+                                values[current->readInt32()] = value;
+                        }
+                        break;
+
+                        case 1011:
+                        {
+                            llvm::Value* value = values[current->readInt32()];
+                            llvm::Type* type = readType(*current);
+                            if(type != value->getType())
+                            {
+                                if(value->getType()->isIntegerTy())
+                                    values[current->readInt32()] = mBuilder.CreateIntCast(value,type,true);
+                                else
+                                    values[current->readInt32()] = mBuilder.CreateFPToSI(value,type);
+                            }
+                            else
+                                values[current->readInt32()] = value;
+                        }
+                        break;
+
+                        case 1012:
+                        {
+                            llvm::Value* value = values[current->readInt32()];
+                            llvm::Type* type = readType(*current);
+                            if(type != value->getType())
+                            {
+                                if(value->getType()->isIntegerTy())
+                                    values[current->readInt32()] = mBuilder.CreateSIToFP(value,type);
+                                else
+                                    values[current->readInt32()] = mBuilder.CreateFPCast(value,type);
+                            }
+                            else
+                                values[current->readInt32()] = value;
+                        }
+                        break;
+
+                        case 1013:
+                        {
+                            llvm::Value* value = values[current->readInt32()];
+                            llvm::Type* type = readType(*current);
+                            values[current->readInt32()] = mBuilder.CreateIntToPtr(value,type);
+                        }
+                        break;
+
+                        case 1014:
+                        {
+                            llvm::Value* value = values[current->readInt32()];
+                            llvm::Type* type = readType(*current);
+                            values[current->readInt32()] = mBuilder.CreateBitCast(value,type);
+                        }
+                        break;
+
+                        case 1015:
+                        {
+                            llvm::Value* value = values[current->readInt32()];
+                            llvm::Type* type = readType(*current);
+                            values[current->readInt32()] = mBuilder.CreateZExt(value,type);
+                        }
+                        break;
+
+                        case 1050:
+                        {
+                            llvm::Type* type = readType(*current);
+                            values[current->readInt32()] = mBuilder.CreateAlloca(type);
+                        }
+                        break;
+
+                        case 2000:
+                        {
+                            llvm::Value* value = values[current->readInt32()];
+                            mBuilder.CreateRet(value);
+                        }
+                        break;
+
+                        case 2001:
+                            mBuilder.CreateRetVoid();
+                        break;
+
+                        case 2002:
+                        {
+                            if(func->getReturnType() == llvm::Type::getVoidTy(mContext))
+                                values[current->readInt32()] = mBuilder.CreateRetVoid();
+                            else
+                                values[current->readInt32()] = mBuilder.CreateRet(getNull(func->getType()));
+                        }
+                        break;
+
+                        case 3000:
+                        {
+                            int id = current->readInt32();
+                            values[current->readInt32()] = mGlobalVars[id];
+                        }
+                        break;
+
+                        case 3001:
+                        {
+                            std::string txt = current->readString();
+                            values[current->readInt32()] = mBuilder.CreateGlobalString(llvm::StringRef(txt));
+                        }
+                        break;
+
+                        case 3002:
+                        {
+                            int funcId = current->readInt32();
+                            llvm::Function* value = mFuncs[funcId];
+                            values[current->readInt32()] = value;
+                        }
+                        break;
+
+                        case 9998:
+                        {
+                            size_t size;
+                            llvm::Type* type = readType(*current);
+                            size = mLayout->getTypeAllocSize(type);
+                            values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),size,true);
+                        }
+                        break;
+
+                        case 9999:
+                        {
+                            size_t size;
+                            llvm::Type* type = readType(*current);
+                            if(type->isPointerTy())
+                            {
+                                llvm::PointerType* typePtr = (llvm::PointerType*) type;
+                                size = mLayout->getTypeAllocSize(typePtr->getElementType());
+                            }
+                            else
+                                size = 0;
+
+                            values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),size,true);
+                        }
+                        break;
+
+                        case 10000:
+                            printType(values[current->readInt32()]->getType());
+                        break;
+
+                        case 10001:
+                            std::cout<<"Hello world!"<<std::endl;
+                        break;
+
+                        case 10002:
+                            std::cout<<"Bye bye world!"<<std::endl;
+                        break;
+
+                        default:
+                            std::cout<<"Wrong op type "<<opcode<<std::endl;
+
                     }
 
+                    if(current->getCurrentIndex() - beforeTryIndex != computedAdvance)
+                        std::cout<<"CodeGen error : opcode mapping isn't valid for opcode # "<<opcode<<std::endl;
+;
                 }
-                break;
-
-                case 153:
-                {
-                    llvm::Type* type = readType(*current);
-                    llvm::Value* element = values[current->readInt32()];
-                    int indicesCount = current->readInt32();
-                    std::vector<llvm::Value*> indices(indicesCount);
-                    for(int i = 0;i < indicesCount;++i)
-                        indices[i] = values[current->readInt32()];
-                    values[current->readInt32()] = mBuilder.CreateGEP(type,element,llvm::ArrayRef<llvm::Value*>(indices));
-                }
-                break;
-
-                case 170:
-                {
-                    llvm::Function* funcToCall = mFuncs[current->readInt32()];
-                    std::vector<llvm::Value*> args(current->readInt32());
-                    for(size_t i = 0;i < args.size();++i)
-                    {
-                        int id = current->readInt32();
-                        args[i] = values[id];
-                    }
-
-                    values[current->readInt32()] = mBuilder.CreateCall(funcToCall,llvm::ArrayRef<llvm::Value*>(args));
-                }
-                break;
-
-                case 171:
-                {
-                    llvm::Value* funcToCall = values[current->readInt32()];
-                    llvm::CallingConv::ID conv = readConv(*current);
-                    std::vector<llvm::Value*> args(current->readInt32());
-                    for(size_t i = 0;i < args.size();++i)
-                    {
-                        int id = current->readInt32();
-                        args[i] = values[id];
-                    }
-
-                    llvm::PointerType* ptrType = (llvm::PointerType*) funcToCall->getType();
-                    llvm::FunctionType* funcType = (llvm::FunctionType*) ptrType->getElementType();
-                    llvm::CallInst* callInst = mBuilder.CreateCall(funcType,funcToCall,llvm::ArrayRef<llvm::Value*>(args));
-                    callInst->setCallingConv(conv);
-                    values[current->readInt32()] = callInst;
-                }
-                break;
-
-                case 1000:
-                {
-                    long long constVal = current->readInt64();
-                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),constVal,true);
-                }
-                break;
-
-                case 1001:
-                {
-                    int constVal = current->readInt32();
-                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt32Ty(mContext),constVal,true);
-                }
-                break;
-
-                case 1002:
-                {
-                    int constVal = current->readInt32();
-                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt16Ty(mContext),constVal,true);
-                }
-                break;
-
-                case 1003:
-                {
-                    int constVal = current->readInt32();
-                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt8Ty(mContext),constVal,true);
-                }
-                break;
-
-                case 1004:
-                {
-                    float constVal = current->readFloat();
-                    values[current->readInt32()] = llvm::ConstantFP::get(llvm::Type::getFloatTy(mContext),llvm::APFloat(constVal));
-                }
-                break;
-
-                case 1005:
-                {
-                    double constVal = current->readDouble();
-                    values[current->readInt32()] = llvm::ConstantFP::get(llvm::Type::getDoubleTy(mContext),llvm::APFloat(constVal));
-                }
-                break;
-
-                case 1007:
-                {
-                    int constVal = current->readInt32();
-                    values[current->readInt32()] = mBuilder.getInt1(constVal);
-                }
-                break;
-
-                case 1006:
-                {
-                    llvm::Value* value;
-                    llvm::Type* type = readType(*current);
-                     if(type == llvm::Type::getInt64Ty(mContext))
-                        value = llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),llvm::APInt(64,0));
-                    else if(type == llvm::Type::getInt32Ty(mContext))
-                        value = llvm::ConstantInt::get(llvm::Type::getInt32Ty(mContext),llvm::APInt(32,0));
-                    else if(type == llvm::Type::getInt16Ty(mContext))
-                        value = llvm::ConstantInt::get(llvm::Type::getInt16Ty(mContext),llvm::APInt(16,0));
-                    else if(type == llvm::Type::getInt8Ty(mContext))
-                        value = llvm::ConstantInt::get(llvm::Type::getInt8Ty(mContext),llvm::APInt(8,0));
-                    else if(type == llvm::Type::getFloatTy(mContext))
-                        value = llvm::ConstantFP::get(llvm::Type::getFloatTy(mContext),llvm::APFloat(0.0));
-                    else if(type == llvm::Type::getDoubleTy(mContext))
-                        value = llvm::ConstantFP::get(llvm::Type::getDoubleTy(mContext),llvm::APFloat(0.0));
-                    else if(type == llvm::Type::getInt1Ty(mContext))
-                        value = llvm::ConstantInt::get(mContext,llvm::APInt(1,0));
-                    else
-                        value = llvm::ConstantPointerNull::get((llvm::PointerType*) type);
-
-                    values[current->readInt32()] = value;
-                }
-                break;
-
-                case 1010:
-                {
-                    llvm::Value* value = values[current->readInt32()];
-                    llvm::Type* type = readType(*current);
-                    if(value->getType() != type)
-                        values[current->readInt32()] = mBuilder.CreatePointerCast(value,type);
-                    else
-                        values[current->readInt32()] = value;
-                }
-                break;
-
-                case 1011:
-                {
-                    llvm::Value* value = values[current->readInt32()];
-                    llvm::Type* type = readType(*current);
-                    if(type != value->getType())
-                    {
-                        if(value->getType()->isIntegerTy())
-                            values[current->readInt32()] = mBuilder.CreateIntCast(value,type,true);
-                        else
-                            values[current->readInt32()] = mBuilder.CreateFPToSI(value,type);
-                    }
-                    else
-                        values[current->readInt32()] = value;
-                }
-                break;
-
-                case 1012:
-                {
-                    llvm::Value* value = values[current->readInt32()];
-                    llvm::Type* type = readType(*current);
-                    if(type != value->getType())
-                    {
-                        if(value->getType()->isIntegerTy())
-                            values[current->readInt32()] = mBuilder.CreateSIToFP(value,type);
-                        else
-                            values[current->readInt32()] = mBuilder.CreateFPCast(value,type);
-                    }
-                    else
-                        values[current->readInt32()] = value;
-                }
-                break;
-
-                case 1013:
-                {
-                    llvm::Value* value = values[current->readInt32()];
-                    llvm::Type* type = readType(*current);
-                    values[current->readInt32()] = mBuilder.CreateIntToPtr(value,type);
-                }
-                break;
-
-                case 1014:
-                {
-                    llvm::Value* value = values[current->readInt32()];
-                    llvm::Type* type = readType(*current);
-                    values[current->readInt32()] = mBuilder.CreateBitCast(value,type);
-                }
-                break;
-
-                case 1015:
-                {
-                    llvm::Value* value = values[current->readInt32()];
-                    llvm::Type* type = readType(*current);
-                    values[current->readInt32()] = mBuilder.CreateZExt(value,type);
-                }
-                break;
-
-                case 1050:
-                {
-                    llvm::Type* type = readType(*current);
-                    values[current->readInt32()] = mBuilder.CreateAlloca(type);
-                }
-                break;
-
-                case 2000:
-                {
-                    llvm::Value* value = values[current->readInt32()];
-                    mBuilder.CreateRet(value);
-                }
-                break;
-
-                case 2001:
-                    mBuilder.CreateRetVoid();
-                break;
-
-                case 2002:
-                {
-                    if(func->getReturnType() == llvm::Type::getVoidTy(mContext))
-                        values[current->readInt32()] = mBuilder.CreateRetVoid();
-                    else
-                        values[current->readInt32()] = mBuilder.CreateRet(getNull(func->getType()));
-                }
-                break;
-
-                case 3000:
-                {
-                    int id = current->readInt32();
-                    values[current->readInt32()] = mGlobalVars[id];
-                }
-                break;
-
-                case 3001:
-                {
-                    std::string txt = current->readString();
-                    values[current->readInt32()] = mBuilder.CreateGlobalString(llvm::StringRef(txt));
-                }
-                break;
-
-                case 3002:
-                {
-                    int funcId = current->readInt32();
-                    llvm::Function* value = mFuncs[funcId];
-                    values[current->readInt32()] = value;
-                }
-                break;
-
-                case 9998:
-                {
-                    size_t size;
-                    llvm::Type* type = readType(*current);
-                    size = mLayout->getTypeAllocSize(type);
-                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),size,true);
-                }
-                break;
-
-                case 9999:
-                {
-                    size_t size;
-                    llvm::Type* type = readType(*current);
-                    if(type->isPointerTy())
-                    {
-                        llvm::PointerType* typePtr = (llvm::PointerType*) type;
-                        size = mLayout->getTypeAllocSize(typePtr->getElementType());
-                    }
-                    else
-                        size = 0;
-
-                    values[current->readInt32()] = llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),size,true);
-                }
-                break;
-
-                case 10000:
-                    printType(values[current->readInt32()]->getType());
-                break;
-
-                case 10001:
-                    std::cout<<"Hello world!"<<std::endl;
-                break;
-
-                case 10002:
-                    std::cout<<"Bye bye world!"<<std::endl;
-                break;
-
-                default:
-                    std::cout<<"Wrong op type "<<opcode<<std::endl;
-                break;
-
+                else
+                    current->setCurrentIndex(beforeTryIndex - 4); //reset the reader before the opcode read
             }
+
         }
 
+        //run conversion until all blocks are completed
+        runConversion = false;
+        for(int i = 0;i < readers.size();++i)
+            if(!readers[i].atEnd())
+                runConversion = true;
     }
 
+}
+
+bool CodeGen::tryOpcode(std::vector<llvm::Value*> values,FormatReader& reader,int opcode)
+{
+    if(OpCodesInfo.count(opcode) > 0)
+    {
+        auto feeds = OpCodesInfo[opcode];
+        for(size_t i = 0;i < feeds.size();++i)
+        {
+            int currentFeed = feeds[i];
+            if(currentFeed == VALUE_FEED)
+            {
+                if(values[reader.readInt32()] == nullptr) //the block is not ready since it's using null values
+                    return false;
+            }
+            else if(currentFeed == ASSIGN_FEED)
+            {
+                reader.readInt32();
+            }
+            else if(currentFeed == DATA_32BITS)
+            {
+                reader.readInt32();
+            }
+            else if(currentFeed == DATA_64BITS)
+            {
+                reader.readInt64();
+            }
+            else if(currentFeed == DATA_STR)
+            {
+                reader.readString();
+            }
+            else if(currentFeed == MULT_VALUES_FEED)
+            {
+                int size = reader.readInt32();
+                for(int j = 0;j < size;++j)
+                    if(values[reader.readInt32()] == nullptr)
+                        return false;
+            }
+            else if(currentFeed == TYPE_FEED)
+            {
+                readType(reader);
+            }
+            else if(currentFeed == BLOCK_FEED)
+            {
+                reader.readInt32();
+            }
+            else
+                std::cout<<"CodeGen error : Can't read feed # "<<(int) currentFeed<<std::endl;
+        }
+    }
+    else
+        std::cout<<"CodeGen error : Can't try opcode "<<opcode<<std::endl;
+
+    return true;
 }
 
 llvm::Type* CodeGen::readType(FormatReader& reader)
