@@ -31,6 +31,8 @@
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
+#include "OpCode.hpp"
+
 #ifdef _WIN32
     #define EXPORT_FUNC __declspec(dllexport) _cdecl
 #else
@@ -73,6 +75,9 @@ private:
     void readGlobalVars(FormatReader& reader);
     void readFuncs(FormatReader& reader);
     void readBody(llvm::Function* func,std::vector<llvm::Value*>&values,std::vector<FormatReader> &readers,std::vector<std::string>& blockNames);
+
+    bool tryOpcode(std::vector<llvm::Value*> values,FormatReader& reader,int opcode);
+
     llvm::CallingConv::ID readConv(FormatReader& reader);
 
 

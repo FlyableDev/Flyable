@@ -20,6 +20,7 @@ public:
 
     char* getData();
     int getDataSize();
+    void setCurrentIndex(unsigned int index);
     unsigned int getCurrentIndex();
 
     bool atEnd();

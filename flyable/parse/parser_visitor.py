@@ -765,8 +765,6 @@ class ParserVisitor(NodeVisitor):
 
         cond_type, cond_value = cond.value_to_cond(self, cond_type_test, cond_value_test)
 
-        debug.flyable_debug_print_int64(self.__code_gen, self.__builder, self.__builder.const_int64(420))
-
         ref_counter.ref_decr_incr(self, cond_type_test, cond_value_test)
         ref_counter.ref_decr_incr(self, cond_type, cond_value)
 
@@ -909,7 +907,7 @@ class ParserVisitor(NodeVisitor):
                 cond_type, cond_value = cond.value_to_cond(self, cond_type_test, cond_value_test)
                 self.__builder.cond_br(cond_value, block_cond, block_for)
                 self.__builder.set_insert_block(block_cond)
-            
+
             if i == len(node.generators) - 1:
                 elt_type, elt_value = self.__visit_node(node.elt)
                 py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
@@ -921,7 +919,6 @@ class ParserVisitor(NodeVisitor):
         self.__builder.set_insert_block(block_continue)
         self.__last_type = lang_type.get_list_of_python_obj_type()
         self.__last_value = result_array
-
 
     def visit_List(self, node: List) -> Any:
         elts_types = []
@@ -1031,7 +1028,8 @@ class ParserVisitor(NodeVisitor):
 
             if i == len(node.generators) - 1:
                 elt_type, elt_value = self.__visit_node(node.elt)
-                obj_to_set_type, obj_to_set_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
+                obj_to_set_type, obj_to_set_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value,
+                                                                           elt_type)
                 gen_set.python_set_add(self, result_set, obj_to_set_value)
                 self.__builder.br(block_for)
 
@@ -1107,8 +1105,10 @@ class ParserVisitor(NodeVisitor):
             if i == len(node.generators) - 1:
                 key_type, key_value = self.__visit_node(node.key)
                 value_type, value_value = self.__visit_node(node.value)
-                obj_key_type, obj_key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
-                obj_value_type, obj_value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
+                obj_key_type, obj_key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value,
+                                                                     key_type)
+                obj_value_type, obj_value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value,
+                                                                         value_type)
                 gen_dict.python_dict_set_item(self, result_dict, obj_key_value, obj_value_value)
                 self.__builder.br(block_for)
 

@@ -54,7 +54,7 @@ FormatReader FormatReader::sub(int size)
 {
     FormatReader result;
     auto first = mData.begin() + mCurrentIndex;
-    auto end =  mData.begin() + mCurrentIndex + size;
+    auto end = first + size;
     result.mData = std::vector<char>(first,end);
     mCurrentIndex += size;
     return result;
@@ -68,6 +68,11 @@ char* FormatReader::getData()
 int FormatReader::getDataSize()
 {
     return mData.size();
+}
+
+void FormatReader::setCurrentIndex(unsigned int index)
+{
+    mCurrentIndex = index;
 }
 
 unsigned int FormatReader::getCurrentIndex()
