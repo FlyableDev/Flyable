@@ -42,9 +42,8 @@ def call_number_protocol(
             code_type.get_py_obj_ptr(code_gen)
         )
     elif is_number_ternary_func_valid(func_name, nb_args):
-        print(func_name)
         func_type = code_type.get_func(
-            code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2
+            code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 3
         )
         protocol_result = visitor.generate_entry_block_var(
             code_type.get_py_obj_ptr(code_gen)
@@ -122,6 +121,8 @@ def call_number_protocol(
     if is_number_inquiry_func(func_name):
         return builder.int_cast(builder.load(protocol_result), code_type.get_int1())
     elif is_number_binary_func(func_name):
+        return builder.load(protocol_result)
+    elif is_number_ternary_func(func_name):
         return builder.load(protocol_result)
     else:
         raise NotImplementedError("Unsupported call protocol")
@@ -219,6 +220,23 @@ def is_number_inquiry_func_valid(func_name: str, len_args: int) -> bool:
     returns if the function name is a valid inquiry function from the number protocol
     """
     return is_number_unary_func(func_name) and len_args == 0
+
+
+def handle_pow_func_special_case(func_name: str, args: list, args_type: list) -> bool:
+    """
+    utility function to ensure the rigth number of args are passed to the pow function and adds None if there was one missing\n
+    This function makes sure that the function name is indeed __pow__ before doing the operation\n
+    Returns: True if the name is __pow__ and the args, after formatting, are valid
+    False if the name isn't __pow__ or the args cannot be formatted to match the valid format
+    """
+    if func_name != "__pow__":
+        return False
+
+    if len(args) == 1:
+        args.append(None)
+        args_type.append(lang_type.get_none_type())
+    
+    return len(args) == 2
 
 
 def get_number_slot_from_func_name(func_name: str) -> int:

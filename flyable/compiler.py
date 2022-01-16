@@ -1,17 +1,20 @@
-import flyable.parse.parser as par
-from flyable.parse.pre_parser import PreParser
-from flyable.data import lang_file, comp_data
-from flyable.data.error_thrower import ErrorThrower
-from flyable.code_gen.code_gen import CodeGen
-from flyable.data.lang_func_impl import LangFuncImpl
+from typing import Literal
+
 import flyable.code_gen.code_gen as gen
-import flyable.parse.adapter as adapter
 import flyable.data.lang_class as lang_class
+import flyable.parse.adapter as adapter
+import flyable.parse.parser as par
+from flyable.code_gen.code_gen import CodeGen
+from flyable.data import comp_data, lang_file
+from flyable.data.error_thrower import ErrorThrower
+from flyable.data.lang_func_impl import LangFuncImpl
+from flyable.parse.parser_analyser import ParseAnalyser
+from flyable.parse.pre_parser import PreParser
 
 
 class Compiler(ErrorThrower):
 
-    def __init__(self):
+    def __init__(self, mode: Literal['normal', 'analyse'] = 'normal'):
         super().__init__()
         self.__data: comp_data.CompData = comp_data.CompData()
         self.set_output_path("output.o")
@@ -19,6 +22,7 @@ class Compiler(ErrorThrower):
         self.__code_gen.setup()
         self.__parser: par.Parser = par.Parser(self.__data, self.__code_gen)
         self.__main_impl = None
+        self.__mode = mode
 
     def add_file(self, path: str):
         new_file: lang_file.LangFile = lang_file.LangFile()

@@ -54,8 +54,8 @@ def run_code(output_dir: str, exec_name: str):
     """
     start_step("Running")
     
-    p = Popen([output_dir + f"/{exec_name}.exe"], cwd=output_dir, stdin=stdin, stdout=stdout, stderr=stderr)
-    
+    p = Popen([output_dir + f"/{exec_name}.exe"], cwd=output_dir, stdin=stdin, stdout=stdout, stderr=PIPE, text=True)
+
     p.communicate()
     end_step()
     

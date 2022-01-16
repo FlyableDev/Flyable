@@ -61,7 +61,6 @@ def call_obj(
             obj_type, obj = runtime.value_to_pyobj(
                 visitor.get_code_gen(), visitor.get_builder(), obj, obj_type
             )
-
         # the args for the different handlers
         handlers_args = [visitor, func_name, obj, obj_type, args, args_type]
         nb_args = len(args)
@@ -80,7 +79,9 @@ def call_obj(
             return _handle_binary_number_protocol(*handlers_args)
 
         # Special case where the call is a ternary number protocol
-        elif num.is_number_ternary_func_valid(func_name, nb_args):
+        elif (num.is_number_ternary_func_valid(func_name, nb_args)) or (
+            num.handle_pow_func_special_case(func_name, args, args_type)
+        ):
             return _handle_ternary_number_protocol(*handlers_args)
             # return _handle_default(*handlers_args)
 
