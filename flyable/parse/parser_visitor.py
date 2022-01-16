@@ -1153,9 +1153,17 @@ class ParserVisitor(NodeVisitor):
 
         self.__builder.set_insert_block(block_raise)
         self.__func.set_can_raise(True)
-        msg_type, msg_value = self.__visit_node(node.msg)
 
-        excp.raise_assert_error(self, runtime.value_to_pyobj(self.__code_gen, self.__builder, msg_value, msg_type))
+        if node.msg is not None:
+            msg_type, msg_value = self.__visit_node(node.msg)
+        else:
+            msg_type = get_python_obj_type()
+            msg_type.add_hint(hint.TypeHintConstStr(""))
+            msg_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(""))
+            msg_value = self.__builder.load(msg_value)
+
+        msg_type, msg_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, msg_value, msg_type)
+        excp.raise_assert_error(self, msg_value)
 
         excp.raise_index_error(self)
         excp.handle_raised_excp(self)
