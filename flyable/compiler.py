@@ -13,16 +13,16 @@ from flyable.parse.pre_parser import PreParser
 
 
 class Compiler(ErrorThrower):
-
-    def __init__(self, mode: Literal['normal', 'analyse'] = 'normal'):
+    def __init__(self, mode: Literal["normal", "analyse"] = "normal"):
         super().__init__()
         self.__data: comp_data.CompData = comp_data.CompData()
         self.set_output_path("output.o")
         self.__code_gen: CodeGen = gen.CodeGen(self.__data)
         self.__code_gen.setup()
-        self.__parser: par.Parser = par.Parser(self.__data, self.__code_gen)
+        self.__parser: par.Parser = par.Parser(
+            self.__data, self.__code_gen, analyse=mode == "analyse"
+        )
         self.__main_impl = None
-        self.__mode = mode
 
     def add_file(self, path: str):
         new_file: lang_file.LangFile = lang_file.LangFile()
@@ -68,14 +68,20 @@ class Compiler(ErrorThrower):
             try:
 
                 # Create a specialization for the main module to execute
-                self.__main_impl = adapter.adapt_func(self.__data.get_file(0).get_global_func(), [], self.__data,
-                                                      self.__parser)
+                self.__main_impl = adapter.adapt_func(
+                    self.__data.get_file(0).get_global_func(),
+                    [],
+                    self.__data,
+                    self.__parser,
+                )
 
                 # Then generate an implementation for all python methods / funcs
                 adapter.adapt_all_python_impl(self.__data, self.__parser)
 
             except Exception as exception:
-                if not self.__parser.has_error():  # If there is no error we launch the exception as a failure
+                if (
+                    not self.__parser.has_error()
+                ):  # If there is no error we launch the exception as a failure
                     raise exception
                 break
 
@@ -95,4 +101,8 @@ class Compiler(ErrorThrower):
                 if isinstance(found_class, lang_class.LangClass):
                     _class.add_inherit(found_class)
                 else:
-                    self.__parser.throw_error(str(e) + " not expected to inherits", node.lineno, node.end_col_offset)
+                    self.__parser.throw_error(
+                        str(e) + " not expected to inherits",
+                        node.lineno,
+                        node.end_col_offset,
+                    )

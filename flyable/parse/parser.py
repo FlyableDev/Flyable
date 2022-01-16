@@ -9,10 +9,11 @@ from flyable.parse.parser_visitor import ParserVisitor
 
 class Parser(ErrorThrower):
 
-    def __init__(self, data, code_gen):
+    def __init__(self, data, code_gen, analyse: bool = False):
         super().__init__()
         self.__data = data
         self.__code_gen = code_gen
+        self.analyse = analyse
 
     def parse_func(self, func):
         """
@@ -29,9 +30,12 @@ class Parser(ErrorThrower):
                 for i, e in enumerate(func_impl.args_iter()):
                     new_var = func_impl.get_context().add_var(func_impl.get_parent_func().get_arg(i).arg, e)
                     new_var.set_is_arg(True)
-                #vis = ParserVisitor(self, self.__code_gen, func_impl)
-                vis = parser_analyser.ParseAnalyser(self, self.__code_gen, func_impl)
-                vis.setup()
+
+                if self.analyse:
+                    vis = parser_analyser.ParseAnalyser(self, self.__code_gen, func_impl)
+                    vis.setup()
+                else:
+                    vis = ParserVisitor(self, self.__code_gen, func_impl)
                 vis.parse()
                 func_impl.set_parse_status(impl.LangFuncImpl.ParseStatus.ENDED)
 
