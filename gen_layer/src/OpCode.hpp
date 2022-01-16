@@ -59,7 +59,7 @@ std::map<int,std::vector<OpCodeFeedInfo>> OpCodesInfo =
     {1050,{TYPE_FEED,ASSIGN_FEED}},
     {2000,{VALUE_FEED}},
     {2001,{}},
-    {2002,{ASSIGN_FEED}},
+    {2002,{}},
     {3000,{DATA_32BITS,ASSIGN_FEED}},
     {3001,{DATA_STR,ASSIGN_FEED}},
     {3002,{DATA_32BITS,ASSIGN_FEED}},
