@@ -8,11 +8,12 @@ Linking : Combine the generated object file with Python runtime to generate an e
 Running : Run the generated program. Generated exe file will try to find an existing python installation on the setup.
 """
 
+from pathlib import Path
+from subprocess import PIPE, Popen
+from sys import stderr, stdin, stdout
+
 import flyable.compiler as com
 import flyable.tool.platform as plat
-from subprocess import Popen, PIPE
-from pathlib import Path
-
 from flyable import constants
 from flyable.tool.utils import end_step, start_step
 
@@ -52,12 +53,14 @@ def run_code(output_dir: str, exec_name: str):
         exec_name (str): the name of the executable
     """
     start_step("Running")
-    p = Popen([output_dir + f"/{exec_name}.exe"], cwd=output_dir, stdin=PIPE, stdout=PIPE)
-    output, err = p.communicate()
+    
+    p = Popen([output_dir + f"/{exec_name}.exe"], cwd=output_dir, stdin=stdin, stdout=stdout, stderr=stderr)
+    
+    p.communicate()
     end_step()
-
+    
     print("-------------------")
-    print(output.decode())  # Print what the program outputted
+    
 
     print("Application ended with code " + str(p.returncode))
 
