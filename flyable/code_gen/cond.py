@@ -14,8 +14,10 @@ def value_to_cond(visitor, value_type, value):
     """
 
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
-    if value_type.is_int() or value_type.is_bool():
-        return value_type, value  # int and bool doesn't need conversion
+    if value_type.is_int():
+        return lang_type.get_bool_type(), builder.int_cast(value, code_type.get_int1())
+    elif value_type.is_bool():  # bool doesn't need conversion
+        return value_type, value
     elif value_type.is_dec():
         return lang_type.get_bool_type(), builder.int_cast(value, code_type.get_int1())
     elif value_type.is_obj() or value_type.is_python_obj():
