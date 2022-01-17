@@ -578,7 +578,8 @@ class ParserVisitor(NodeVisitor):
 
         if isinstance(node.ctx, ast.Store):
             source = hint.get_type_source(value_type)
-            source_data = source.get_source()
+            if source is not None:      # TODO: find a better fix to support a store in a 2+D list (define types for a precise range)
+                source_data = source.get_source()
 
             common_type = lang_type.get_most_common_type(self.__data, value_type, self.__assign_type)
 

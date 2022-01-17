@@ -62,7 +62,7 @@ def __for_loop_with_range_opt(node, visitor, var_name, args_types, args_values):
 
     if len(args_types) == 1:
 
-        if args_types[0].is_int() and args_types[0].get_hint(hint.TypeHintConstInt) is not None:
+        if args_types[0].is_int() and args_types[0].get_hint(hint.TypeHintConstInt):
             const_values_hint = args_types[0].get_hint(hint.TypeHintConstInt)
             if len(const_values_hint):
                 new_var.get_type().add_hint(hint.TypeHintIntRange(0, const_values_hint[0].get_value()))
@@ -72,8 +72,8 @@ def __for_loop_with_range_opt(node, visitor, var_name, args_types, args_values):
         var_incr = builder.const_int64(1)
     elif len(args_types) == 2:
 
-        if args_types[0].is_int() and args_types[0].get_hint(hint.TypeHintConstInt) is not None:
-            if args_types[1].is_int() and args_types[1].get_hint(hint.TypeHintConstInt) is not None:
+        if args_types[0].is_int() and args_types[0].get_hint(hint.TypeHintConstInt):
+            if args_types[1].is_int() and args_types[1].get_hint(hint.TypeHintConstInt):
                 new_var.get_type().add_hint(
                     hint.TypeHintIntRange(args_types[0].get_hint(hint.TypeHintConstInt)[0].get_value(),
                                           args_types[1].get_hint(hint.TypeHintConstInt)[0].get_value()))
