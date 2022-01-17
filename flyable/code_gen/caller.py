@@ -79,8 +79,8 @@ def call_obj(
             return _handle_binary_number_protocol(*handlers_args)
 
         # Special case where the call is a ternary number protocol
-        elif (num.is_number_ternary_func_valid(func_name, nb_args)) or (
-            num.handle_pow_func_special_case(func_name, args, args_type)
+        elif num.is_number_ternary_func_valid(func_name, nb_args) or (
+            num.handle_pow_func_special_case(func_name, args, args_type, visitor)
         ):
             return _handle_ternary_number_protocol(*handlers_args)
             # return _handle_default(*handlers_args)

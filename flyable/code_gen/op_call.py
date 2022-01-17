@@ -33,6 +33,8 @@ def __convert_type_to_match(
             value_right = visitor.get_builder().int_cast(
                 value_right, type_right.to_code_type(visitor.get_code_gen())
             )
+            value_right = visitor.get_builder().neg(value_right)
+
     elif type_left.is_bool():
         if type_right.is_dec():
             type_left = lang_type.get_dec_type()
@@ -44,7 +46,6 @@ def __convert_type_to_match(
             value_left = visitor.get_builder().int_cast(
                 value_left, type_left.to_code_type(visitor.get_code_gen())
             )
-
         elif type_right.is_bool():
             type_left = lang_type.get_int_type()
             value_left = visitor.get_builder().int_cast(
@@ -54,6 +55,8 @@ def __convert_type_to_match(
             value_right = visitor.get_builder().int_cast(
                 value_right, type_right.to_code_type(visitor.get_code_gen())
             )
+        value_left = visitor.get_builder().neg(value_left)
+
     return type_left, value_left, type_right, value_right
 
 

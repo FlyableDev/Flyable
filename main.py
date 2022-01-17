@@ -21,7 +21,7 @@ from flyable.tool.utils import end_step, start_step
 def main(file: str, output_dir: str = ".", exec_name: str = "a"):
     start_step("Compiling")
 
-    compiler = com.Compiler()
+    compiler = com.Compiler(mode="analyse")
     compiler.add_file(file)
     compiler.set_output_path(f"{output_dir}/output.o")
     # Make sur the folder exist

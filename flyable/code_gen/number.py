@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from ast import NameConstant
 from typing import TYPE_CHECKING
 
@@ -13,6 +15,7 @@ import flyable.data.type_hint as hint
 
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeGen
+    from flyable.parse.parser_visitor import ParserVisitor
 
 """
 Module related to the python number protocol
@@ -222,7 +225,7 @@ def is_number_inquiry_func_valid(func_name: str, len_args: int) -> bool:
     return is_number_unary_func(func_name) and len_args == 0
 
 
-def handle_pow_func_special_case(func_name: str, args: list, args_type: list) -> bool:
+def handle_pow_func_special_case(func_name: str, args: list, args_type: list, visitor: ParserVisitor) -> bool:
     """
     utility function to ensure the rigth number of args are passed to the pow function and adds None if there was one missing\n
     This function makes sure that the function name is indeed __pow__ before doing the operation\n
@@ -233,7 +236,9 @@ def handle_pow_func_special_case(func_name: str, args: list, args_type: list) ->
         return False
 
     if len(args) == 1:
-        args.append(None)
+        none = visitor.get_code_gen().get_none()
+        none_var = visitor.get_builder().global_var(none)
+        args.append(visitor.get_builder().load(none_var))
         args_type.append(lang_type.get_none_type())
     
     return len(args) == 2
