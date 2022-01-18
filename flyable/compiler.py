@@ -8,19 +8,20 @@ from flyable.code_gen.code_gen import CodeGen
 from flyable.data import comp_data, lang_file
 from flyable.data.error_thrower import ErrorThrower
 from flyable.data.lang_func_impl import LangFuncImpl
+from flyable.debug.debug_flags import DebugFlags
 from flyable.parse.parser_analyser import ParseAnalyser
 from flyable.parse.pre_parser import PreParser
 
 
 class Compiler(ErrorThrower):
-    def __init__(self, mode: Literal["normal", "analyse"] = "normal"):
+    def __init__(self, mode: Literal["normal", "debug"] = "normal", debug_flags: list[DebugFlags] = None):
         super().__init__()
         self.__data: comp_data.CompData = comp_data.CompData()
         self.set_output_path("output.o")
         self.__code_gen: CodeGen = gen.CodeGen(self.__data)
         self.__code_gen.setup()
         self.__parser: par.Parser = par.Parser(
-            self.__data, self.__code_gen, analyse=mode == "analyse"
+            self.__data, self.__code_gen, analyse=mode == "debug", debug_flags=debug_flags
         )
         self.__main_impl = None
 

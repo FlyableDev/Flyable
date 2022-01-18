@@ -1,13 +1,17 @@
-print(True + 1.0)
+# mode: debug
 
 
-print(bin(10))
+def report_energy(b):
+    return b * 2
 
-a = 10
-b = a.to_bytes(4, byteorder='little', signed=True)
-c = int(b.hex(), base=16)
-print(c)
-r = int.from_bytes(c.to_bytes(4, byteorder='little', signed=False), byteorder='big', signed=True)
-if r != a:
-    print(f"Failed at {a=} / {r=}")
 
+# start:tree:<label>
+a = 2
+print(report_energy(12))  # show:cpp_output
+print(report_energy("abc"))
+# end:tree:<label>
+
+# start:var
+b = 12
+c = 3 ** 2
+# end:var

@@ -15,13 +15,16 @@ from sys import stderr, stdin, stdout
 import flyable.compiler as com
 import flyable.tool.platform as plat
 from flyable import constants
+from flyable.debug.debug_flags import DebugFlags
 from flyable.tool.utils import end_step, start_step
+
+DEBUG_FLAGS: list[DebugFlags] = []
 
 
 def main(file: str, output_dir: str = ".", exec_name: str = "a"):
     start_step("Compiling")
 
-    compiler = com.Compiler(mode="analyse")
+    compiler = com.Compiler(mode="normal")
     compiler.add_file(file)
     compiler.set_output_path(f"{output_dir}/output.o")
     # Make sur the folder exist
@@ -35,8 +38,13 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
         start_step("Linking")
 
         # Now link the code
-        linker_args = ["gcc", "-flto", "output.o",
-                       constants.LIB_FLYABLE_RUNTIME_PATH, constants.PYTHON_3_10_PATH]
+        linker_args = [
+            "gcc",
+            "-flto",
+            "output.o",
+            constants.LIB_FLYABLE_RUNTIME_PATH,
+            constants.PYTHON_3_10_PATH,
+        ]
         p = Popen(linker_args, cwd=output_dir)
         p.wait()
         if p.returncode != 0:
@@ -53,19 +61,25 @@ def run_code(output_dir: str, exec_name: str):
         exec_name (str): the name of the executable
     """
     start_step("Running")
-    
-    p = Popen([output_dir + f"/{exec_name}.exe"], cwd=output_dir, stdin=stdin, stdout=stdout, stderr=PIPE, text=True)
+
+    p = Popen(
+        [output_dir + f"/{exec_name}.exe"],
+        cwd=output_dir,
+        stdin=stdin,
+        stdout=stdout,
+        stderr=PIPE,
+        text=True,
+    )
 
     p.communicate()
     end_step()
-    
+
     print("-------------------")
-    
 
     print("Application ended with code " + str(p.returncode))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     dir = f"./build/{plat.get_platform_folder()}"
     main("test.py", dir, "a")
     run_code("./build/win64/", "a")

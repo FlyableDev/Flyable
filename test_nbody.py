@@ -17,9 +17,7 @@ Modified by Tupteq, Fredrik Johansson, and Daniel Nanz.
 # modified by Tupteq, Fredrik Johansson, and Daniel Nanz
 # modified by Maciej Fijalkowski
 # 2to3
-import timeit
-
-print(3 ** 2)
+import time
 
 
 def combinations(l):
@@ -129,4 +127,8 @@ def main(n, ref="sun"):
     report_energy()
 
 
-print(timeit.timeit(lambda: main(500_000), number=10))
+
+begin = time.perf_counter()
+main(500_000)
+end = time.perf_counter()
+print(end - begin)
