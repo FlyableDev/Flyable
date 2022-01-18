@@ -1,19 +1,20 @@
 import copy
+import enum
 import platform
+from collections import OrderedDict
 
+import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_writer as _writer
-from flyable.code_gen.code_writer import CodeWriter
+import flyable.code_gen.library_loader as loader
+import flyable.code_gen.module as gen_module
+import flyable.code_gen.ref_counter as ref_counter
+import flyable.code_gen.runtime as runtime
+import flyable.data.lang_func_impl as lang_func_impl
+import flyable.data.lang_type as lang_type
 from flyable.code_gen.code_builder import CodeBuilder
 from flyable.code_gen.code_type import CodeType
-import flyable.code_gen.code_type as code_type
-import flyable.code_gen.runtime as runtime
-import flyable.code_gen.library_loader as loader
-import flyable.data.lang_type as lang_type
-import flyable.code_gen.module as gen_module
-from collections import OrderedDict
-import enum
-import flyable.code_gen.ref_counter as ref_counter
-import flyable.data.lang_func_impl as lang_func_impl
+from flyable.code_gen.code_writer import CodeWriter
+from flyable.debug.code_builder_analyser import CodeBuilderAnalyser
 
 
 class Linkage(enum.IntEnum):
@@ -99,6 +100,15 @@ class GlobalVar:
         self.__type.write_to_code(writer)
         writer.add_int32(int(self.__linking))
 
+    def __str__(self) -> str:
+        name = self.__name
+        type = self.__type
+        id = self.__id
+        return f"GlobalVar({name=}, {type=}, {id=})"
+    
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 class CodeFunc:
     """
@@ -164,7 +174,7 @@ class CodeFunc:
         self.__args = []
         self.__return_type = CodeType()
         self.__blocks = []
-        self.__builder = CodeBuilder(self)
+        self.__builder = CodeBuilderAnalyser(self)
 
     def set_linkage(self, link):
         self.__linkage = link
