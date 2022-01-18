@@ -1,4 +1,6 @@
 import flyable.code_gen.list as _list
+import flyable.code_gen.tuple as _tuple
+import flyable.code_gen.set as _set
 import flyable.code_gen.dict as _dict
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.code_type as code_type
@@ -20,14 +22,22 @@ def value_to_cond(visitor, value_type, value):
         return value_type, value
     elif value_type.is_dec():
         return lang_type.get_bool_type(), builder.int_cast(value, code_type.get_int1())
-    elif value_type.is_obj() or value_type.is_python_obj():
-        return lang_type.get_bool_type(), test_obj_true(visitor, value_type, value)
     elif value_type.is_list():
         list_len = _list.python_list_len(visitor, value)
         return lang_type.get_bool_type(), builder.gt(list_len, builder.const_int64(0))
+    elif value_type.is_tuple():
+        tuple = builder.ptr_cast(value, code_gen.get_py_tuple_struct().to_code_type().get_ptr_to())
+        tuple_len_ptr = _tuple.python_tuple_get_size_ptr(visitor, tuple)
+        tuple_len = visitor.get_builder().load(tuple_len_ptr)
+        return lang_type.get_bool_type(), builder.gt(tuple_len, builder.const_int64(0))
+    elif value_type.is_set():
+        set_len = _set.python_set_len(visitor, value)
+        return lang_type.get_bool_type(), builder.gt(set_len, builder.const_int64(0))
     elif value_type.is_dict():
         dict_len = _dict.python_dict_len(visitor, value)
-        return lang_type.get_bool_type(), builder.gt(dict_len, builder.const_int(0))
+        return lang_type.get_bool_type(), builder.gt(dict_len, builder.const_int64(0))
+    elif value_type.is_obj() or value_type.is_python_obj():
+        return lang_type.get_bool_type(), test_obj_true(visitor, value_type, value)
 
 
 def test_obj_true(visitor, value_type, value):

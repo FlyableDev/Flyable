@@ -798,12 +798,17 @@ class ParserVisitor(NodeVisitor):
         self.__builder.br(block_cond)
         self.__builder.set_insert_block(block_cond)
 
-        loop_type, loop_value = self.__visit_node(node.test)
+        test_type, test_value = self.__visit_node(node.test)
+        cond_type, cond_value = cond.value_to_cond(self, test_type, test_value)
+
+        ref_counter.ref_decr_incr(self, test_type, test_value)
+        ref_counter.ref_decr_incr(self, cond_type, cond_value)
+
 
         if node.orelse is None:
-            self.__builder.cond_br(loop_value, block_while_in, block_continue)
+            self.__builder.cond_br(cond_value, block_while_in, block_continue)
         else:
-            self.__builder.cond_br(loop_value, block_while_in, block_else)
+            self.__builder.cond_br(cond_value, block_while_in, block_else)
 
         # Setup the while loop content
         self.__builder.set_insert_block(block_while_in)
