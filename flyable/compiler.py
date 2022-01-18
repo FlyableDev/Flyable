@@ -9,7 +9,7 @@ from flyable.data import comp_data, lang_file
 from flyable.data.error_thrower import ErrorThrower
 from flyable.data.lang_func_impl import LangFuncImpl
 from flyable.debug.debug_flags import DebugFlags
-from flyable.parse.parser_analyser import ParseAnalyser
+from flyable.debug.parser_analyser import ParseAnalyser
 from flyable.parse.pre_parser import PreParser
 
 

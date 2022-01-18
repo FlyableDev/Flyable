@@ -1,5 +1,58 @@
 from typing import Any
+
 import flyable.code_gen.code_gen as gen
+
+CODE_BUILDER_IDS = [
+    "add",
+    "sub",
+    "mul",
+    "div",
+    "eq",
+    "ne",
+    "lt",
+    "lte",
+    "gt",
+    "gte",
+    "neg",
+    "_and",
+    "_or",
+    "mod",
+    "_not",
+    "store",
+    "load",
+    "br",
+    "cond_br",
+    "gep",
+    "gep2",
+    "call",
+    "call_ptr",
+    "const_int64",
+    "const_int32",
+    "const_int16",
+    "const_int8",
+    "const_int1",
+    "const_float32",
+    "const_float64",
+    "const_null",
+    "ptr_cast",
+    "int_cast",
+    "float_cast",
+    "int_to_ptr",
+    "bit_cast",
+    "zext",
+    "alloca",
+    "ret",
+    "ret_void",
+    "ret_null",
+    "global_var",
+    "global_str",
+    "func_ptr",
+    "size_of_type",
+    "size_of_type_ptr_element",
+    "print_value_type",
+    "debug_op",
+    "debug_op2",
+]
 
 
 class CodeBuilder:
@@ -9,9 +62,9 @@ class CodeBuilder:
     """
 
     def __init__(self, func):
-        self.__current_block = None
+        self.__current_block: Any = None
         self.__func = func
-        self.__writer = None
+        self.__writer: Any = None
 
     def to_bytes(self):
         return self.__writer.to_bytes()
@@ -108,7 +161,13 @@ class CodeBuilder:
         return self.__make_op(170, func.get_id(), len(args), *args)
 
     def call_ptr(self, ptr, args, call_conv=None):
-        return self.__make_op(171, ptr, call_conv if call_conv is not None else gen.CallingConv.C, len(args), *args)
+        return self.__make_op(
+            171,
+            ptr,
+            call_conv if call_conv is not None else gen.CallingConv.C,
+            len(args),
+            *args
+        )
 
     def const_int64(self, value):
         self.__writer.add_int32(1000)
@@ -251,7 +310,7 @@ class CodeBuilder:
     def __make_op(self, id: int, *values: Any) -> Any:
         """
         This function adds, to the writer, the id and each subsequent values passed in the parameter
-        values. 
+        values.
         Then, it calls self.__gen_value() and returns its result
 
         Args:

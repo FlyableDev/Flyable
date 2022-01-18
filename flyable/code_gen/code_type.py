@@ -1,5 +1,5 @@
-import enum
 import copy
+import enum
 
 
 def get_void():
@@ -175,3 +175,6 @@ class CodeType:
             result += "*"
 
         return result
+
+    def __repr__(self) -> str:
+        return self.__str__()

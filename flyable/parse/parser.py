@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 import flyable.data.lang_func_impl as impl
 from flyable.data.error_thrower import ErrorThrower
-from flyable.parse import parser_analyser
+from flyable.debug import parser_analyser
 from flyable.parse.parser_visitor import ParserVisitor
 
 
