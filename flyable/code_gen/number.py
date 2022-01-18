@@ -171,7 +171,7 @@ def get_number_slot_from_func_name(func_name):
         "__abs__": 8,
         "__bool__": 9,
         "__lshift__": 11,
-        "__rshitf__": 12,
+        "__rshift__": 12,
         "_and": 13,
         "__xor__": 14,
         "__or__": 15,
