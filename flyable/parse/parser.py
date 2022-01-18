@@ -29,7 +29,6 @@ class Parser(ErrorThrower):
                     new_var.set_is_arg(True)
                 vis = ParserVisitor(self, self.__code_gen, func_impl)
                 vis.parse()
-                func_impl.set_parse_status(impl.LangFuncImpl.ParseStatus.ENDED)
 
     def get_code_gen(self):
         return self.__code_gen

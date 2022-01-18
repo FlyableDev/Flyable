@@ -124,6 +124,8 @@ class ParserVisitor(NodeVisitor):
         self.__func.get_code_func().set_return_type(self.__func.get_return_type().to_code_type(self.__code_gen))
         self.__code_gen.fill_not_terminated_block(self)
 
+        self.__func.set_parse_status(lang_func.LangFuncImpl.ParseStatus.ENDED)
+
     def visit(self, node):
         self.__current_node = node
         if isinstance(node, list):
@@ -350,6 +352,9 @@ class ParserVisitor(NodeVisitor):
             if found_var.is_global():
                 self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
             else:
+                if found_var.get_code_gen_value() is None:
+                    found_var.set_code_gen_value(
+                        self.generate_entry_block_var(found_var.get_type().to_code_type(self.__code_gen), True))
                 self.__last_value = found_var.get_code_gen_value()
 
             # Args don't live inside an alloca so they don't need to be loaded
@@ -369,7 +374,11 @@ class ParserVisitor(NodeVisitor):
                             self.__reset_visit = True
 
                     # Store the new content
-                    self.__builder.store(self.__assign_value, self.__last_value)
+                    value_assign = self.__assign_value
+                    if self.__last_type.is_python_obj():
+                        _, value_assign = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_assign,
+                                                                 self.__assign_type)
+                    self.__builder.store(value_assign, self.__last_value)
                     self.__last_become_assign()
                 else:
                     self.__last_value = self.__builder.load(self.__last_value)
@@ -578,7 +587,7 @@ class ParserVisitor(NodeVisitor):
 
         if isinstance(node.ctx, ast.Store):
             source = hint.get_type_source(value_type)
-            if source is not None:      # TODO: find a better fix to support a store in a 2+D list (define types for a precise range)
+            if source is not None:  # TODO: find a better fix to support a store in a 2+D list (define types for a precise range)
                 source_data = source.get_source()
 
             common_type = lang_type.get_most_common_type(self.__data, value_type, self.__assign_type)
@@ -1349,6 +1358,10 @@ class ParserVisitor(NodeVisitor):
         self.__out_blocks.clear()
         self.__cond_blocks.clear()
         self.__exception_blocks.clear()
+
+        # Invalidate the codegen value of the variable
+        for var in self.__func.get_context().vars_iter():
+            var.set_code_gen_value(None)
 
         self.__func.get_code_func().clear_blocks()
         self.__entry_block = self.__func.get_code_func().add_block()

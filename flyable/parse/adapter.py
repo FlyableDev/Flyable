@@ -70,10 +70,12 @@ def __adapt_python_impl(func, comp_data, parser):
     tp_adapted_impl = func.get_tp_call_impl()
     vec_adapted_impl = func.get_vec_call_impl()
 
-    parser.get_code_gen().gen_func(tp_adapted_impl)
+    if tp_adapted_impl.get_code_func() is None:
+        parser.get_code_gen().gen_func(tp_adapted_impl)
     parser.parse_impl(tp_adapted_impl)
 
-    parser.get_code_gen().gen_func(vec_adapted_impl)
+    if vec_adapted_impl.get_code_func() is None:
+        parser.get_code_gen().gen_func(vec_adapted_impl)
     parser.parse_impl(vec_adapted_impl)
 
 

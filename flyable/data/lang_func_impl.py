@@ -31,7 +31,7 @@ class LangFuncImpl:
     class ParseStatus(enum.IntEnum):
         NOT_STARTED = 0,
         STARTED = 1,
-        ENDED = 1
+        ENDED = 2
 
     def __init__(self):
         self.__id: int = -1
