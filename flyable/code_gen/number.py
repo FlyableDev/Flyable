@@ -1,13 +1,10 @@
-import flyable.code_gen.type as gen_type
-import flyable.data.type_hint as hint
-import flyable.code_gen.runtime as runtime
+import flyable.code_gen.caller as caller
+import flyable.code_gen.code_type as code_type
 import flyable.code_gen.debug as debug
 import flyable.code_gen.fly_obj as fly_obj
-import flyable.code_gen.code_type as code_type
-import flyable.code_gen.type as gen_type
 import flyable.code_gen.ref_counter as ref_counter
-import flyable.code_gen.caller as caller
-import flyable.data.lang_type as lang_type
+import flyable.code_gen.runtime as runtime
+import flyable.code_gen.type as gen_type
 
 """
 Module related to the python number protocol
@@ -18,15 +15,23 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
+    number_call_block = builder.create_block()
+    number_call_2_block = builder.create_block()
+    basic_call_block = builder.create_block()
+    continue_block = builder.create_block()
+
     if is_number_func_inquiry(func_name):
         func_type = code_type.get_func(code_type.get_int32(), [code_type.get_py_obj_ptr(code_gen)])
         protocol_result = visitor.generate_entry_block_var(code_type.get_int32())
+    elif is_number_func_ternary(func_name):
+        func_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 3)
+        protocol_result = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
     elif is_number_binary_func(func_name):
         func_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2)
         protocol_result = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
     else:
         raise Exception("Unsupported protocol for function name " + func_name)
-    
+
     func_type = func_type.get_ptr_to()
 
     num_call_args = []
@@ -46,9 +51,6 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     as_number = builder.ptr_cast(as_number, code_type.get_int8_ptr().get_ptr_to())
     is_number_null = builder.eq(as_number, builder.const_null(code_type.get_int8_ptr().get_ptr_to()))
 
-    basic_call_block = builder.create_block()
-    number_call_block = builder.create_block()
-
     builder.cond_br(is_number_null, basic_call_block, number_call_block)
     builder.set_insert_block(number_call_block)
     func_to_call = builder.gep2(as_number, code_type.get_int8_ptr(), [slot])
@@ -56,13 +58,17 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     func_to_call = builder.ptr_cast(func_to_call, func_type)
 
     # Check if the function that we got from the slot is not null
-    number_call_2_block = builder.create_block()
     is_func_null = builder.eq(func_to_call, builder.const_null(func_type))
     builder.cond_br(is_func_null, basic_call_block, number_call_2_block)
 
-    continue_block = builder.create_block()
     builder.set_insert_block(number_call_2_block)
-    builder.store(builder.call_ptr(func_to_call, [obj] + num_call_args), protocol_result)
+    if is_number_func_ternary(func_name):
+        call_result = builder.call_ptr(func_to_call, [obj] + num_call_args +
+                                       [builder.load(builder.global_var(code_gen.get_none()))])
+    else:
+        call_result = builder.call_ptr(func_to_call, [obj] + num_call_args)
+
+    builder.store(call_result, protocol_result)
     builder.br(continue_block)
 
     builder.set_insert_block(basic_call_block)
@@ -70,11 +76,18 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
     # If the inquiry call isn't supported, then we fail the inquiry
     if is_number_func_inquiry(func_name):
         builder.store(builder.const_int32(0), protocol_result)
+    elif is_number_func_ternary(func_name):
+        basic_call_type, basic_call_value = caller.call_obj(visitor, func_name, obj, obj_type, num_call_args,
+                                                            num_call_args_types, False, False, False)
+        builder.store(basic_call_value, protocol_result)
     else:
         basic_call_type, basic_call_value = caller.call_obj(visitor, func_name, obj, obj_type, num_call_args,
-                                                            num_call_args_types, False, False)
+                                                            num_call_args_types, False, False, False)
         builder.store(basic_call_value, protocol_result)
     builder.br(continue_block)
+
+    if is_number_func_inquiry(func_name):
+        debug.flyable_debug_print_int64(code_gen, builder, builder.const_int64(500))
 
     builder.set_insert_block(continue_block)
     for i in range(len(num_call_args)):
@@ -83,7 +96,7 @@ def call_number_protocol(visitor, func_name, obj_type, obj, instance_type, args_
 
     if is_number_func_inquiry(func_name):
         return builder.int_cast(builder.load(protocol_result), code_type.get_int1())
-    elif is_number_binary_func(func_name):
+    elif is_number_binary_func(func_name) or is_number_func_ternary(func_name):
         return builder.load(protocol_result)
     else:
         return NotImplemented("Unsupported call protocol")
