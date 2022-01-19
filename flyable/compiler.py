@@ -1,16 +1,19 @@
-import flyable.parse.parser as par
-from flyable.parse.pre_parser import PreParser
-from flyable.data import lang_file, comp_data
-from flyable.data.error_thrower import ErrorThrower
-from flyable.code_gen.code_gen import CodeGen
-from flyable.data.lang_func_impl import LangFuncImpl
+from typing import Literal
+
 import flyable.code_gen.code_gen as gen
-import flyable.parse.adapter as adapter
 import flyable.data.lang_class as lang_class
+import flyable.parse.adapter as adapter
+import flyable.parse.parser as par
+from flyable.code_gen.code_gen import CodeGen
+from flyable.data import comp_data, lang_file
+from flyable.data.error_thrower import ErrorThrower
+from flyable.data.lang_func_impl import LangFuncImpl
+from flyable.debug.debug_flags import DebugFlags
+from flyable.debug.parser_analyser import ParseAnalyser
+from flyable.parse.pre_parser import PreParser
 
 
 class Compiler(ErrorThrower):
-
     def __init__(self):
         super().__init__()
         self.__data: comp_data.CompData = comp_data.CompData()
@@ -64,14 +67,20 @@ class Compiler(ErrorThrower):
             try:
 
                 # Create a specialization for the main module to execute
-                self.__main_impl = adapter.adapt_func(self.__data.get_file(0).get_global_func(), [], self.__data,
-                                                      self.__parser)
+                self.__main_impl = adapter.adapt_func(
+                    self.__data.get_file(0).get_global_func(),
+                    [],
+                    self.__data,
+                    self.__parser,
+                )
 
                 # Then generate an implementation for all python methods / funcs
                 adapter.adapt_all_python_impl(self.__data, self.__parser)
 
             except Exception as exception:
-                if not self.__parser.has_error():  # If there is no error we launch the exception as a failure
+                if (
+                    not self.__parser.has_error()
+                ):  # If there is no error we launch the exception as a failure
                     raise exception
                 break
 
@@ -91,4 +100,8 @@ class Compiler(ErrorThrower):
                 if isinstance(found_class, lang_class.LangClass):
                     _class.add_inherit(found_class)
                 else:
-                    self.__parser.throw_error(str(e) + " not expected to inherits", node.lineno, node.end_col_offset)
+                    self.__parser.throw_error(
+                        str(e) + " not expected to inherits",
+                        node.lineno,
+                        node.end_col_offset,
+                    )

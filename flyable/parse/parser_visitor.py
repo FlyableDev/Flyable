@@ -1,40 +1,41 @@
+from __future__ import annotations
+
 import ast
+import copy
+import enum
 from ast import *
 from typing import Any
-from flyable.data.lang_type import *
-import flyable.data.lang_type as lang_type
-import flyable.data.lang_func_impl as func
-import flyable.parse.op as op
+
+import flyable.code_gen.caller as caller
+import flyable.code_gen.code_gen as gen
+import flyable.code_gen.cond as cond
+import flyable.code_gen.debug as debug
+import flyable.code_gen.dict as gen_dict
+import flyable.code_gen.exception as excp
+import flyable.code_gen.fly_obj as fly_obj
+import flyable.code_gen.list as gen_list
+import flyable.code_gen.module as gen_module
+import flyable.code_gen.op_call as op_call
+import flyable.code_gen.ref_counter as ref_counter
+import flyable.code_gen.runtime as runtime
+import flyable.code_gen.set as gen_set
+import flyable.code_gen.slice as gen_slice
+import flyable.code_gen.tuple as gen_tuple
+import flyable.code_gen.unpack as unpack
+import flyable.data.attribute
+import flyable.data.attribute as _attribute
+import flyable.data.comp_data as comp_data
 import flyable.data.lang_class as lang_class
 import flyable.data.lang_func as lang_func
+import flyable.data.lang_type as lang_type
+import flyable.data.type_hint as hint
 import flyable.parse.adapter as adapter
 import flyable.parse.build_in as build
-import flyable.data.attribute
-from flyable.data.lang_func_impl import LangFuncImpl
-import flyable.data.comp_data as comp_data
+import flyable.parse.op as op
+import flyable.parse.variable as _variabl
 from flyable.code_gen.code_builder import CodeBuilder
-import flyable.code_gen.caller as caller
-import flyable.code_gen.list as gen_list
-import flyable.code_gen.set as gen_set
-import flyable.code_gen.tuple as gen_tuple
-import flyable.code_gen.dict as gen_dict
-import flyable.code_gen.runtime as runtime
-import enum
-import flyable.code_gen.op_call as op_call
-import flyable.data.lang_type as lang_type
-import flyable.data.attribute as _attribute
-import flyable.parse.variable as _variable
-import flyable.data.type_hint as hint
-import flyable.code_gen.ref_counter as ref_counter
-import flyable.tool.repr_visitor as repr_vis
-import flyable.code_gen.exception as excp
-import flyable.code_gen.cond as cond
-import flyable.code_gen.code_gen as gen
-import flyable.code_gen.fly_obj as fly_obj
-import flyable.code_gen.module as gen_module
-import flyable.code_gen.slice as gen_slice
-import flyable.code_gen.debug as debug
-import flyable.code_gen.unpack as unpack
+from flyable.data.lang_func_impl import LangFuncImpl
+from flyable.data.lang_type import LangType, code_type
 
 
 class ParserVisitor(NodeVisitor):
@@ -522,7 +523,7 @@ class ParserVisitor(NodeVisitor):
                     module = self.__builder.global_var(self.__code_gen.get_build_in_module())
                     module = self.__builder.load(module)
                     self.__last_type, self.__last_value = caller.call_obj(self, name_call, module,
-                                                                          get_python_obj_type(), args, args_types)
+                                                                          lang_type.get_python_obj_type(), args, args_types)
             else:
                 if self.__last_type is None:
                     file = self.__func.get_parent_func().get_file()
@@ -551,7 +552,7 @@ class ParserVisitor(NodeVisitor):
                                                       node.col_offset)
                         self.__last_value = self.__builder.call(func_impl_to_call.get_code_func(), args)
                         if func_impl_to_call.get_return_type().is_unknown():
-                            self.__last_type = get_none_type()
+                            self.__last_type = lang_type.get_none_type()
                             self.__last_value = self.__builder.const_int32(0)
                     else:
                         self.__parser.throw_error("Function " + node.func.id + " not found", node.lineno,
@@ -571,7 +572,7 @@ class ParserVisitor(NodeVisitor):
                 self.__last_type, self.__last_value = caller.call_obj(self, name_call, self.__last_value,
                                                                       self.__last_type, args, args_types)
                 if self.__last_type.is_unknown():
-                    self.__last_type = get_none_type()
+                    self.__last_type = lang_type.get_none_type()
                     self.__last_value = self.__builder.const_int32(0)
         else:
             str_error = "Call unrecognized with " + self.__last_type.to_str(self.__data)
@@ -702,24 +703,24 @@ class ParserVisitor(NodeVisitor):
 
     def visit_Constant(self, node: Constant) -> Any:
         if isinstance(node.value, bool):
-            self.__last_type = get_bool_type()
+            self.__last_type = lang_type.get_bool_type()
             self.__last_type.add_hint(hint.TypeHintConstBool(node.value))
             self.__last_value = self.__builder.const_int1(int(node.value))
         elif isinstance(node.value, int):
-            self.__last_type = get_int_type()
+            self.__last_type = lang_type.get_int_type()
             self.__last_value = self.__builder.const_int64(node.value)
             self.__last_type.add_hint(hint.TypeHintConstInt(node.value))
         elif isinstance(node.value, float):
-            self.__last_type = get_dec_type()
+            self.__last_type = lang_type.get_dec_type()
             self.__last_type.add_hint(hint.TypeHintConstDec(node.value))
             self.__last_value = self.__builder.const_float64(node.value)
         elif isinstance(node.value, str):
-            self.__last_type = get_python_obj_type()
+            self.__last_type = lang_type.get_python_obj_type()
             self.__last_type.add_hint(hint.TypeHintConstStr(node.value))
             self.__last_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.value))
             self.__last_value = self.__builder.load(self.__last_value)
         elif node.value is None:
-            self.__last_type = get_none_type()
+            self.__last_type = lang_type.get_none_type()
             self.__last_value = self.__builder.const_int32(0)
         else:
             self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)

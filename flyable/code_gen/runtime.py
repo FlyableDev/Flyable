@@ -1,9 +1,9 @@
-from flyable.code_gen.code_type import CodeType
-from flyable.code_gen.code_gen import CodeFunc
+import flyable.code_gen.code_gen as _code_gen
 import flyable.code_gen.code_type as code_type
-from flyable.code_gen.code_gen import *
-import flyable.data.type_hint as type_hint
 import flyable.code_gen.debug as debug
+import flyable.data.lang_type as lang_type
+import flyable.data.type_hint as type_hint
+from flyable.code_gen.code_type import CodeType
 
 """
 Module to call runtimes functions
@@ -24,13 +24,13 @@ def malloc_call(code_gen, builder, value_size):
     Generate an external call to the Python runtime memory allocator
     """
     malloc_func = code_gen.get_or_create_func("PyMem_Malloc", code_type.get_py_obj_ptr(code_gen),
-                                              [CodeType(CodeType.CodePrimitive.INT64)], Linkage.EXTERNAL)
+                                              [CodeType(CodeType.CodePrimitive.INT64)], _code_gen.Linkage.EXTERNAL)
     return builder.call(malloc_func, [value_size])
 
 
 def free_call(code_gen, builder, memory_to_free):
     free_func = code_gen.get_or_create_func("PyMem_Free", code_type.get_void(), [code_type.get_int8_ptr()],
-                                            Linkage.EXTERNAL)
+                                            _code_gen.Linkage.EXTERNAL)
     memory_to_free = builder.ptr_cast(memory_to_free, code_type.get_int8_ptr())
     return builder.call(free_func, [memory_to_free])
 
@@ -39,18 +39,18 @@ def py_runtime_get_string(code_gen, builder, value):
     str_ptr = builder.ptr_cast(builder.global_str(value), code_type.get_int8_ptr())
     args_type = [code_type.get_int8_ptr(), code_type.get_int64()]
     new_str_func = code_gen.get_or_create_func("PyUnicode_FromStringAndSize", code_type.get_py_obj_ptr(code_gen),
-                                               args_type, Linkage.EXTERNAL)
+                                               args_type, _code_gen.Linkage.EXTERNAL)
     return builder.call(new_str_func, [str_ptr, builder.const_int64(len(value))])
 
 
 def py_runtime_init(code_gen, builder):
-    init_func = code_gen.get_or_create_func("Py_Initialize", code_type.get_void(), [], Linkage.EXTERNAL)
+    init_func = code_gen.get_or_create_func("Py_Initialize", code_type.get_void(), [], _code_gen.Linkage.EXTERNAL)
     return builder.call(init_func, [])
 
 
 def py_runtime_object_print(code_gen, builder, obj):
     print_func = code_gen.get_or_create_func("__flyable__print", code_type.get_int32(),
-                                             [code_type.get_py_obj_ptr(code_gen)], Linkage.EXTERNAL)
+                                             [code_type.get_py_obj_ptr(code_gen)], _code_gen.Linkage.EXTERNAL)
     return builder.call(print_func, [obj])
 
 def value_to_pyobj(code_gen, builder, value, value_type):
@@ -62,7 +62,7 @@ def value_to_pyobj(code_gen, builder, value, value_type):
 
         if int_const_hint is None:
             py_func = code_gen.get_or_create_func("PyLong_FromLongLong", code_type.get_py_obj_ptr(code_gen),
-                                                  [CodeType(CodeType.CodePrimitive.INT64)], Linkage.EXTERNAL)
+                                                  [CodeType(CodeType.CodePrimitive.INT64)], _code_gen.Linkage.EXTERNAL)
             result_type.add_hint(type_hint.TypeHintRefIncr())
             return result_type, builder.call(py_func, [value])
         else:
@@ -73,7 +73,7 @@ def value_to_pyobj(code_gen, builder, value, value_type):
         if dec_const_hint is None:
             result_type.add_hint(type_hint.TypeHintRefIncr())
             py_func = code_gen.get_or_create_func("PyFloat_FromDouble", code_type.get_py_obj_ptr(code_gen),
-                                                  [code_type.get_double()], Linkage.EXTERNAL)
+                                                  [code_type.get_double()], _code_gen.Linkage.EXTERNAL)
             return result_type, builder.call(py_func, [value])
         else:
             return result_type, builder.load(
@@ -81,7 +81,7 @@ def value_to_pyobj(code_gen, builder, value, value_type):
     elif value_type.is_bool():
         # TODO : Directly use the global var to avoid the func call
         py_func = code_gen.get_or_create_func("PyBool_FromLong", code_type.get_py_obj_ptr(code_gen),
-                                              [code_type.get_int1()], Linkage.EXTERNAL)
+                                              [code_type.get_int1()], _code_gen.Linkage.EXTERNAL)
         result_type.add_hint(type_hint.TypeHintRefIncr())
         return result_type, builder.call(py_func, [value])
     elif value_type.is_obj() or value_type.is_collection():
@@ -99,5 +99,5 @@ def value_to_pyobj(code_gen, builder, value, value_type):
 def py_runtime_obj_len(code_gen, builder, value):
     func_name = "PyObject_Length"
     py_func = code_gen.get_or_create_func(func_name, code_type.get_int64(), [code_type.get_py_obj_ptr(code_gen)],
-                                          Linkage.EXTERNAL)
+                                          _code_gen.Linkage.EXTERNAL)
     return builder.call(py_func, [value])

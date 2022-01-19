@@ -1,4 +1,5 @@
 from typing import Any
+
 import flyable.code_gen.code_gen as gen
 
 
@@ -9,9 +10,9 @@ class CodeBuilder:
     """
 
     def __init__(self, func):
-        self.__current_block = None
+        self.__current_block: Any = None
         self.__func = func
-        self.__writer = None
+        self.__writer: Any = None
 
     def to_bytes(self):
         return self.__writer.to_bytes()
@@ -108,7 +109,13 @@ class CodeBuilder:
         return self.__make_op(170, func.get_id(), len(args), *args)
 
     def call_ptr(self, ptr, args, call_conv=None):
-        return self.__make_op(171, ptr, call_conv if call_conv is not None else gen.CallingConv.C, len(args), *args)
+        return self.__make_op(
+            171,
+            ptr,
+            call_conv if call_conv is not None else gen.CallingConv.C,
+            len(args),
+            *args
+        )
 
     def const_int64(self, value):
         self.__writer.add_int32(1000)
@@ -128,7 +135,7 @@ class CodeBuilder:
         return self.__make_op(1007, int(value))
 
     def const_float32(self, value):
-        self.__writer.add_float32(1004)
+        self.__writer.add_int32(1004)
         self.__writer.add_float32(value)
         return self.__gen_value()
 
@@ -251,7 +258,7 @@ class CodeBuilder:
     def __make_op(self, id: int, *values: Any) -> Any:
         """
         This function adds, to the writer, the id and each subsequent values passed in the parameter
-        values. 
+        values.
         Then, it calls self.__gen_value() and returns its result
 
         Args:

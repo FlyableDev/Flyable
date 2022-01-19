@@ -8,13 +8,20 @@ Linking : Combine the generated object file with Python runtime to generate an e
 Running : Run the generated program. Generated exe file will try to find an existing python installation on the setup.
 """
 
+from pathlib import Path
+from subprocess import PIPE, Popen
+from sys import stderr, stdin, stdout
+
 import flyable.compiler as com
 import flyable.tool.platform as plat
-from subprocess import Popen, PIPE
-from pathlib import Path
-
 from flyable import constants
+from flyable.debug.debug_flags import DebugFlags
 from flyable.tool.utils import end_step, start_step
+
+ENABLED_DEBUG_FLAGS: list[DebugFlags] = [
+    DebugFlags.SHOW_VISIT_AST,
+    DebugFlags.SHOW_OUTPUT_BUILDER,
+]
 
 
 def main(file: str, output_dir: str = ".", exec_name: str = "a"):
@@ -34,8 +41,13 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
         start_step("Linking")
 
         # Now link the code
-        linker_args = ["gcc", "-flto", "output.o",
-                       constants.LIB_FLYABLE_RUNTIME_PATH, constants.PYTHON_3_10_PATH]
+        linker_args = [
+            "gcc",
+            "-flto",
+            "output.o",
+            constants.LIB_FLYABLE_RUNTIME_PATH,
+            constants.PYTHON_3_10_PATH,
+        ]
         p = Popen(linker_args, cwd=output_dir)
         p.wait()
         if p.returncode != 0:
@@ -52,17 +64,27 @@ def run_code(output_dir: str, exec_name: str):
         exec_name (str): the name of the executable
     """
     start_step("Running")
-    p = Popen([output_dir + f"/{exec_name}.exe"], cwd=output_dir, stdin=PIPE, stdout=PIPE)
-    output, err = p.communicate()
+
+    p = Popen(
+        [output_dir + f"/{exec_name}.exe"],
+        cwd=output_dir,
+        stdin=stdin,
+        stdout=stdout,
+        stderr=PIPE,
+        text=True,
+    )
+
+    p.communicate()
     end_step()
 
     print("-------------------")
-    print(output.decode())  # Print what the program outputted
 
     print("Application ended with code " + str(p.returncode))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    # toggles on the debug flags
+    DebugFlags.enable_debug_flags(*ENABLED_DEBUG_FLAGS)
     dir = f"./build/{plat.get_platform_folder()}"
     main("test.py", dir, "a")
     run_code("./build/win64/", "a")
