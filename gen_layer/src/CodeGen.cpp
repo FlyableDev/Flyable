@@ -255,6 +255,8 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
         ++i;
     }
 
+
+
     bool runConversion = true;
 
     while(runConversion)
@@ -269,7 +271,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 int opcode = current->readInt32();
 
                 unsigned int beforeTryIndex = current->getCurrentIndex();
-                bool canRunBlock = tryOpcode(values,*current,opcode);
+                bool canRunBlock = tryOpcode(values,*current,opcode,i,func);
 
                 int computedAdvance = current->getCurrentIndex() - beforeTryIndex;
 
@@ -690,9 +692,9 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                         case 2002:
                         {
                             if(func->getReturnType() == llvm::Type::getVoidTy(mContext))
-                                values[current->readInt32()] = mBuilder.CreateRetVoid();
+                                mBuilder.CreateRetVoid();
                             else
-                                values[current->readInt32()] = mBuilder.CreateRet(getNull(func->getType()));
+                                mBuilder.CreateRet(getNull(func->getType()));
                         }
                         break;
 
@@ -765,7 +767,10 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
 ;
                 }
                 else
+                {
                     current->setCurrentIndex(beforeTryIndex - 4); //reset the reader before the opcode read
+                    ++i; //if it didn't work, we skip to the next one
+                }
             }
 
         }
@@ -779,7 +784,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
 
 }
 
-bool CodeGen::tryOpcode(std::vector<llvm::Value*> values,FormatReader& reader,int opcode)
+bool CodeGen::tryOpcode(std::vector<llvm::Value*> values,FormatReader& reader,int opcode,int blockId,llvm::Function* currentFunction)
 {
     if(OpCodesInfo.count(opcode) > 0)
     {
@@ -789,8 +794,12 @@ bool CodeGen::tryOpcode(std::vector<llvm::Value*> values,FormatReader& reader,in
             int currentFeed = feeds[i];
             if(currentFeed == VALUE_FEED)
             {
-                if(values[reader.readInt32()] == nullptr) //the block is not ready since it's using null values
+                int idRead = reader.readInt32();
+                if(values[idRead] == nullptr) //the block is not ready since it's using null values
+                {
+                    //std::cout<<"Not found # for opcode "<<opcode<<" id "<<idRead<<" on block "<<blockId<<" on func"<<currentFunction->getName().str()<<std::endl;
                     return false;
+                }
             }
             else if(currentFeed == ASSIGN_FEED)
             {

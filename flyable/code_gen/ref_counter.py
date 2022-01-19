@@ -158,10 +158,12 @@ def ref_decr_incr(visitor, type, value):
 
 def decr_all_variables(visitor):
     for var in visitor.get_func().get_context().vars_iter():
-        if not var.is_arg():
-            if var.is_global():
-                value = visitor.get_builder().global_var(var.get_code_gen_value())
-            else:
-                value = var.get_code_gen_value()
-            value = visitor.get_builder().load(value)
-            ref_decr_nullable(visitor, var.get_type(), value)
+        if var.get_code_gen_value() is not None:
+            if not var.is_arg():
+                if var.is_global():
+                    value = visitor.get_builder().global_var(var.get_code_gen_value())
+                else:
+                    value = var.get_code_gen_value()
+
+                value = visitor.get_builder().load(value)
+                ref_decr_nullable(visitor, var.get_type(), value)

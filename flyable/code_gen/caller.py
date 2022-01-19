@@ -24,9 +24,8 @@ import flyable.parse.shortcut as shortcut
 from flyable.code_gen.code_type import CodeType
 
 
-def call_obj(
-    visitor, func_name, obj, obj_type, args, args_type, optional=False, protocol=True
-):
+
+def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False, protocol=True, shortcuts=True):
     """
     Call a method independent from the called type.
     There is 3 calls scenario:

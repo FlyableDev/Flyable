@@ -48,7 +48,6 @@ class Parser(ErrorThrower):
                 )
 
                 vis.parse()
-                func_impl.set_parse_status(impl.LangFuncImpl.ParseStatus.ENDED)
 
     def get_code_gen(self):
         return self.__code_gen

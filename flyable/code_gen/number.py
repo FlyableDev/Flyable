@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from ast import NameConstant
@@ -16,6 +17,7 @@ import flyable.data.type_hint as hint
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeGen
     from flyable.parse.parser_visitor import ParserVisitor
+=======
 
 """
 Module related to the python number protocol
@@ -76,11 +78,6 @@ def call_number_protocol(
         as_number, builder.const_null(code_type.get_int8_ptr().get_ptr_to())
     )
 
-    number_call_block = builder.create_block()
-    number_call_2_block = builder.create_block()
-    basic_call_block = builder.create_block()
-    continue_block = builder.create_block()
-
     builder.cond_br(is_number_null, basic_call_block, number_call_block)
     builder.set_insert_block(number_call_block)
     func_to_call = builder.gep2(as_number, code_type.get_int8_ptr(), [slot])
@@ -93,9 +90,11 @@ def call_number_protocol(
     builder.cond_br(is_func_null, basic_call_block, number_call_2_block)
 
     builder.set_insert_block(number_call_2_block)
+
     builder.store(
         builder.call_ptr(func_to_call, [obj] + num_call_args), protocol_result
     )
+
     builder.br(continue_block)
 
     builder.set_insert_block(basic_call_block)
@@ -103,6 +102,10 @@ def call_number_protocol(
     # If the inquiry call isn't supported, then we fail the inquiry
     if is_number_inquiry_func(func_name):
         builder.store(builder.const_int32(0), protocol_result)
+    elif is_number_func_ternary(func_name):
+        basic_call_type, basic_call_value = caller.call_obj(visitor, func_name, obj, obj_type, num_call_args,
+                                                            num_call_args_types, False, False, False)
+        builder.store(basic_call_value, protocol_result)
     else:
         basic_call_type, basic_call_value = caller.call_obj(
             visitor,
@@ -114,8 +117,12 @@ def call_number_protocol(
             False,
             False,
         )
+
         builder.store(basic_call_value, protocol_result)
     builder.br(continue_block)
+
+    if is_number_func_inquiry(func_name):
+        debug.flyable_debug_print_int64(code_gen, builder, builder.const_int64(500))
 
     builder.set_insert_block(continue_block)
     for num_call_arg, num_call_arg_type in zip(num_call_args, num_call_args_types):
@@ -123,7 +130,7 @@ def call_number_protocol(
 
     if is_number_inquiry_func(func_name):
         return builder.int_cast(builder.load(protocol_result), code_type.get_int1())
-    elif is_number_binary_func(func_name):
+    elif is_number_binary_func(func_name) or is_number_func_ternary(func_name):
         return builder.load(protocol_result)
     elif is_number_ternary_func(func_name):
         return builder.load(protocol_result)
@@ -257,7 +264,7 @@ def get_number_slot_from_func_name(func_name: str) -> int:
         "__abs__": 8,
         "__bool__": 9,
         "__lshift__": 11,
-        "__rshitf__": 12,
+        "__rshift__": 12,
         "__and__": 13,
         "__xor__": 14,
         "__or__": 15,
