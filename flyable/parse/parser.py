@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, Any
 
-from flyable.debug.debug_flags import DebugFlags
+from flyable.debug.debug_flags import DebugFlags, value_if_debug
 
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeGen
@@ -15,12 +15,10 @@ from flyable.parse.parser_visitor import ParserVisitor
 
 
 class Parser(ErrorThrower):
-    def __init__(self, data, code_gen: CodeGen, analyse: bool = False, debug_flags: list[DebugFlags] = None):
+    def __init__(self, data, code_gen: CodeGen):
         super().__init__()
         self.__data = data
         self.__code_gen = code_gen
-        self.analyse = analyse
-        self.analyse_flags = debug_flags or []
 
     def parse_func(self, func):
         """
@@ -43,13 +41,12 @@ class Parser(ErrorThrower):
                     )
                     new_var.set_is_arg(True)
 
-                if self.analyse:
-                    vis = parser_analyser.ParseAnalyser(
-                        self, self.__code_gen, func_impl
-                    )
-                    vis.setup()
-                else:
-                    vis = ParserVisitor(self, self.__code_gen, func_impl)
+                vis = value_if_debug(
+                    ParserVisitor(self, self.__code_gen, func_impl),
+                    parser_analyser.ParseAnalyser(self, self.__code_gen, func_impl),
+                    DebugFlags.SHOW_OUTPUT_BUILDER,
+                )
+
                 vis.parse()
                 func_impl.set_parse_status(impl.LangFuncImpl.ParseStatus.ENDED)
 

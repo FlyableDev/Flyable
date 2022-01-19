@@ -187,7 +187,7 @@ class CodeBuilder:
         return self.__make_op(1007, int(value))
 
     def const_float32(self, value):
-        self.__writer.add_float32(1004)
+        self.__writer.add_int32(1004)
         self.__writer.add_float32(value)
         return self.__gen_value()
 

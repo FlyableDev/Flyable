@@ -18,13 +18,16 @@ from flyable import constants
 from flyable.debug.debug_flags import DebugFlags
 from flyable.tool.utils import end_step, start_step
 
-DEBUG_FLAGS: list[DebugFlags] = []
+ENABLED_DEBUG_FLAGS: list[DebugFlags] = [
+    DebugFlags.SHOW_VISIT_AST,
+    DebugFlags.SHOW_OUTPUT_BUILDER,
+]
 
 
 def main(file: str, output_dir: str = ".", exec_name: str = "a"):
     start_step("Compiling")
 
-    compiler = com.Compiler(mode="normal")
+    compiler = com.Compiler()
     compiler.add_file(file)
     compiler.set_output_path(f"{output_dir}/output.o")
     # Make sur the folder exist
@@ -80,6 +83,8 @@ def run_code(output_dir: str, exec_name: str):
 
 
 if __name__ == "__main__":
+    # toggles on the debug flags
+    DebugFlags.enable_debug_flags(*ENABLED_DEBUG_FLAGS)
     dir = f"./build/{plat.get_platform_folder()}"
     main("test.py", dir, "a")
     run_code("./build/win64/", "a")

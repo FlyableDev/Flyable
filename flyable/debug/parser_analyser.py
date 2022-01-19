@@ -11,6 +11,7 @@ class ParseAnalyser(ParserVisitor):
         self.tabs = 0
         self.max_depth = -1
         self.depth = 0
+        self.setup()
 
     def setup(self, max_depth: int = -1):
         self.max_depth = max_depth

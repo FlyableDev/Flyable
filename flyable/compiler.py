@@ -14,15 +14,13 @@ from flyable.parse.pre_parser import PreParser
 
 
 class Compiler(ErrorThrower):
-    def __init__(self, mode: Literal["normal", "debug"] = "normal", debug_flags: list[DebugFlags] = None):
+    def __init__(self):
         super().__init__()
         self.__data: comp_data.CompData = comp_data.CompData()
         self.set_output_path("output.o")
         self.__code_gen: CodeGen = gen.CodeGen(self.__data)
         self.__code_gen.setup()
-        self.__parser: par.Parser = par.Parser(
-            self.__data, self.__code_gen, analyse=mode == "debug", debug_flags=debug_flags
-        )
+        self.__parser: par.Parser = par.Parser(self.__data, self.__code_gen)
         self.__main_impl = None
 
     def add_file(self, path: str):

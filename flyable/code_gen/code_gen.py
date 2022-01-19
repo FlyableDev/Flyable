@@ -15,6 +15,7 @@ from flyable.code_gen.code_builder import CodeBuilder
 from flyable.code_gen.code_type import CodeType
 from flyable.code_gen.code_writer import CodeWriter
 from flyable.debug.code_builder_analyser import CodeBuilderAnalyser
+from flyable.debug.debug_flags import DebugFlags, value_if_debug
 
 
 class Linkage(enum.IntEnum):
@@ -174,7 +175,7 @@ class CodeFunc:
         self.__args = []
         self.__return_type = CodeType()
         self.__blocks = []
-        self.__builder = CodeBuilderAnalyser(self)
+        self.__builder = value_if_debug(CodeBuilder(self), CodeBuilderAnalyser(self), DebugFlags.SHOW_OUTPUT_BUILDER)
 
     def set_linkage(self, link):
         self.__linkage = link
