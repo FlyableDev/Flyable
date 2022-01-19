@@ -1,8 +1,61 @@
 import ast
 from typing import Any, Callable
 
-from flyable.code_gen.code_builder import CODE_BUILDER_IDS, CodeBuilder
+from flyable.code_gen.code_builder import CodeBuilder
 from flyable.code_gen.code_writer import CodeWriter
+
+CODE_BUILDER_IDS = [
+    "add",
+    "sub",
+    "mul",
+    "div",
+    "eq",
+    "ne",
+    "lt",
+    "lte",
+    "gt",
+    "gte",
+    "neg",
+    "_and",
+    "_or",
+    "mod",
+    "_not",
+    "store",
+    "load",
+    "br",
+    "cond_br",
+    "gep",
+    "gep2",
+    "call",
+    "call_ptr",
+    "const_int64",
+    "const_int32",
+    "const_int16",
+    "const_int8",
+    "const_int1",
+    "const_float32",
+    "const_float64",
+    "const_null",
+    "ptr_cast",
+    "int_cast",
+    "float_cast",
+    "int_to_ptr",
+    "bit_cast",
+    "zext",
+    "alloca",
+    "ret",
+    "ret_void",
+    "ret_null",
+    "global_var",
+    "global_str",
+    "func_ptr",
+    "size_of_type",
+    "size_of_type_ptr_element",
+    "print_value_type",
+    "debug_op",
+    "debug_op2",
+]
+
 
 
 class CodeBuilderAnalyser(CodeBuilder):
