@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from ast import NameConstant
@@ -18,14 +17,13 @@ if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeGen
     from flyable.parse.parser_visitor import ParserVisitor
 
-
 """
 Module related to the python number protocol
 """
 
 
 def call_number_protocol(
-    visitor, func_name: str, obj_type, obj, instance_type, args_types, args
+        visitor, func_name: str, obj_type, obj, instance_type, args_types, args
 ):
     code_gen: CodeGen = visitor.get_code_gen()
     builder = visitor.get_builder()
@@ -57,6 +55,11 @@ def call_number_protocol(
         raise TypeError(
             f"The given number of arguments ({args}) doesn't match the number of parameters required for {func_name}"
         )
+
+    number_call_block = builder.create_block()
+    number_call_2_block = builder.create_block()
+    basic_call_block = builder.create_block()
+    continue_block = builder.create_block()
 
     func_type = func_type.get_ptr_to()
 
@@ -160,18 +163,18 @@ def is_py_obj_impl_number_protocol(visitor, obj_type, obj, instance_type=None):
 
 def is_call_valid_for_number_protocol(func_name: str, args_count: int) -> bool:
     return (
-        (is_number_ternary_func(func_name) and args_count == 2)
-        or (is_number_inquiry_func(func_name) and args_count == 0)
-        or (is_number_unary_func(func_name) and args_count == 0)
-        or (is_number_binary_func(func_name) and args_count == 1)
+            (is_number_ternary_func(func_name) and args_count == 2)
+            or (is_number_inquiry_func(func_name) and args_count == 0)
+            or (is_number_unary_func(func_name) and args_count == 0)
+            or (is_number_binary_func(func_name) and args_count == 1)
     )
 
 
 def is_number_protocol_func(func_name: str) -> bool:
     return (
-        is_number_binary_func(func_name)
-        or is_number_inquiry_func(func_name)
-        or is_number_ternary_func(func_name)
+            is_number_binary_func(func_name)
+            or is_number_inquiry_func(func_name)
+            or is_number_ternary_func(func_name)
     )
 
 
@@ -247,7 +250,7 @@ def handle_pow_func_special_case(func_name: str, args: list, args_type: list, vi
         none_var = visitor.get_builder().global_var(none)
         args.append(visitor.get_builder().load(none_var))
         args_type.append(lang_type.get_none_type())
-    
+
     return len(args) == 2
 
 
