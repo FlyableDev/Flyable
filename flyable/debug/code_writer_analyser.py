@@ -9,7 +9,7 @@ class CodeWriteAnalyser(CodeWriter):
     def __init__(self):
         super().__init__()
 
-    def setup(self):
+    def __setup(self):
         for method_name in self.__dir__():
             if not method_name.startswith("add_"):
                 continue

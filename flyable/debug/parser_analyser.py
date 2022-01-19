@@ -11,9 +11,9 @@ class ParseAnalyser(ParserVisitor):
         self.tabs = 0
         self.max_depth = -1
         self.depth = 0
-        self.setup()
+        self.__setup()
 
-    def setup(self, max_depth: int = -1):
+    def __setup(self, max_depth: int = -1):
         self.max_depth = max_depth
         for method_name in self.__dir__():
             if not method_name.startswith("visit_"):

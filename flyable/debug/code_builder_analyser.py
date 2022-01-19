@@ -8,7 +8,7 @@ from flyable.code_gen.code_writer import CodeWriter
 class CodeBuilderAnalyser(CodeBuilder):
     def __init__(self, func):
         super().__init__(func)
-        self.setup()
+        self.__setup()
         self.__current_method: str = ""
         self.__is_writing_method_id = False
     
@@ -21,7 +21,7 @@ class CodeBuilderAnalyser(CodeBuilder):
         self.__writer.add_int32 = self.__debug_writer(self.__writer.add_int32)
         return result
 
-    def setup(self, max_depth: int = -1):
+    def __setup(self, max_depth: int = -1):
         self.max_depth = max_depth
         for method_name in CODE_BUILDER_IDS:
             method = getattr(self, method_name)
