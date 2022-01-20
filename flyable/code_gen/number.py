@@ -93,7 +93,7 @@ def call_number_protocol(
     builder.cond_br(is_func_null, basic_call_block, number_call_2_block)
 
     builder.set_insert_block(number_call_2_block)
-
+    debug.flyable_debug_print_int64(code_gen, builder, builder.const_int64(120))
     builder.store(
         builder.call_ptr(func_to_call, [obj] + num_call_args), protocol_result
     )
@@ -103,9 +103,10 @@ def call_number_protocol(
     builder.set_insert_block(basic_call_block)
 
     # If the inquiry call isn't supported, then we fail the inquiry
-    if is_number_inquiry_func(func_name):
+    args_size = len(args)
+    if is_number_inquiry_func_valid(func_name, args_size):
         builder.store(builder.const_int32(0), protocol_result)
-    elif is_number_func_ternary(func_name):
+    elif is_number_ternary_func_valid(func_name, args_size):
         basic_call_type, basic_call_value = caller.call_obj(visitor, func_name, obj, obj_type, num_call_args,
                                                             num_call_args_types, False, False, False)
         builder.store(basic_call_value, protocol_result)
@@ -124,16 +125,13 @@ def call_number_protocol(
         builder.store(basic_call_value, protocol_result)
     builder.br(continue_block)
 
-    if is_number_func_inquiry(func_name):
-        debug.flyable_debug_print_int64(code_gen, builder, builder.const_int64(500))
-
     builder.set_insert_block(continue_block)
     for num_call_arg, num_call_arg_type in zip(num_call_args, num_call_args_types):
         ref_counter.ref_decr_incr(visitor, num_call_arg_type, num_call_arg)
 
     if is_number_inquiry_func(func_name):
         return builder.int_cast(builder.load(protocol_result), code_type.get_int1())
-    elif is_number_binary_func(func_name) or is_number_func_ternary(func_name):
+    elif is_number_binary_func(func_name) or is_number_ternary_func_valid(func_name, args_size):
         return builder.load(protocol_result)
     elif is_number_ternary_func(func_name):
         return builder.load(protocol_result)
