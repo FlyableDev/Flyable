@@ -8,6 +8,7 @@ class DebugFlags(Enum):
 
     SHOW_VISIT_AST = auto()
     SHOW_OUTPUT_BUILDER = auto()
+    SHOW_OPCODE_ON_EXEC = auto()
 
     @classmethod
     def enable_debug_flags(cls, *debug_flags: DebugFlags):

@@ -102,6 +102,7 @@ private:
     const llvm::Target* mTarget;
     llvm::TargetMachine* mTargetMachine;
     llvm::IRBuilder<> mBuilder;
+    bool mDebug;
 };
 
 

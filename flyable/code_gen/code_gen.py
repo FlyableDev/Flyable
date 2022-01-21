@@ -106,7 +106,7 @@ class GlobalVar:
         type = self.__type
         id = self.__id
         return f"GlobalVar({name=}, {type=}, {id=})"
-    
+
     def __repr__(self) -> str:
         return self.__str__()
 
@@ -578,6 +578,12 @@ class CodeGen:
         # Write all the data into a buffer to pass to the code generation native layer
         writer = _writer.CodeWriter()
         writer.add_str("**Flyable format**")
+
+        # Write if it's a debug build or not
+        if DebugFlags.SHOW_OPCODE_ON_EXEC:
+            writer.add_int32(1)
+        else:
+            writer.add_int32(0)
 
         # Add structs
         writer.add_int32(len(self.__structs))

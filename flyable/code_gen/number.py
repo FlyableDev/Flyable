@@ -93,10 +93,7 @@ def call_number_protocol(
     builder.cond_br(is_func_null, basic_call_block, number_call_2_block)
 
     builder.set_insert_block(number_call_2_block)
-    debug.flyable_debug_print_int64(code_gen, builder, builder.const_int64(120))
-    builder.store(
-        builder.call_ptr(func_to_call, [obj] + num_call_args), protocol_result
-    )
+    builder.store(builder.call_ptr(func_to_call, [obj] + num_call_args), protocol_result)
 
     builder.br(continue_block)
 

@@ -151,6 +151,7 @@ void CodeGen::readInput(FormatReader& reader)
 {
     if(reader.readString() == "**Flyable format**")
     {
+        mDebug = reader.readInt32() == 1;
         readStructs(reader);
         readGlobalVars(reader);
         readFuncs(reader);
@@ -279,6 +280,13 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
 
                 if(canRunBlock)
                 {
+                    if(mDebug)
+                    {
+                        llvm::FunctionType* funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(mContext),llvm::ArrayRef<llvm::Type*>({llvm::Type::getInt64Ty(mContext)}),false);
+                        auto func = mModule->getOrInsertFunction("flyable_debug_print_int64",funcType);
+                        mBuilder.CreateCall(func,{llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),opcode,true)});
+                    }
+
                     switch(opcode)
                     {
 
