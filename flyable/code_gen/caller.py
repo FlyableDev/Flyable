@@ -24,7 +24,6 @@ import flyable.parse.shortcut as shortcut
 from flyable.code_gen.code_type import CodeType
 
 
-
 def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False, protocol=True, shortcuts=True):
     """
     Call a method independent from the called type.
@@ -51,7 +50,7 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False,
             called_impl.get_code_func(), [obj] + args
         )
     elif (
-        obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive()
+            obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive()
     ):
         did_caller_conversion = False
         # The caller can be a primitive, convert if it's the case
@@ -79,7 +78,7 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False,
 
         # Special case where the call is a ternary number protocol
         elif num.is_number_ternary_func_valid(func_name, nb_args) or (
-            num.handle_pow_func_special_case(func_name, args, args_type, visitor)
+                num.handle_pow_func_special_case(func_name, args, args_type, visitor)
         ):
             return _handle_ternary_number_protocol(*handlers_args)
             # return _handle_default(*handlers_args)
@@ -93,7 +92,7 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False,
                 hint.TypeHintRefIncr()
             ), _iter.call_iter_protocol(visitor, func_name, obj)
         elif (
-            rich_compare.is_func_name_rich_compare(func_name) and len(args) == 1
+                rich_compare.is_func_name_rich_compare(func_name) and len(args) == 1
         ):  # Rich Compare protocol
             instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
             result = rich_compare.call_rich_compare_protocol(
@@ -118,7 +117,7 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False,
 
 
 def _handle_binary_number_protocol(
-    visitor, func_name: str, obj, obj_type, args, args_type
+        visitor, func_name: str, obj, obj_type, args, args_type
 ):
     instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
     return lang_type.get_python_obj_type(
@@ -129,7 +128,7 @@ def _handle_binary_number_protocol(
 
 
 def _handle_inquiry_number_protocol(
-    visitor, func_name: str, obj, obj_type, args, args_type
+        visitor, func_name: str, obj, obj_type, args, args_type
 ):
     instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
     return lang_type.get_bool_type(), num.call_number_protocol(
@@ -138,7 +137,7 @@ def _handle_inquiry_number_protocol(
 
 
 def _handle_ternary_number_protocol(
-    visitor, func_name: str, obj, obj_type, args: list, args_type: list
+        visitor, func_name: str, obj, obj_type, args: list, args_type: list
 ):
     instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
     return lang_type.get_python_obj_type(
@@ -149,7 +148,7 @@ def _handle_ternary_number_protocol(
 
 
 def _handle_default(
-    visitor, func_name: str, obj, obj_type, args: list, args_type: list
+        visitor, func_name: str, obj, obj_type, args: list, args_type: list
 ) -> tuple[lang_type.LangType, Any]:
     py_args = copy.copy(args)
     args_type = copy.copy(args_type)
@@ -173,18 +172,15 @@ def generate_python_call(visitor, obj, func_name, args):
     # the found attribute is the callable function
     func_to_call = fly_obj.py_obj_get_attr(visitor, obj, func_name)
 
-    call_result_var = visitor.generate_entry_block_var(
-        code_type.get_py_obj_ptr(code_gen)
-    )
+    call_result_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
 
     callable_type = fly_obj.get_py_obj_type(visitor.get_builder(), func_to_call)
 
     tp_flag = function.py_obj_type_get_tp_flag_ptr(visitor, callable_type)
     tp_flag = builder.load(tp_flag)
 
-    can_vec = builder._and(
-        tp_flag, builder.const_int32(2048)
-    )  # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
+    can_vec = builder._and(tp_flag, builder.const_int32(2048))  # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
+    debug.flyable_debug_print_int64(code_gen, builder, builder.int_cast(tp_flag, code_type.get_int64()))
     can_vec = builder.eq(can_vec, builder.const_int32(0))
 
     vector_call_block = builder.create_block()
@@ -194,9 +190,7 @@ def generate_python_call(visitor, obj, func_name, args):
     builder.cond_br(can_vec, tp_call_block, vector_call_block)
 
     builder.set_insert_block(vector_call_block)
-    vec_result = function.call_py_func_vec_call(
-        visitor, obj, func_to_call, args, callable_type
-    )
+    vec_result = function.call_py_func_vec_call(visitor, obj, func_to_call, args, callable_type)
     builder.store(vec_result, call_result_var)
     continue_block = builder.create_block()
     builder.br(continue_block)

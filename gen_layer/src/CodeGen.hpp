@@ -77,6 +77,7 @@ private:
     void readBody(llvm::Function* func,std::vector<llvm::Value*>&values,std::vector<FormatReader> &readers,std::vector<std::string>& blockNames);
 
     bool tryOpcode(std::vector<llvm::Value*> values,FormatReader& reader,int opcode,int blockId,llvm::Function* currentFunc);
+    std::string readDebugStack(FormatReader& reader);
 
     llvm::CallingConv::ID readConv(FormatReader& reader);
 

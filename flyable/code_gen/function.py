@@ -51,6 +51,7 @@ def call_py_func_vec_call(visitor, obj, func_to_call, args, func_to_call_type=No
     arguments_offset = builder.const_int64(-9223372036854775808)
     nargs = builder._or(builder.const_int64(len(args)), arguments_offset)
     vec_args = [func_to_call, args_stack_memory, nargs, builder.const_null(code_type.get_py_obj_ptr(code_gen))]
+
     result = builder.call_ptr(vec_call, vec_args)
     return result
 

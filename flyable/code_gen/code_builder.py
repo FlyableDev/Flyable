@@ -1,6 +1,8 @@
 from typing import Any
 
 import flyable.code_gen.code_gen as gen
+import flyable.debug.debug_flags as debug_flags
+import inspect
 
 
 class CodeBuilder:
@@ -79,13 +81,13 @@ class CodeBuilder:
         return self.__make_op(101, value)
 
     def br(self, block):
-        self.__writer.add_int32(150)
+        self.__write_opcode(150)
         self.__writer.add_int32(block.get_id())
         self.__current_block.add_br_block(block)
         self.__writer.lock()
 
     def cond_br(self, value, block_true, block_false):
-        self.__writer.add_int32(151)
+        self.__write_opcode(151)
         self.__writer.add_int32(value)
         self.__writer.add_int32(block_true.get_id())
         self.__writer.add_int32(block_false.get_id())
@@ -97,7 +99,7 @@ class CodeBuilder:
         return self.__make_op(152, value, first_index, second_index)
 
     def gep2(self, value, type, array_indices):
-        self.__writer.add_int32(153)
+        self.__write_opcode(153)
         type.write_to_code(self.__writer)
         self.__writer.add_int32(value)
         self.__writer.add_int32(len(array_indices))
@@ -118,7 +120,7 @@ class CodeBuilder:
         )
 
     def const_int64(self, value):
-        self.__writer.add_int32(1000)
+        self.__write_opcode(1000)
         self.__writer.add_int64(value)
         return self.__gen_value()
 
@@ -135,74 +137,74 @@ class CodeBuilder:
         return self.__make_op(1007, int(value))
 
     def const_float32(self, value):
-        self.__writer.add_int32(1004)
+        self.__write_opcode(1004)
         self.__writer.add_float32(value)
         return self.__gen_value()
 
     def const_float64(self, value):
-        self.__writer.add_int32(1005)
+        self.__write_opcode(1005)
         self.__writer.add_float64(value)
         return self.__gen_value()
 
     def const_null(self, type):
-        self.__writer.add_int32(1006)
+        self.__write_opcode(1006)
         type.write_to_code(self.__writer)
         return self.__gen_value()
 
     def ptr_cast(self, value, type):
-        self.__writer.add_int32(1010)
+        self.__write_opcode(1010)
         self.__writer.add_int32(value)
         type.write_to_code(self.__writer)
         return self.__gen_value()
 
     def int_cast(self, value, type):
-        self.__writer.add_int32(1011)
+        self.__write_opcode(1011)
         self.__writer.add_int32(value)
         type.write_to_code(self.__writer)
         return self.__gen_value()
 
     def float_cast(self, value, type):
-        self.__writer.add_int32(1012)
+        self.__write_opcode(1012)
         self.__writer.add_int32(value)
         type.write_to_code(self.__writer)
         return self.__gen_value()
 
     def int_to_ptr(self, value, ptr_type):
-        self.__writer.add_int32(1013)
+        self.__write_opcode(1013)
         self.__writer.add_int32(value)
         ptr_type.write_to_code(self.__writer)
         return self.__gen_value()
 
     def bit_cast(self, value, cast_type):
-        self.__writer.add_int32(1014)
+        self.__write_opcode(1014)
         self.__writer.add_int32(value)
         cast_type.write_to_code(self.__writer)
         return self.__gen_value()
 
     def zext(self, value, cast_type):
-        self.__writer.add_int32(1015)
+        self.__write_opcode(1015)
         self.__writer.add_int32(value)
         cast_type.write_to_code(self.__writer)
         return self.__gen_value()
 
     def alloca(self, type):
-        self.__writer.add_int32(1050)
+        self.__write_opcode(1050)
         type.write_to_code(self.__writer)
         return self.__gen_value()
 
     def ret(self, value):
-        self.__writer.add_int32(2000)
+        self.__write_opcode(2000)
         self.__writer.add_int32(value)
         self.__current_block.set_has_return(True)
         self.__writer.lock()
 
     def ret_void(self):
-        self.__writer.add_int32(2001)
+        self.__write_opcode(2001)
         self.__current_block.set_has_return(True)
         self.__writer.lock()
 
     def ret_null(self):
-        self.__writer.add_int32(2002)
+        self.__write_opcode(2002)
         self.__current_block.set_has_return(True)
         self.__writer.lock()
 
@@ -210,7 +212,7 @@ class CodeBuilder:
         return self.__make_op(3000, var.get_id())
 
     def global_str(self, value):
-        self.__writer.add_int32(3001)
+        self.__write_opcode(3001)
         self.__writer.add_str(value)
         return self.__gen_value()
 
@@ -218,24 +220,24 @@ class CodeBuilder:
         return self.__make_op(3002, func.get_id())
 
     def size_of_type(self, type):
-        self.__writer.add_int32(9998)
+        self.__write_opcode(9998)
         type.write_to_code(self.__writer)
         return self.__gen_value()
 
     def size_of_type_ptr_element(self, type):
-        self.__writer.add_int32(9999)
+        self.__write_opcode(9999)
         type.write_to_code(self.__writer)
         return self.__gen_value()
 
     def print_value_type(self, value):
-        self.__writer.add_int32(10000)
+        self.__write_opcode(10000)
         self.__writer.add_int32(value)
 
     def debug_op(self):
-        self.__writer.add_int32(10001)
+        self.__write_opcode(10001)
 
     def debug_op2(self):
-        self.__writer.add_int32(10002)
+        self.__write_opcode(10002)
 
     def get_total_value(self):
         return self.__current_id
@@ -267,7 +269,19 @@ class CodeBuilder:
         Returns:
             Any: the result of self.__gen_value()
         """
-        self.__writer.add_int32(id)
+        self.__write_opcode(id)
         for v in values:
             self.__writer.add_int32(v)
         return self.__gen_value()
+
+    def __write_opcode(self, opcode):
+        if debug_flags.DebugFlags.SHOW_OPCODE_ON_EXEC:
+            stack_str = ""
+            for stack_info in inspect.stack():
+                file = stack_info.filename
+                line = stack_info.lineno
+                func_name = stack_info.function
+                stack_str += file + " / " + func_name + " / " + str(line)
+                stack_str += "\n"
+            self.__writer.add_str(stack_str)
+        self.__writer.add_int32(opcode)

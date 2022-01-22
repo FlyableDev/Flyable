@@ -269,12 +269,17 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 FormatReader* current = &readers[i];
                 mBuilder.SetInsertPoint(blocks[i]);
 
+                int beforeOpcodeIndex = current->getCurrentIndex();
+
+                std::string debugText;
+                if(mDebug)
+                    debugText = readDebugStack(*current);
+
                 int opcode = current->readInt32();
 
                 unsigned int beforeTryIndex = current->getCurrentIndex();
-                bool canRunBlock = tryOpcode(values,*current,opcode,i,func);
 
-                int computedAdvance = current->getCurrentIndex() - beforeTryIndex;
+                bool canRunBlock = tryOpcode(values,*current,opcode,i,func);
 
                 current->setCurrentIndex(beforeTryIndex);
 
@@ -282,8 +287,15 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 {
                     if(mDebug)
                     {
-                        llvm::FunctionType* funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(mContext),llvm::ArrayRef<llvm::Type*>({llvm::Type::getInt64Ty(mContext)}),false);
-                        auto func = mModule->getOrInsertFunction("flyable_debug_print_int64",funcType);
+                        llvm::FunctionType* funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(mContext),llvm::ArrayRef<llvm::Type*>({llvm::Type::getInt8PtrTy(mContext)}),false);
+                        llvm::Value* strValue = mBuilder.CreateGlobalString(llvm::StringRef(debugText));
+                        strValue = mBuilder.CreatePointerCast(strValue, llvm::Type::getInt8PtrTy(mContext));
+
+                        auto func = mModule->getOrInsertFunction("flyable_debug_print_cstr",funcType);
+                        mBuilder.CreateCall(func,{strValue});
+
+                        funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(mContext),llvm::ArrayRef<llvm::Type*>({llvm::Type::getInt64Ty(mContext)}),false);
+                        func = mModule->getOrInsertFunction("flyable_debug_print_int64",funcType);
                         mBuilder.CreateCall(func,{llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),opcode,true)});
                     }
 
@@ -770,13 +782,10 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
 
                     }
 
-                    if(current->getCurrentIndex() - beforeTryIndex != computedAdvance)
-                        std::cout<<"CodeGen error : opcode mapping isn't valid for opcode # "<<opcode<<std::endl;
-;
                 }
                 else
                 {
-                    current->setCurrentIndex(beforeTryIndex - 4); //reset the reader before the opcode read
+                    current->setCurrentIndex(beforeOpcodeIndex); //reset the reader before the opcode read
                     ++i; //if it didn't work, we skip to the next one
                 }
             }
@@ -848,6 +857,13 @@ bool CodeGen::tryOpcode(std::vector<llvm::Value*> values,FormatReader& reader,in
         std::cout<<"CodeGen error : Can't try opcode "<<opcode<<std::endl;
 
     return true;
+}
+
+std::string CodeGen::readDebugStack(FormatReader& reader)
+{
+    std::string result= "\n" + reader.readString();
+    result += "\0";
+    return result;
 }
 
 llvm::Type* CodeGen::readType(FormatReader& reader)
