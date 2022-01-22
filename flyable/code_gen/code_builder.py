@@ -13,7 +13,7 @@ class CodeBuilder:
 
     def __init__(self, func):
         self.__current_block: Any = None
-        self.__func = func
+        self.__func: gen.CodeFunc = func
         self.__writer: Any = None
 
     def to_bytes(self):
@@ -257,7 +257,7 @@ class CodeBuilder:
         result = self.__func.add_block()
         return result
 
-    def __make_op(self, id: int, *values: Any) -> Any:
+    def __make_op(self, id: int, *values: Any) -> int:
         """
         This function adds, to the writer, the id and each subsequent values passed in the parameter
         values.
@@ -275,7 +275,7 @@ class CodeBuilder:
         return self.__gen_value()
 
     def __write_opcode(self, opcode):
-        if debug_flags.DebugFlags.SHOW_OPCODE_ON_EXEC:
+        if debug_flags.DebugFlags.SHOW_OPCODE_ON_EXEC.is_enabled:
             stack_str = ""
             for stack_info in inspect.stack():
                 file = stack_info.filename

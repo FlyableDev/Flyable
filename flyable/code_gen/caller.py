@@ -173,7 +173,7 @@ def _handle_default(
 
 
 # https://docs.python.org/3/c-api/method.html
-def generate_python_call(visitor, obj, func_name, args):
+def generate_python_call(visitor: ParserVisitor, obj, func_name: str, args):
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
 
     # the found attribute is the callable function

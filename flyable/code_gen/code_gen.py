@@ -580,11 +580,11 @@ class CodeGen:
         writer.add_str("**Flyable format**")
 
         # Write if it's a debug build or not
-        if DebugFlags.SHOW_OPCODE_ON_EXEC:
+        if DebugFlags.SHOW_OPCODE_ON_EXEC.is_enabled:
             writer.add_int32(1)
         else:
             writer.add_int32(0)
-
+            
         # Add structs
         writer.add_int32(len(self.__structs))
         for _struct in self.__structs:
