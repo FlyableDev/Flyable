@@ -41,6 +41,11 @@ void flyable_debug_print_ptr(void* ptr)
     printf("%p\n",ptr);
 }
 
+void flyable_debug_print_cstr(void* ptr)
+{
+    printf(ptr);
+}
+
 void debug_is_tuple(PyObject* tuple)
 {
     printf("%p      %p\n",tuple,&PyTuple_Type);
