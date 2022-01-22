@@ -91,6 +91,8 @@ class LangFuncImpl:
         self.__parent_func = parent
 
     def get_parent_func(self):
+        if self.__parent_func is None:
+            raise Exception(f"Function implementation has no parent function")
         return self.__parent_func
 
     def set_unknown(self, unknown: bool):

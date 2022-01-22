@@ -7,6 +7,7 @@ import flyable.data.lang_class_type as class_type
 if TYPE_CHECKING:
     from flyable.data.lang_file import LangFile
     from flyable.data.lang_func import LangFunc
+    from flyable.code_gen.code_gen import StructType
 
 class LangClass:
 
@@ -15,7 +16,7 @@ class LangClass:
         self.__funcs: List[LangFunc] = []
         self.__attributes = []
         self.__id: int = -1
-        self.__struct = None
+        self.__struct: Union[StructType, None] = None
         self.__file: Union[LangFile, None] = None
         self.__inherits = []
         self.__class_type = class_type.LangClassType(self)
@@ -88,10 +89,12 @@ class LangClass:
     def get_inherits(self, index: int):
         return self.__inherits[index]
 
-    def set_struct(self, struct):
+    def set_struct(self, struct: StructType):
         self.__struct = struct
 
     def get_struct(self):
+        if self.__struct is None:
+            raise Exception(f"Class {self.get_full_name()} has no structure.")
         return self.__struct
 
     def get_lang_type(self):

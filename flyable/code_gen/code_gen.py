@@ -1,7 +1,9 @@
+from __future__ import annotations
 import copy
 import enum
 import platform
 from collections import OrderedDict
+from typing import TYPE_CHECKING, Any, Dict, List, Union
 
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_writer as _writer
@@ -9,6 +11,8 @@ import flyable.code_gen.library_loader as loader
 import flyable.code_gen.module as gen_module
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.runtime as runtime
+from flyable.data.comp_data import CompData
+from flyable.data.lang_class import LangClass
 import flyable.data.lang_func_impl as lang_func_impl
 import flyable.data.lang_type as lang_type
 from flyable.code_gen.code_builder import CodeBuilder
@@ -17,6 +21,8 @@ from flyable.code_gen.code_writer import CodeWriter
 from flyable.debug.code_builder_analyser import CodeBuilderAnalyser
 from flyable.debug.debug_flags import DebugFlags, value_if_debug
 
+if TYPE_CHECKING:
+    from flyable.code_gen.code_gen import CodeGen # To resolve declaration order error
 
 class Linkage(enum.IntEnum):
     INTERNAL = 1,
@@ -33,10 +39,10 @@ class StructType:
     Represent a low-level structure defined by multiple CodeType
     """
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.__name = name
         self.__types = []
-        self.__id = 0
+        self.__id: int = 0
 
     def add_type(self, type):
         self.__types.append(type)
@@ -50,7 +56,7 @@ class StructType:
     def types_iter(self):
         return iter(self.__types)
 
-    def set_id(self, id):
+    def set_id(self, id: int):
         self.__id = id
 
     def get_id(self):
@@ -62,7 +68,7 @@ class StructType:
     def to_code_type(self):
         return CodeType(CodeType.CodePrimitive.STRUCT, self.get_id())
 
-    def write_to_code(self, writer):
+    def write_to_code(self, writer: CodeWriter):
         writer.add_str(self.__name)
         writer.add_int32(len(self.__types))
         for e in self.__types:
@@ -74,14 +80,14 @@ class GlobalVar:
     Represent a low-level const address variable
     """
 
-    def __init__(self, name, type, linkage=Linkage.INTERNAL):
+    def __init__(self, name: str, type: CodeType, linkage: Linkage = Linkage.INTERNAL):
         self.__id = -1
         self.__name = name
         self.__type = type
         self.__initializer = None
         self.__linking = linkage
 
-    def set_id(self, id):
+    def set_id(self, id: int):
         self.__id = id
 
     def get_id(self):
@@ -96,7 +102,7 @@ class GlobalVar:
     def set_initializer(self, data):
         self.__initializer = data
 
-    def write_to_code(self, writer):
+    def write_to_code(self, writer: CodeWriter):
         writer.add_str(self.__name)
         self.__type.write_to_code(writer)
         writer.add_int32(int(self.__linking))
@@ -123,11 +129,11 @@ class CodeFunc:
         use to generate IR
         """
 
-        def __init__(self, id=0):
+        def __init__(self, id: int = 0):
             self.__code_writer = CodeWriter()
             self.__id = id
-            self.__has_return = False
-            self.__br_blocks = []
+            self.__has_return: bool = False
+            self.__br_blocks: List[CodeGen] = []
 
         def get_id(self):
             return self.__id
@@ -135,17 +141,17 @@ class CodeFunc:
         def get_writer(self):
             return self.__code_writer
 
-        def set_has_return(self, ret):
+        def set_has_return(self, ret: bool):
             self.__has_return = ret
 
         def has_return(self):
             return self.__has_return
 
-        def write_to_code(self, writer):
+        def write_to_code(self, writer: CodeWriter):
             writer.add_str(self.get_name())
             self.__code_writer.write_to_code(writer)
 
-        def add_br_block(self, block):
+        def add_br_block(self, block: CodeGen):
             self.__br_blocks.append(block)
 
         def has_br_block(self):
@@ -167,29 +173,29 @@ class CodeFunc:
             self.__br_blocks.clear()
             self.__has_return = False
 
-    def __init__(self, name):
-        self.__id = -1
-        self.__value_id = 0
-        self.__linkage = Linkage.INTERNAL
-        self.__name = name
+    def __init__(self, name: str):
+        self.__id: int = -1
+        self.__value_id: int = 0
+        self.__linkage: Linkage = Linkage.INTERNAL
+        self.__name: str = name
         self.__args = []
         self.__return_type = CodeType()
-        self.__blocks = []
+        self.__blocks: List[CodeFunc.CodeBlock] = []
         self.__builder = value_if_debug(CodeBuilder(self), CodeBuilderAnalyser(self), DebugFlags.SHOW_OUTPUT_BUILDER)
 
-    def set_linkage(self, link):
+    def set_linkage(self, link: Linkage):
         self.__linkage = link
 
     def get_linkage(self):
         return self.__linkage
 
-    def set_id(self, _id):
+    def set_id(self, _id: int):
         self.__id = _id
 
     def get_id(self):
         return self.__id
 
-    def set_return_type(self, type):
+    def set_return_type(self, type: CodeType):
         self.__return_type = type
 
     def get_return_type(self):
@@ -204,7 +210,7 @@ class CodeFunc:
         self.__args.append(arg)
         self.__value_id += 1  # An argument represents a value
 
-    def get_arg(self, index):
+    def get_arg(self, index: int):
         return self.__args[index]
 
     def get_args_count(self):
@@ -226,7 +232,7 @@ class CodeFunc:
     def get_blocks_count(self):
         return len(self.__blocks)
 
-    def get_block(self, index):
+    def get_block(self, index: int):
         return self.__blocks[index]
 
     def blocks_iter(self):
@@ -241,7 +247,7 @@ class CodeFunc:
         self.__blocks = []
         self.__builder = CodeBuilder(self)
 
-    def write_to_code(self, writer):
+    def write_to_code(self, writer: CodeWriter):
         writer.add_str(self.__name)
         writer.add_int32(int(self.__linkage))
         self.__return_type.write_to_code(writer)
@@ -258,13 +264,13 @@ class CodeFunc:
 
 class CodeGen:
 
-    def __init__(self, comp_data):
-        self.__global_vars = []
-        self.__structs = []
-        self.__funcs = OrderedDict()
+    def __init__(self, comp_data: CompData):
+        self.__global_vars: List[GlobalVar] = []
+        self.__structs: List[StructType] = []
+        self.__funcs: OrderedDict[str, CodeFunc] = OrderedDict()
         self.__data = comp_data
-        self.__global_strings = {}
-        self.__py_constants = {}  # Global variable containing python constants
+        self.__global_strings: Dict[str, GlobalVar] = {}
+        self.__py_constants: Dict[Any, GlobalVar] = {}  # Global variable containing python constants
 
         self.__true_var = None
         self.__false_var = None
@@ -277,7 +283,7 @@ class CodeGen:
         self.__python_list_struct = None
         self.__python_tuple_struct = None
         self.__python_func_struct = None
-        self.__python_type_struct = None
+        self.__python_type_struct: Union[StructType, None] = None
 
     def setup(self):
         # Create the Python object struct
@@ -392,63 +398,84 @@ class CodeGen:
         """
         Return the global variable containing the True python object
         """
+        if self.__true_var is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__true_var
 
     def get_false(self):
         """
         Return the global variable containing the False python object
         """
+        if self.__false_var is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__false_var
 
     def get_none(self):
         """
         Return the global variable containing the None python object
         """
+        if self.__none_var is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__none_var
 
     def get_py_func_type(self):
         """
         Return the global variable containing the PyFunctionObject python type
         """
+        if self.__py_func_type_var is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__py_func_type_var
 
-    def get_method_type(self):
-        return self.__method_type
-
     def get_tuple_type(self):
+        if self.__tuple_type is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__tuple_type
 
     def get_method_type(self):
         """
         return the global variable containing the Python method type
         """
+        if self.__method_type is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__method_type
 
     def get_build_in_module(self):
         """
         return the build-in module
         """
+        if self.__build_in_module is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__build_in_module
 
     def get_py_obj_struct(self):
+        if self.__python_obj_struct is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__python_obj_struct
 
     def get_py_list_struct(self):
+        if self.__python_list_struct is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__python_list_struct
 
     def get_py_tuple_struct(self):
+        if self.__python_tuple_struct is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__python_tuple_struct
 
     def get_py_func_struct(self):
+        if self.__python_func_struct is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__python_func_struct
 
     def get_python_type(self):
         """
         return the variable containing the Python type struct
         """
+        if self.__python_type_struct is None:
+            raise Exception("Setup was not called on CodeGen")
         return self.__python_type_struct
 
-    def get_or_create_func(self, name, return_type, args_type=[], link=Linkage.INTERNAL):
+    def get_or_create_func(self, name: str, return_type: CodeType, args_type=[], link=Linkage.INTERNAL):
         # Get case
         if name in self.__funcs:
             return self.__funcs[name]
@@ -474,7 +501,7 @@ class CodeGen:
         self.__global_strings[value] = new_var
         return new_var
 
-    def get_or_insert_const(self, value):
+    def get_or_insert_const(self, value: Any):
         try:
             return self.__py_constants[value]
         except KeyError:
@@ -490,19 +517,19 @@ class CodeGen:
         self.__py_constants[value] = new_var
         return new_var
 
-    def add_struct(self, struct):
+    def add_struct(self, struct: StructType):
         struct.set_id(len(self.__structs))
         self.__structs.append(struct)
 
     def get_struct(self, index):
         return self.__structs[index]
 
-    def add_global_var(self, var):
+    def add_global_var(self, var: GlobalVar):
         var.set_id(len(self.__global_vars))
         self.__global_vars.append(var)
         return var
 
-    def gen_struct(self, _class):
+    def gen_struct(self, _class: LangClass):
         """
         Create a structure from a class and creates the global variable that will hold the type instance of that class
         """
@@ -522,13 +549,14 @@ class CodeGen:
             for attribute in _class.attributes_iter():
                 _class.get_struct().add_type(attribute.get_type().to_code_type(self))
 
-    def gen_func(self, impl):
+    def gen_func(self, impl: lang_func_impl.LangFuncImpl):
         """
         Take an implementation  and create a callable CodeFunction from it
         """
         class_name = ""
-        if impl.get_parent_func().get_class() is not None:
-            class_name = impl.get_parent_func().get_class().get_name()
+        parent_class = impl.get_parent_func().get_class()
+        if parent_class is not None:
+            class_name = parent_class.get_name()
         func_name = "@flyable@__" + class_name + "@" + impl.get_parent_func().get_name() + "@" + \
                     str(impl.get_id()) + "@" + str(impl.get_parent_func().get_id()) + "@" + str(impl.get_id())
         if impl.get_impl_type() == impl.get_impl_type() == lang_func_impl.FuncImplType.TP_CALL:
@@ -584,7 +612,7 @@ class CodeGen:
             writer.add_int32(1)
         else:
             writer.add_int32(0)
-            
+
         # Add structs
         writer.add_int32(len(self.__structs))
         for _struct in self.__structs:
@@ -605,7 +633,7 @@ class CodeGen:
 
         loader.call_code_generation_layer(writer, self.__data.get_config("output"))
 
-    def generate_main(self, main_impl):
+    def generate_main(self, main_impl: lang_func_impl.LangFuncImpl):
         """
         Generate Flyable program entry point.
         """
@@ -677,7 +705,7 @@ class CodeGen:
         else:
             builder.ret(builder.const_int32(0))
 
-    def convert_type(self, builder, type_from, value, type_to):
+    def convert_type(self, builder: CodeBuilder, type_from, value, type_to):
         if type_to.is_python_obj():
             return runtime.value_to_pyobj(self, builder, value, type_from)[1]
         elif type_to.is_obj():
@@ -690,7 +718,7 @@ class CodeGen:
         else:
             raise ValueError("Impossible to convert the type")
 
-    def get_null_from_type(self, builder, type):
+    def get_null_from_type(self, builder: CodeBuilder, type: lang_type.LangType):
         if type.is_int():
             return builder.const_int64(0)
         elif type.is_dec():

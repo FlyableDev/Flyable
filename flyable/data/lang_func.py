@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 from typing import Union
+from flyable.data.lang_class import LangClass
 import flyable.data.lang_type as type
 import flyable.data.lang_file as lang_file
 from flyable.data.lang_func_impl import LangFuncImpl, FuncImplType
@@ -24,7 +25,7 @@ class LangFunc:
         self.__setup_unknown_impl()
         self.__setup_python_impl()
 
-        self.__class_lang = None
+        self.__class_lang: Union[LangClass, None] = None
         self.__file = None
         self.__is_global = False
 

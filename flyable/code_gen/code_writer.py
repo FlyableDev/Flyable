@@ -31,7 +31,7 @@ class CodeWriter:
             bytes = bytearray(struct.pack("d", value))
             self.__data += bytes
 
-    def add_str(self, value):
+    def add_str(self, value: str):
         if not self.is_lock():
             self.add_int32(len(value))
             self.__data += str.encode(value)

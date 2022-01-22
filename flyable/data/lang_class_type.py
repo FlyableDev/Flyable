@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
@@ -5,6 +7,8 @@ import flyable.code_gen.code_builder as code_builder
 import flyable.code_gen.runtime as runtime
 import flyable.code_gen.caller as caller
 
+if TYPE_CHECKING:
+    from flyable.code_gen.code_gen import CodeGen
 
 class LangClassType:
     """
@@ -19,7 +23,7 @@ class LangClassType:
         self.__set_attr_func = None
         self.__dealloc_func = None
 
-    def setup(self, code_gen):
+    def setup(self, code_gen: CodeGen):
         global_instance = gen.GlobalVar("flyable@type@" + self.__lang_class.get_name(),
                                         code_type.get_py_type(code_gen).get_ptr_to(), gen.Linkage.INTERNAL)
         code_gen.add_global_var(global_instance)
