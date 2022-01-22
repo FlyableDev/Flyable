@@ -1,16 +1,22 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import flyable.code_gen.runtime as runtime
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.debug as debug
 import flyable.data.lang_type as lang_type
+from flyable.code_gen.code_builder import CodeBuilder
+
+if TYPE_CHECKING:
+    from flyable.parse.parser_visitor import ParserVisitor
 
 """
 module to handle flyable object info
 """
 
 
-def py_obj_get_attr(visitor, obj, name, obj_type=None):
+def py_obj_get_attr(visitor: ParserVisitor, obj, name: str, obj_type=None):
     """
     Obtain the attribute of an object by calling get_attr or get_attro.
     If a type is supplied it will avoid loading the type again
@@ -139,15 +145,15 @@ def get_obj_attribute_start_index():
     return 2
 
 
-def get_py_obj_type_ptr(builder, obj):
+def get_py_obj_type_ptr(builder: CodeBuilder, obj):
     return builder.gep(obj, builder.const_int32(0), builder.const_int32(1))
 
 
-def get_py_obj_type(builder, obj):
+def get_py_obj_type(builder: CodeBuilder, obj):
     return builder.load(get_py_obj_type_ptr(builder, obj))
 
 
-def get_py_obj_type_getattr_ptr(visitor, obj):
+def get_py_obj_type_getattr_ptr(visitor: ParserVisitor, obj):
     builder = visitor.get_builder()
     return visitor.get_builder().gep(obj, builder.const_int32(0), builder.const_int32(8))
 

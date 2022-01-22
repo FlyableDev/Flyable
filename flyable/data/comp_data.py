@@ -23,7 +23,7 @@ class CompData:
         """
         Clear info ask to every data he holds to remove parsed defined data
         """
-        for e in list(self.__files.values()) + self.__funcs + self.__classes:
+        for e in list(self.__files.values()) + self.__funcs + self.__classes: # type: ignore
             e.clear_info()
 
     def add_file(self, file: LangFile):
@@ -68,7 +68,7 @@ class CompData:
     def get_files_count(self):
         return len(self.__files)
 
-    def add_func(self, func):
+    def add_func(self, func: LangFunc):
         self.__change = True
         func.set_id(self.get_funcs_count())
         self.__funcs.append(func)
@@ -82,7 +82,7 @@ class CompData:
     def funcs_iter(self):
         return iter(self.__funcs)
 
-    def add_class(self, _class):
+    def add_class(self, _class: LangClass):
         self.__change = True
         _class.set_id(self.get_classes_count())
         self.__classes.append(_class)

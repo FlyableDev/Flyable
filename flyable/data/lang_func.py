@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import ast
-import flyable.data.lang_file as lang_file
-
-from flyable.data.lang_func_impl import LangFuncImpl, FuncImplType
+from typing import Union
 import flyable.data.lang_type as type
+import flyable.data.lang_file as lang_file
+from flyable.data.lang_func_impl import LangFuncImpl, FuncImplType
 
 
 class LangFunc:
@@ -34,13 +34,13 @@ class LangFunc:
     def get_class(self):
         return self.__class_lang
 
-    def set_id(self, id):
+    def set_id(self, id: int):
         self.__id = id
 
     def get_id(self):
         return self.__id
 
-    def add_impl(self, func):
+    def add_impl(self, func: LangFuncImpl):
         func.set_parent_func(self)
         func.set_id(len(self.__impls))
         self.__impls.append(func)
@@ -60,7 +60,7 @@ class LangFunc:
     def impls_iter(self):
         return iter(self.__impls)
 
-    def find_impl_by_signature(self, args_type):
+    def find_impl_by_signature(self, args_type) -> Union[LangFuncImpl, None]:
         for i in self.__impls:
             if not i.is_unknown() and i.get_args_count() == len(args_type):  # Same arguments count
                 same_signature = True
@@ -73,6 +73,7 @@ class LangFunc:
 
                 if same_signature:
                     return i
+        return None
 
     def get_min_args(self):
         """

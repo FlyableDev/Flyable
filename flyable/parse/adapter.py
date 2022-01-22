@@ -1,4 +1,5 @@
 import copy
+from flyable.data.lang_func import LangFunc
 
 import flyable.data.lang_func_impl as lang_func_impl
 import flyable.data.type_hint as hint
@@ -23,7 +24,7 @@ def adapt_call(func_name, call_type, args, comp_data, parser, codegen):
     return call_type
 
 
-def adapt_func(func, args, comp_data, parser):
+def adapt_func(func: LangFunc, args, comp_data, parser):
     """
     Specialise a function to the given arguments.
     Return an already specialise one if a matching one found.

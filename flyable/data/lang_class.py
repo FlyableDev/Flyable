@@ -1,9 +1,12 @@
-from typing import Union, List
-from flyable.data.lang_file import LangFile
-from flyable.data.lang_func import LangFunc
+from __future__ import annotations
+
+from typing import Union, List, TYPE_CHECKING
 from flyable.data.lang_type import LangType
 import flyable.data.lang_class_type as class_type
 
+if TYPE_CHECKING:
+    from flyable.data.lang_file import LangFile
+    from flyable.data.lang_func import LangFunc
 
 class LangClass:
 

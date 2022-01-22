@@ -68,7 +68,7 @@ class Compiler(ErrorThrower):
 
                 # Create a specialization for the main module to execute
                 self.__main_impl = adapter.adapt_func(
-                    self.__data.get_file(0).get_global_func(),
+                    self.__data.get_file(0).get_global_func(), # type: ignore
                     [],
                     self.__data,
                     self.__parser,
@@ -96,12 +96,14 @@ class Compiler(ErrorThrower):
         for _class in self.__data.classes_iter():
             node = _class.get_node()
             for e in node.bases:
-                found_class = _class.get_file().find_content_by_id(e.id)
-                if isinstance(found_class, lang_class.LangClass):
-                    _class.add_inherit(found_class)
-                else:
-                    self.__parser.throw_error(
-                        str(e) + " not expected to inherits",
-                        node.lineno,
-                        node.end_col_offset,
-                    )
+                file = _class.get_file()
+                if file:
+                    found_class = file.find_content_by_id(e.id)
+                    if isinstance(found_class, lang_class.LangClass):
+                        _class.add_inherit(found_class)
+                    else:
+                        self.__parser.throw_error(
+                            str(e) + " not expected to inherits",
+                            node.lineno,
+                            node.end_col_offset,
+                        )

@@ -1,5 +1,11 @@
+from __future__ import annotations
+
 import copy
-from typing import List
+from typing import List, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flyable.code_gen.code_gen import CodeFunc
+    from flyable.data.lang_func import LangFunc
 
 import flyable.data.lang_type as type
 import flyable.parse.context as context
@@ -36,9 +42,9 @@ class LangFuncImpl:
     def __init__(self):
         self.__id: int = -1
         self.__unknown: bool = False
-        self.__code_func = None
+        self.__code_func: Union[CodeFunc, None] = None
         self.__args: List[type.LangType] = []
-        self.__parent_func = None
+        self.__parent_func: Union[LangFunc, None] = None
 
         self.__parse_status = LangFuncImpl.ParseStatus.NOT_STARTED
 
@@ -58,7 +64,7 @@ class LangFuncImpl:
     def get_id(self):
         return self.__id
 
-    def set_impl_type(self, impl):
+    def set_impl_type(self, impl: FuncImplType):
         self.__impl_type = impl
 
     def get_impl_type(self):
@@ -81,7 +87,7 @@ class LangFuncImpl:
     def args_iter(self):
         return iter(self.__args)
 
-    def set_parent_func(self, parent):
+    def set_parent_func(self, parent: LangFunc):
         self.__parent_func = parent
 
     def get_parent_func(self):
@@ -107,7 +113,7 @@ class LangFuncImpl:
         hint.remove_hint_type(return_type, hint.TypeHintRefIncr)
         self.__return_type = return_type
 
-    def set_code_func(self, func):
+    def set_code_func(self, func: CodeFunc):
         self.__code_func = func
 
     def get_code_func(self):
@@ -142,7 +148,11 @@ class LangFuncImpl:
 
     def clear_info(self):
         # We need to keep global variable for global funcs
-        if not self.get_parent_func().is_global():
+        parent_func = self.get_parent_func()
+        if parent_func is None:
+            raise Exception("Could not clear info of function implementation due to missing parent function")
+
+        if not parent_func.is_global():
             self.__context = context.Context()
         else:
             self.__context.clear_info()

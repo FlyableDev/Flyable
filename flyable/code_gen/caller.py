@@ -21,10 +21,11 @@ import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as hint
 import flyable.parse.adapter as adapter
 import flyable.parse.shortcut as shortcut
+from flyable.parse.parser_visitor import ParserVisitor
 from flyable.code_gen.code_type import CodeType
 
 
-def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False, protocol=True, shortcuts=True):
+def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.LangType, args, args_type, optional=False, protocol=True, shortcuts=True):
     """
     Call a method independent from the called type.
     There is 3 calls scenario:
@@ -36,14 +37,20 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False,
         # Traditional and direct obj call
         called_class = visitor.get_data().get_class(obj_type.get_id())
         called_func = called_class.get_func(func_name)
-        if called_func is None and optional:
-            return None, None
+        if called_func is None:
+            if optional:
+                return None, None
+            raise Exception(f"Function could not be called. Not found in called class {called_class.get_full_name()}")
+        
         called_impl = adapter.adapt_func(
             called_func,
             [obj_type] + args_type,
             visitor.get_data(),
             visitor.get_parser(),
         )
+        if called_impl is None:
+            raise Exception(f"Could not create the specialized function {func_name}. Invalid function args.")
+        
         return_type = called_impl.get_return_type()
         return_type.add_hint(hint.TypeHintRefIncr())
         return return_type, visitor.get_builder().call(
@@ -117,7 +124,7 @@ def call_obj(visitor, func_name, obj, obj_type, args, args_type, optional=False,
 
 
 def _handle_binary_number_protocol(
-        visitor, func_name: str, obj, obj_type, args, args_type
+        visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.LangType, args, args_type
 ):
     instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
     return lang_type.get_python_obj_type(

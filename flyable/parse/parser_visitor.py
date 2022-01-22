@@ -4,7 +4,7 @@ import ast
 import copy
 import enum
 from ast import *
-from typing import Any
+from typing import Any, Union
 
 import flyable.code_gen.caller as caller
 import flyable.code_gen.code_gen as gen
@@ -44,7 +44,7 @@ class ParserVisitor(NodeVisitor):
         self.__code_gen: gen.CodeGen = code_gen
         self.__assign_type: LangType = LangType()
         self.__assign_value = None
-        self.__last_type: LangType = LangType()
+        self.__last_type: Union[LangType, None] = LangType()
         self.__last_value = None
         self.__aug_mode = False
         self.__func: LangFuncImpl = func_impl
@@ -1349,7 +1349,7 @@ class ParserVisitor(NodeVisitor):
     def __reset_info(self):
         self.__assign_type: LangType = LangType()
         self.__assign_value = None
-        self.__last_type: LangType = LangType()
+        self.__last_type = LangType()
         self.__last_value = None
         self.__current_node = None
         self.__reset_visit = False
