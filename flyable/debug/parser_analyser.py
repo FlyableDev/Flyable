@@ -3,12 +3,12 @@ from operator import attrgetter
 from typing import Callable
 
 from flyable.parse.parser_visitor import ParserVisitor
+from flyable.debug.utils import dprint, dindent_plus, dget_indent, dindent_minus
 
 
 class ParseAnalyser(ParserVisitor):
     def __init__(self, parser, code_gen, func_impl):
         super().__init__(parser, code_gen, func_impl)
-        self.tabs = 0
         self.max_depth = -1
         self.depth = 0
         self.__setup()
@@ -24,12 +24,12 @@ class ParseAnalyser(ParserVisitor):
     def __gen_method(self, func: Callable) -> Callable:
         def new_method(node: ast.AST):
             values = self.__get_values(node)
-            print("\t" * self.tabs + f"<{func.__name__} {values}>")
-            self.tabs += 1
+            dprint(f"<{func.__name__} {values}>")
+            dindent_plus()
             result = func(node)
-            self.tabs -= 1
-            print("\t" * self.tabs + f"</{func.__name__}>")
-            if self.tabs == 0:
+            dindent_minus()
+            dprint(f"</{func.__name__}>")
+            if dget_indent() == 0:
                 print()
             return result
 
