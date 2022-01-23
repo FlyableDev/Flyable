@@ -1,6 +1,12 @@
 """
 Module with routines to handle Python and Flyable list
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flyable.code_gen.code_builder import CodeBuilder
+    from flyable.code_gen.code_gen import CodeGen
 
 from flyable.parse.parser_visitor import ParserVisitor
 import flyable.code_gen.exception as excp
@@ -10,10 +16,9 @@ import flyable.code_gen.runtime as runtime
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.data.type_hint as hint
 import flyable.data.lang_type as lang_type
-import flyable.code_gen.debug as debug
 
 
-def instanciate_python_list(code_gen, builder, len):
+def instanciate_python_list(code_gen: CodeGen, builder: CodeBuilder, len: int):
     """
     Generate the code to allocate a Python List
     """

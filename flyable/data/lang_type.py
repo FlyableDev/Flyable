@@ -28,7 +28,7 @@ def to_code_type(code_gen: code_gen.CodeGen, type: Union[LangType, List[LangType
     return type.to_code_type(code_gen)
 
 
-def _get_type_common(primary_type: LangType, second_type:LangType=None) -> LangType:
+def _get_type_common(primary_type: LangType, second_type: LangType = None) -> LangType:
     result: LangType
     if primary_type == second_type or second_type is None:
         result = copy.copy(primary_type)
@@ -77,7 +77,7 @@ def get_bool_type():
     return LangType(LangType.Type.BOOLEAN)
 
 
-def get_python_obj_type(obj_hint: Union[hint.TypeHint, List[hint.TypeHint]]=None):
+def get_python_obj_type(obj_hint: Union[hint.TypeHint, List[hint.TypeHint]] = None):
     result = LangType(LangType.Type.PYTHON)
 
     if isinstance(obj_hint, list):
@@ -133,14 +133,14 @@ class LangType:
         BOOLEAN = 7,  # Boolean value
         NONE = 8  # The None keyword
 
-    def __init__(self, type:Type=Type.UNKNOWN, id:int=0):
+    def __init__(self, type: Type = Type.UNKNOWN, id: int = 0):
         if not isinstance(id, int):
             raise TypeError("Integer expected for id")
 
         self.__type: LangType.Type = type
         self.__id: int = id
         # Hints are extra data that allows the compiler to perform more severe optimization
-        self.__hints: List[Union[hint.TypeHint, hint.TypeHintPythonType]] = []
+        self.__hints: list[hint.TypeHint | hint.TypeHintPythonType] = []
 
     def is_unknown(self):
         return self.__type == LangType.Type.UNKNOWN
@@ -160,6 +160,9 @@ class LangType:
     def is_collection(self):
         return self.is_list() or self.is_set() or self.is_dict() or self.is_tuple()
 
+    def is_str(self):
+        return self.is_python_obj("builtins.str")
+
     def is_int(self):
         return self.__type == LangType.Type.INTEGER
 
@@ -178,7 +181,7 @@ class LangType:
     def is_module(self):
         return self.__type == LangType.Type.MODULE
 
-    def is_python_obj(self, type_path:str=None):
+    def is_python_obj(self, type_path: str = None):
         if type_path is None:
             return self.__type == LangType.Type.PYTHON
         else:

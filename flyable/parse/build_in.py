@@ -2,10 +2,16 @@
 Module managing all functions
 """
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flyable.parse.parser_visitor import ParserVisitor
+    from flyable.data.lang_type import LangType
+
+from abc import ABC, abstractmethod
+
 import flyable.code_gen.runtime as runtime
-import flyable.code_gen.code_type as code_type
-import flyable.code_gen.list as gen_list
-import flyable.code_gen.fly_obj as fly_obj
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.list as gen_list
 
@@ -18,13 +24,14 @@ def get_build_in_name(name):
         return None
 
 
-class BuildInFunc:
+class BuildInFunc(ABC):
 
     def __init__(self):
-        pass
+        """Initialize the buildin function"""
 
-    def parse(self, args_types, args, visitor):
-        pass
+    @abstractmethod
+    def parse(self, args_types: list[LangType], args: list, visitor: ParserVisitor) -> tuple[LangType, int]:
+        """Parses the function"""
 
 
 class BuildInList(BuildInFunc):
@@ -53,11 +60,25 @@ class BuildInLen(BuildInFunc):
                                                                         args[0])
 
 
+class BuildInInt(BuildInFunc):
+
+    def __init__(self):
+        super().__init__()
+
+    def parse(self, args_types, args, visitor):
+        if len(args_types) == 1 and args_types[0].is_str():
+            return lang_type.get_int_type(), gen_list.python_list_len(visitor, args[0])
+        else:
+            return lang_type.get_int_type(), runtime.py_runtime_obj_len(visitor.get_code_gen(), visitor.get_builder(),
+                                                                        args[0])
+
+
 def get_build_in(name):
     name = str(name)
     build_in_funcs = {
         "list": BuildInList,
         "len": BuildInLen,
+        "int": BuildInFunc
     }
 
     if name in build_in_funcs:
