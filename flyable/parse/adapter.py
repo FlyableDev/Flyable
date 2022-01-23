@@ -8,12 +8,10 @@ if TYPE_CHECKING:
     from flyable.data.lang_func import LangFunc
 
 import flyable.data.lang_func_impl as lang_func_impl
-import flyable.data.type_hint as hint
-from flyable.parse.variable import Variable
 from flyable.debug.debug_flags import DebugFlags, debug_flag_enabled
 
 
-def adapt_call(func_name: str, call_type: LangType, args, comp_data: CompData, parser: Parser, codegen: CodeGen):
+def adapt_call(func_name: str, call_type: LangType, args: list, comp_data: CompData, parser: Parser, codegen: CodeGen):
     """
     Handle the logic to make the function call possible.
     If it's a Flyable optimized object, it will specialise a function.
@@ -31,7 +29,7 @@ def adapt_call(func_name: str, call_type: LangType, args, comp_data: CompData, p
     return call_type
 
 
-def adapt_func(func: LangFunc, args, comp_data: CompData, parser: Parser):
+def adapt_func(func: LangFunc, args: list, comp_data: CompData, parser: Parser):
     """
     Specialise a function to the given arguments.
     Return an already specialise one if a matching one found.
@@ -91,7 +89,7 @@ def __adapt_python_impl(func: LangFunc, comp_data: CompData, parser: Parser):
     parser.parse_impl(vec_adapted_impl)
 
 
-def __validate(func, args):
+def __validate(func: LangFunc, args: list):
     """
     Make sure the function args count is compatible
     """

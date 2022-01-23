@@ -1,4 +1,3 @@
-from typing import Union, List
 from flyable.data.lang_type import LangType
 from flyable.parse.variable import Variable
 
@@ -6,7 +5,7 @@ from flyable.parse.variable import Variable
 class Context:
 
     def __init__(self):
-        self.__vars: List[Variable] = []
+        self.__vars: list[Variable] = []
 
     def add_var(self, name: str, type: LangType):
         new_var = Variable(len(self.__vars))
@@ -15,7 +14,7 @@ class Context:
         self.__vars.append(new_var)
         return new_var
 
-    def get_var(self, value: Union[str, int]) -> Union[Variable, None]:
+    def get_var(self, value: str | int) -> Variable | None:
         """
         Deprecated:
             you should call `get_var_by_idx` or `get_var_by_name` instead
@@ -25,7 +24,7 @@ class Context:
         else:  # search by index
             return self.get_var_by_idx(value)
 
-    def get_var_by_idx(self, idx: int) -> Union[Variable, None]:
+    def get_var_by_idx(self, idx: int) -> Variable | None:
         """Finds the variable at the matching index
 
         Args:
@@ -41,7 +40,7 @@ class Context:
         # the test abs(idx) < len(list) if one wasn't substracted from it
         return self.__vars[idx] if abs(idx) - 1 < len(self.__vars) else None
 
-    def get_var_by_name(self, name: str) -> Union[Variable, None]:
+    def get_var_by_name(self, name: str) -> Variable | None:
         """Finds the variable with the matching name
 
         Args:
@@ -56,9 +55,9 @@ class Context:
         return None
 
     def find_active_var(self, name: str):
-        for e in self.__vars:
-            if e.get_name() == name and e.is_used():
-                return e
+        for var in self.__vars:
+            if var.get_name() == name and var.is_used():
+                return var
         return None
 
     def vars_iter(self):
@@ -68,5 +67,5 @@ class Context:
         return len(self.__vars)
 
     def clear_info(self):
-        for e in self.__vars:
-            e.set_use(True)
+        for var in self.__vars:
+            var.set_use(True)

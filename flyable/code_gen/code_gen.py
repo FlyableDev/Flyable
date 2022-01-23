@@ -21,8 +21,6 @@ from flyable.code_gen.code_writer import CodeWriter
 from flyable.debug.code_builder_analyser import CodeBuilderAnalyser
 from flyable.debug.debug_flags import DebugFlags, value_if_debug
 
-if TYPE_CHECKING:
-    from flyable.code_gen.code_gen import CodeGen # To resolve declaration order error
 
 class Linkage(enum.IntEnum):
     INTERNAL = 1,
