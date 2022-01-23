@@ -41,7 +41,7 @@ class PreParser(ast.NodeVisitor, ErrorThrower):
     def generic_visit(self, node):
         super().generic_visit(node)
 
-    def visit_FunctionDef(self, node):
+    def visit_FunctionDef(self, node: ast.FunctionDef):
         if self.__current_file:
             new_func = func.LangFunc(node)
             new_func.set_file(self.__current_file)
@@ -52,7 +52,7 @@ class PreParser(ast.NodeVisitor, ErrorThrower):
                 self.__current_class.add_func(new_func)
             super().generic_visit(node)
 
-    def visit_ClassDef(self, node):
+    def visit_ClassDef(self, node: ast.ClassDef):
         if self.__current_file:
             new_class = _class.LangClass(node)
             new_class.set_file(self.__current_file)

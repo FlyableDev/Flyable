@@ -1,6 +1,8 @@
 from __future__ import annotations
+import ast
 
 from typing import Union, List, TYPE_CHECKING
+from flyable.data.attribute import Attribut
 from flyable.data.lang_type import LangType
 import flyable.data.lang_class_type as class_type
 
@@ -11,7 +13,7 @@ if TYPE_CHECKING:
 
 class LangClass:
 
-    def __init__(self, node):
+    def __init__(self, node: ast.ClassDef):
         self.__node = node
         self.__funcs: List[LangFunc] = []
         self.__attributes = []
@@ -59,13 +61,15 @@ class LangClass:
         return self.__node.name
 
     def get_full_name(self):
+        if self.__file is None:
+            raise Exception(f"LangClass {self.get_name()} is not in any file")
         return self.__file.get_path() + self.get_name()
 
-    def add_attribute(self, attr):
+    def add_attribute(self, attr: Attribut):
         attr.set_id(len(self.__attributes))
         self.__attributes.append(attr)
 
-    def get_attribute(self, index):
+    def get_attribute(self, index: int):
         if isinstance(index, int):
             return self.__attributes[index]
         elif isinstance(index, str):

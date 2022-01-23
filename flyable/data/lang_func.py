@@ -16,20 +16,20 @@ class LangFunc:
         body....
     """
 
-    def __init__(self, node):
+    def __init__(self, node: Union[ast.FunctionDef, ast.Module]):
 
         self.__node = node
 
-        self.__id = -1
+        self.__id: int = -1
         # Setup args
         self.__setup_unknown_impl()
         self.__setup_python_impl()
 
         self.__class_lang: Union[LangClass, None] = None
-        self.__file = None
-        self.__is_global = False
+        self.__file: Union[lang_file.LangFile, None] = None
+        self.__is_global: bool = False
 
-    def set_class(self, _class):
+    def set_class(self, _class: LangClass):
         self.__class_lang = _class
 
     def get_class(self):
@@ -46,7 +46,7 @@ class LangFunc:
         func.set_id(len(self.__impls))
         self.__impls.append(func)
 
-    def get_impl(self, index):
+    def get_impl(self, index: int):
         return self.__impls[index]
 
     def set_file(self, file: lang_file.LangFile):
@@ -107,6 +107,8 @@ class LangFunc:
             return "@global@module@"
 
     def get_arg(self, index):
+        if isinstance(self.__node, ast.Module):
+            raise Exception("Cannot get argument of LangFunc, it is an ast.Module")
         return self.__node.args.args[index]
 
     def get_args_count(self):

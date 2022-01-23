@@ -1,15 +1,22 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING, Type, Union
+
+if TYPE_CHECKING:
+    from flyable.data.lang_type import LangType
+
+
 class TypeHint:
     pass
 
 
-def get_lang_type_contained_hint_type(lang_type, hint_type):
+def get_lang_type_contained_hint_type(lang_type: LangType, hint_type: Type[TypeHint]):
     for hint in lang_type.get_hints():
         if isinstance(hint, hint_type):
             return hint
     return None
 
 
-def remove_hint_type(lang_type, hint_type):
+def remove_hint_type(lang_type: LangType, hint_type: Type[TypeHint]):
     for i, hint in enumerate(lang_type.get_hints()):
         if isinstance(hint, hint_type):
             lang_type.remove_hint(i)
@@ -25,7 +32,7 @@ Const value hints
 
 class TypeHintConstValue(TypeHint):
 
-    def __init__(self, value):
+    def __init__(self, value: Union[int, float, bool, str]):
         self.__value = value
 
     def get_value(self):
@@ -33,22 +40,22 @@ class TypeHintConstValue(TypeHint):
 
 
 class TypeHintConstDec(TypeHintConstValue):
-    def __init__(self, value):
+    def __init__(self, value: float):
         super().__init__(value)
 
 
 class TypeHintConstInt(TypeHintConstValue):
-    def __init__(self, value):
+    def __init__(self, value: int):
         super().__init__(value)
 
 
 class TypeHintConstBool(TypeHintConstValue):
-    def __init__(self, value):
+    def __init__(self, value: bool):
         super().__init__(value)
 
 
 class TypeHintConstStr(TypeHintConstValue):
-    def __init__(self, value):
+    def __init__(self, value: str):
         super().__init__(value)
 
 
@@ -61,10 +68,10 @@ Type hints
 """
 
 
-def is_python_type(lang_type, class_path):
+def is_python_type(lang_type: LangType, class_path: str):
     if lang_type.is_python_obj():
         found_hint = get_lang_type_contained_hint_type(lang_type, TypeHintPythonType)
-        if found_hint is not None:
+        if found_hint is not None and isinstance(found_hint, TypeHintPythonType):
             return found_hint.get_class_path() == class_path
     return False
 
@@ -75,7 +82,7 @@ class TypeHintPythonType(TypeHint):
     Used to cache functions
     """
 
-    def __init__(self, class_path):
+    def __init__(self, class_path: str):
         self.__class_path = class_path
 
     def get_class_path(self):
@@ -87,7 +94,7 @@ class TypeHintConstLen(TypeHint):
     Hint representing a container (list, dict,tuple...) with a const len
     """
 
-    def __init__(self, count):
+    def __init__(self, count: int):
         self.__count = count
 
     def get_count(self):
@@ -99,7 +106,7 @@ class TypeHintCollectionContentHint(TypeHint):
     Hint representing what content a collection has inside
     """
 
-    def __init__(self, hint_type):
+    def __init__(self, hint_type: LangType):
         self.__hint_type = hint_type
 
     def get_hint_type(self):
@@ -115,12 +122,12 @@ class TypeHintCollectionContentRange(TypeHint):
     Hint representing what content collection has inside for a specific range of int
     """
 
-    def __init__(self, minimum=0, maximum=0, type = None):
-        self.__min_range = minimum
-        self.__max_range = maximum
+    def __init__(self, minimum=0, maximum=0, type: LangType = None):
+        self.__min_range: int = minimum
+        self.__max_range: int = maximum
         self.__type = type
 
-    def set_range(self, minimum, maximum):
+    def set_range(self, minimum: int, maximum: int):
         self.__min_range = minimum
         self.__max_range = maximum
 
