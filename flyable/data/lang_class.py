@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import ast
-from typing import Union, List, TYPE_CHECKING
-from flyable.data.attribute import Attribut
+from typing import TYPE_CHECKING
 from flyable.data.lang_type import LangType
 import flyable.data.lang_class_type as class_type
 
@@ -10,18 +9,19 @@ if TYPE_CHECKING:
     from flyable.data.lang_file import LangFile
     from flyable.data.lang_func import LangFunc
     from flyable.code_gen.code_gen import StructType
+    from flyable.data.attribute import Attribut
 
 
 class LangClass:
 
-    def __init__(self, node: ast.AST):
-        self.__node: ast.AST = node
+    def __init__(self, node: ast.ClassDef):
+        self.__node: ast.ClassDef = node
         self.__funcs: list[LangFunc] = []
-        self.__attributes = []
+        self.__attributes: list[Attribut] = []
         self.__id: int = -1
         self.__struct: StructType | None = None
         self.__file: LangFile | None = None
-        self.__inherits = []
+        self.__inherits: list[LangClass] = []
         self.__class_type = class_type.LangClassType(self)
 
     def get_node(self):
@@ -33,7 +33,7 @@ class LangClass:
     def get_file(self):
         return self.__file
 
-    def add_func(self, func):
+    def add_func(self, func: LangFunc):
         func.set_class(self)
         func.set_id(len(self.__funcs))
         self.__funcs.append(func)
@@ -63,7 +63,7 @@ class LangClass:
 
     def get_full_name(self):
         if self.__file is None:
-            raise Exception(f"LangClass {self.get_name()} is not in any file")
+            raise NotImplementedError(f"LangClass {self.get_name()} is not in any file")
         return self.__file.get_path() + self.get_name()
 
     def add_attribute(self, attr: Attribut):
@@ -84,7 +84,7 @@ class LangClass:
     def attributes_iter(self):
         return iter(self.__attributes)
 
-    def add_inherit(self, inherit):
+    def add_inherit(self, inherit: LangClass):
         self.__inherits.append(inherit)
 
     def iter_inherits(self):

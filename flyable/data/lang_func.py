@@ -19,9 +19,9 @@ class LangFunc:
         body....
     """
 
-    def __init__(self, node: ast.AST):
+    def __init__(self, node: ast.FunctionDef | ast.Module):
 
-        self.__node: ast.AST = node
+        self.__node: ast.FunctionDef | ast.Module = node
 
         self.__id: int = -1
         # Setup args
@@ -65,18 +65,19 @@ class LangFunc:
         return iter(self.__impls)
 
     def find_impl_by_signature(self, args_type) -> LangFuncImpl | None:
-        for i in self.__impls:
-            if not i.is_unknown() and i.get_args_count() == len(args_type):  # Same arguments count
+        for impl in self.__impls:
+            if not impl.is_unknown() and impl.get_args_count() == len(args_type):  # Same arguments count
                 same_signature = True
-                for j in range(i.get_args_count()):
-                    if i.get_arg(j) != args_type[j]:
+                for arg, arg_type in zip(impl.get_args(), args_type):
+                    if arg != arg_type:
                         same_signature = False
+                        break
 
-                if not i.get_impl_type() == FuncImplType.SPECIALIZATION:
+                if not impl.get_impl_type() == FuncImplType.SPECIALIZATION:
                     same_signature = False
 
                 if same_signature:
-                    return i
+                    return impl
         return None
 
     def get_min_args(self):
@@ -106,12 +107,11 @@ class LangFunc:
     def get_name(self):
         if isinstance(self.__node, ast.FunctionDef):
             return self.__node.name
-        else:
-            return "@global@module@"
+        return "@global@module@"
 
-    def get_arg(self, index):
+    def get_arg(self, index: int):
         if isinstance(self.__node, ast.Module):
-            raise Exception("Cannot get argument of LangFunc, it is an ast.Module")
+            raise TypeError("Cannot get argument of LangFunc, it is an ast.Module")
         return self.__node.args.args[index]
 
     def get_args_count(self):
