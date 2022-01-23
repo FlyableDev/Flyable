@@ -44,7 +44,7 @@ class Parser(ErrorThrower):
                 vis = value_if_debug(
                     ParserVisitor(self, self.__code_gen, func_impl),
                     parser_analyser.ParseAnalyser(self, self.__code_gen, func_impl),
-                    DebugFlags.SHOW_OUTPUT_BUILDER,
+                    DebugFlags.SHOW_VISIT_AST,
                 )
 
                 vis.parse()
