@@ -21,7 +21,7 @@ class FuncImplType(enum.IntEnum):
 
 
 class LangFuncImpl:
-    """"
+    """
     Represents an actual implementation of a function.
     In most cases a function will generate two different sets of machine instructions.
     This class represent a concrete implementation of this.
@@ -42,9 +42,9 @@ class LangFuncImpl:
     def __init__(self):
         self.__id: int = -1
         self.__unknown: bool = False
-        self.__code_func: Union[CodeFunc, None] = None
-        self.__args: List[type.LangType] = []
-        self.__parent_func: Union[LangFunc, None] = None
+        self.__code_func: CodeFunc | None = None
+        self.__args: list[type.LangType] = []
+        self.__parent_func: LangFunc | None = None
 
         self.__parse_status = LangFuncImpl.ParseStatus.NOT_STARTED
 

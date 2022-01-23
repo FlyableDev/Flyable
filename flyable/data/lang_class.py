@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from typing import Union, List, TYPE_CHECKING
 from flyable.data.lang_type import LangType
 import flyable.data.lang_class_type as class_type
@@ -9,22 +10,23 @@ if TYPE_CHECKING:
     from flyable.data.lang_func import LangFunc
     from flyable.code_gen.code_gen import StructType
 
+
 class LangClass:
 
-    def __init__(self, node):
-        self.__node = node
-        self.__funcs: List[LangFunc] = []
+    def __init__(self, node: ast.AST):
+        self.__node: ast.AST = node
+        self.__funcs: list[LangFunc] = []
         self.__attributes = []
         self.__id: int = -1
-        self.__struct: Union[StructType, None] = None
-        self.__file: Union[LangFile, None] = None
+        self.__struct: StructType | None = None
+        self.__file: LangFile | None = None
         self.__inherits = []
         self.__class_type = class_type.LangClassType(self)
 
     def get_node(self):
         return self.__node
 
-    def set_file(self, file):
+    def set_file(self, file: LangFile):
         self.__file = file
 
     def get_file(self):
@@ -35,13 +37,13 @@ class LangClass:
         func.set_id(len(self.__funcs))
         self.__funcs.append(func)
 
-    def get_func(self, index):
+    def get_func(self, index: int | str):
         if isinstance(index, int):
             return self.__funcs[index]
-        else:
-            for e in self.__funcs:
-                if e.get_name() == index:
-                    return e
+        for func in self.__funcs:
+            if func.get_name() == index:
+                return func
+        return None
 
     def get_funcs_count(self):
         return len(self.__funcs)
@@ -65,13 +67,12 @@ class LangClass:
         attr.set_id(len(self.__attributes))
         self.__attributes.append(attr)
 
-    def get_attribute(self, index):
+    def get_attribute(self, index: int | str):
         if isinstance(index, int):
             return self.__attributes[index]
-        elif isinstance(index, str):
-            for e in self.__attributes:
-                if e.get_name() == index:
-                    return e
+        for attribute in self.__attributes:
+            if attribute.get_name() == index:
+                return attribute
         return None
 
     def get_attributes_count(self):

@@ -9,6 +9,7 @@ class DebugFlags(Enum):
     SHOW_VISIT_AST = auto()
     SHOW_OUTPUT_BUILDER = auto()
     SHOW_OPCODE_ON_EXEC = auto()
+    PRINT_FUNC_IMPL = auto()
 
     @classmethod
     def enable_debug_flags(cls, *debug_flags: DebugFlags):
@@ -58,3 +59,7 @@ def value_if_debug(normal_value, debug_value, flag: DebugFlags):
         return debug_value
     else:
         return normal_value
+
+
+def debug_flag_enabled(flag: DebugFlags):
+    return flag.is_enabled

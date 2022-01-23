@@ -1,8 +1,11 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flyable.data.lang_class import LangClass
 
 import ast
-from typing import Union
-from flyable.data.lang_class import LangClass
+
 import flyable.data.lang_type as type
 import flyable.data.lang_file as lang_file
 from flyable.data.lang_func_impl import LangFuncImpl, FuncImplType
@@ -16,20 +19,20 @@ class LangFunc:
         body....
     """
 
-    def __init__(self, node):
+    def __init__(self, node: ast.AST):
 
-        self.__node = node
+        self.__node: ast.AST = node
 
         self.__id = -1
         # Setup args
         self.__setup_unknown_impl()
         self.__setup_python_impl()
 
-        self.__class_lang: Union[LangClass, None] = None
-        self.__file = None
+        self.__class_lang: LangClass | None = None
+        self.__file: lang_file.LangFile | None = None
         self.__is_global = False
 
-    def set_class(self, _class):
+    def set_class(self, _class: LangClass):
         self.__class_lang = _class
 
     def get_class(self):
@@ -61,7 +64,7 @@ class LangFunc:
     def impls_iter(self):
         return iter(self.__impls)
 
-    def find_impl_by_signature(self, args_type) -> Union[LangFuncImpl, None]:
+    def find_impl_by_signature(self, args_type) -> LangFuncImpl | None:
         for i in self.__impls:
             if not i.is_unknown() and i.get_args_count() == len(args_type):  # Same arguments count
                 same_signature = True
@@ -141,15 +144,15 @@ class LangFunc:
             self.__impls.append(global_impl)
 
     def get_tp_call_impl(self):
-        for e in self.__impls:
-            if e.get_impl_type() == FuncImplType.TP_CALL:
-                return e
+        for impl in self.__impls:
+            if impl.get_impl_type() is FuncImplType.TP_CALL:
+                return impl
         return None
 
     def get_vec_call_impl(self):
-        for e in self.__impls:
-            if e.get_impl_type() == FuncImplType.VEC_CALL:
-                return e
+        for impl in self.__impls:
+            if impl.get_impl_type() is FuncImplType.VEC_CALL:
+                return impl
         return None
 
     def __setup_unknown_impl(self):
@@ -161,7 +164,6 @@ class LangFunc:
             self.get_unknown_impl().add_arg(type.get_unknown_type())
 
     def __setup_python_impl(self):
-
         # setup the tp call
         python_impl = LangFuncImpl()
         self.__impls.append(python_impl)
