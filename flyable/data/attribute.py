@@ -22,7 +22,7 @@ class Attribut:
     def get_name(self):
         return self.__name
 
-    def set_type(self, s_type):
+    def set_type(self, s_type: type.LangType):
         self.__type = copy.copy(s_type)
         hint.remove_hint_type(self.__type, hint.TypeHintDataSource)
 

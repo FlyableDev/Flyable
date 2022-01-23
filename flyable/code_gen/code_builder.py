@@ -1,10 +1,11 @@
-from typing import Any
-
-import flyable.code_gen.code_gen as gen
+from __future__ import annotations
+from typing import TYPE_CHECKING, Any
 import flyable.debug.debug_flags as debug_flags
 import inspect
+import flyable.code_gen.code_gen as gen
 
-
+if TYPE_CHECKING:
+    from flyable.code_gen.code_gen import CodeFunc
 class CodeBuilder:
     """
     CodeBuilder writes the data that will be passed to generate binary to send to the code generation native layer.
@@ -22,7 +23,7 @@ class CodeBuilder:
     def create_block(self):
         return self.__gen_block()
 
-    def set_insert_block(self, block):
+    def set_insert_block(self, block: CodeFunc.CodeBlock):
         self.__writer = block.get_writer()
         self.__current_block = block
 
