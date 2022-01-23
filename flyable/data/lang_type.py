@@ -1,22 +1,26 @@
 from __future__ import annotations
 from functools import reduce
-
 import copy
 from enum import Enum
-from typing import List, Union
+from typing import TYPE_CHECKING, List, Union
+from typing import Type as PyType
 from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_type as code_type
 import flyable.data.type_hint as hint
+import flyable.code_gen.code_gen as code_gen
+
+if TYPE_CHECKING:
+    from flyable.data.comp_data import CompData
 
 
-def to_code_type(code_gen, type):
+def to_code_type(code_gen: code_gen.CodeGen, type: Union[LangType, List[LangType]]):
     """
     Convert a list of LangType to a list of CodeType
     Or
     Convert a single LangType to a CodeType
     """
     if isinstance(type, list):
-        result = []
+        result: List[CodeType] = []
         for e in type:
             result.append(e.to_code_type(code_gen))
         return result
@@ -24,7 +28,7 @@ def to_code_type(code_gen, type):
     return type.to_code_type(code_gen)
 
 
-def _get_type_common(primary_type, second_type=None) -> LangType:
+def _get_type_common(primary_type: LangType, second_type:LangType=None) -> LangType:
     result: LangType
     if primary_type == second_type or second_type is None:
         result = copy.copy(primary_type)
@@ -73,7 +77,7 @@ def get_bool_type():
     return LangType(LangType.Type.BOOLEAN)
 
 
-def get_python_obj_type(obj_hint=None):
+def get_python_obj_type(obj_hint: Union[hint.TypeHint, List[hint.TypeHint]]=None):
     result = LangType(LangType.Type.PYTHON)
 
     if isinstance(obj_hint, list):
@@ -85,7 +89,7 @@ def get_python_obj_type(obj_hint=None):
     return result
 
 
-def get_obj_type(id):
+def get_obj_type(id: int):
     return LangType(LangType.Type.OBJECT, id)
 
 
@@ -98,23 +102,19 @@ def get_none_type():
 
 
 def get_list_of_python_obj_type():
-    result = get_python_obj_type(hint.TypeHintPythonType("builtins.list"))
-    return result
+    return get_python_obj_type(hint.TypeHintPythonType("builtins.list"))
 
 
 def get_tuple_of_python_obj_type():
-    result = get_python_obj_type(hint.TypeHintPythonType("builtins.tuple"))
-    return result
+    return get_python_obj_type(hint.TypeHintPythonType("builtins.tuple"))
 
 
 def get_set_of_python_obj_type():
-    result = get_python_obj_type(hint.TypeHintPythonType("builtins.set"))
-    return result
+    return get_python_obj_type(hint.TypeHintPythonType("builtins.set"))
 
 
 def get_dict_of_python_obj_type():
-    result = get_python_obj_type(hint.TypeHintPythonType("builtins.dict"))
-    return result
+    return get_python_obj_type(hint.TypeHintPythonType("builtins.dict"))
 
 
 def get_unknown_type():
@@ -133,7 +133,7 @@ class LangType:
         BOOLEAN = 7,  # Boolean value
         NONE = 8  # The None keyword
 
-    def __init__(self, type=Type.UNKNOWN, id=0):
+    def __init__(self, type:Type=Type.UNKNOWN, id:int=0):
         if not isinstance(id, int):
             raise TypeError("Integer expected for id")
 
@@ -178,7 +178,7 @@ class LangType:
     def is_module(self):
         return self.__type == LangType.Type.MODULE
 
-    def is_python_obj(self, type_path=None):
+    def is_python_obj(self, type_path:str=None):
         if type_path is None:
             return self.__type == LangType.Type.PYTHON
         else:
@@ -193,7 +193,7 @@ class LangType:
     def get_type(self):
         return self.__type
 
-    def to_code_type(self, code_gen):
+    def to_code_type(self, code_gen: code_gen.CodeGen):
         result = CodeType()
         if self.is_list() or self.is_dict() or self.is_tuple() or self.is_set():
             result = code_type.get_py_obj_ptr(code_gen)
@@ -214,7 +214,7 @@ class LangType:
         return result
 
     def get_content(self):
-        result = []
+        result: List[LangType] = []
         if self.is_collection():  # Let's look at the content of the collection to find content type
             for current_hint in self.__hints:
                 if isinstance(current_hint, hint.TypeHintCollectionContentHint):
@@ -228,7 +228,7 @@ class LangType:
         else:
             return get_python_obj_type()
 
-    def is_python_obj_of_type(self, type_path):
+    def is_python_obj_of_type(self, type_path: str):
         for e in self.__hints:
             if isinstance(e, hint.TypeHintPythonType) and e.get_class_path() == type_path:
                 return True
@@ -243,11 +243,11 @@ class LangType:
     def remove_hint(self, index: int):
         self.__hints.pop(index)
 
-    def get_hint(self, index):
+    def get_hint(self, index: Union[int, PyType[hint.TypeHint]]):
         if isinstance(index, int):
             return self.__hints[index]
         else:
-            result = []
+            result: List[Union[hint.TypeHint, hint.TypeHintPythonType]] = []
             for hint in self.__hints:
                 if isinstance(hint, index):
                     result.append(hint)
@@ -262,12 +262,12 @@ class LangType:
     def clear_hints(self):
         self.__hints.clear()
 
-    def __eq__(self, other):
+    def __eq__(self, other: LangType):
         if self.__type == other.__type:
             return True
         return False
 
-    def to_str(self, comp_data):
+    def to_str(self, comp_data: CompData):
         to_str: str
         if self.is_primitive() or self.is_module() or self.is_unknown():
             to_str = str(self)

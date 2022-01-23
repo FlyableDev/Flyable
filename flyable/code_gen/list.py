@@ -2,7 +2,7 @@
 Module with routines to handle Python and Flyable list
 """
 
-from flyable.code_gen.code_type import CodeType
+from flyable.parse.parser_visitor import ParserVisitor
 import flyable.code_gen.exception as excp
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.code_type as code_type
@@ -112,7 +112,7 @@ def python_list_array_get_item(visitor, list_type, list, index):
     return result
 
 
-def python_list_array_get_item_unsafe(visitor, list_type, list, index):
+def python_list_array_get_item_unsafe(visitor: ParserVisitor, list_type: lang_type.LangType, list, index: int):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     content = python_list_get_content_ptr(visitor, list)
     content = builder.load(content)
@@ -122,7 +122,7 @@ def python_list_array_get_item_unsafe(visitor, list_type, list, index):
     return result
 
 
-def python_list_len_ptr(visitor, list):
+def python_list_len_ptr(visitor: ParserVisitor, list):
     list = visitor.get_builder().ptr_cast(list, code_type.get_list_obj_ptr(visitor.get_code_gen()))
     return visitor.get_builder().gep(list, visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(2))
 
