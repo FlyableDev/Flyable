@@ -23,7 +23,7 @@ class LangFunc:
 
         self.__node: ast.AST = node
 
-        self.__id = -1
+        self.__id: int = -1
         # Setup args
         self.__setup_unknown_impl()
         self.__setup_python_impl()
@@ -49,7 +49,7 @@ class LangFunc:
         func.set_id(len(self.__impls))
         self.__impls.append(func)
 
-    def get_impl(self, index):
+    def get_impl(self, index: int):
         return self.__impls[index]
 
     def set_file(self, file: lang_file.LangFile):
@@ -110,6 +110,8 @@ class LangFunc:
             return "@global@module@"
 
     def get_arg(self, index):
+        if isinstance(self.__node, ast.Module):
+            raise Exception("Cannot get argument of LangFunc, it is an ast.Module")
         return self.__node.args.args[index]
 
     def get_args_count(self):
