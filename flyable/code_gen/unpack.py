@@ -8,6 +8,7 @@ import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.debug as debug
 
 def unpack_assignation(visitor, targets, value_type, value, node):
+    print("XD")
     unpack_block = visitor.get_builder().create_block()
     error_block = visitor.get_builder().create_block()
     continue_block = visitor.get_builder().create_block()
