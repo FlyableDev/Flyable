@@ -78,7 +78,7 @@ def get_build_in(name):
     build_in_funcs = {
         "list": BuildInList,
         "len": BuildInLen,
-        "int": BuildInFunc
+        "int": BuildInInt
     }
 
     if name in build_in_funcs:
