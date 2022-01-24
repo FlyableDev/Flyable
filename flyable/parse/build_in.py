@@ -59,26 +59,11 @@ class BuildInLen(BuildInFunc):
             return lang_type.get_int_type(), runtime.py_runtime_obj_len(visitor.get_code_gen(), visitor.get_builder(),
                                                                         args[0])
 
-
-class BuildInInt(BuildInFunc):
-
-    def __init__(self):
-        super().__init__()
-
-    def parse(self, args_types, args, visitor):
-        if len(args_types) == 1 and args_types[0].is_str():
-            return lang_type.get_int_type(), gen_list.python_list_len(visitor, args[0])
-        else:
-            return lang_type.get_int_type(), runtime.py_runtime_obj_len(visitor.get_code_gen(), visitor.get_builder(),
-                                                                        args[0])
-
-
 def get_build_in(name):
     name = str(name)
     build_in_funcs = {
         "list": BuildInList,
-        "len": BuildInLen,
-        "int": BuildInInt
+        "len": BuildInLen
     }
 
     if name in build_in_funcs:

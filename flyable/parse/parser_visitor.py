@@ -358,8 +358,10 @@ class ParserVisitor(NodeVisitor):
                 self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
             else:
                 if found_var.get_code_gen_value() is None:
-                    found_var.set_code_gen_value(
+                    if not found_var.is_global():
+                        found_var.set_code_gen_value(
                         self.generate_entry_block_var(found_var.get_type().to_code_type(self.__code_gen), True))
+
                 self.__last_value = found_var.get_code_gen_value()
 
             # Args don't live inside an alloca so they don't need to be loaded
