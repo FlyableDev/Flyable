@@ -12,13 +12,14 @@ import flyable.code_gen.list as _list
 import flyable.code_gen.code_builder as code_builder
 import flyable.code_gen.debug as debug
 import flyable.code_gen.exception as excp
+from flyable.parse.parser import ParserVisitor
 
 
-def is_ref_counting_type(value_type):
+def is_ref_counting_type(value_type: lang_type.LangType):
     return not value_type.is_primitive() and not value_type.is_none() and not value_type.is_unknown()
 
 
-def get_ref_counter_ptr(builder, value_type, value):
+def get_ref_counter_ptr(builder: code_builder.CodeBuilder, value_type: lang_type.LangType, value: int):
     """
     Generate the code to get the ref counter address of an object
     """
@@ -29,15 +30,20 @@ def get_ref_counter_ptr(builder, value_type, value):
     return None
 
 
-def get_ref_count(builder, value):
-    return builder.load(get_ref_counter_ptr(builder, lang_type.get_python_obj_type(), value))
+def get_ref_count(builder: code_builder.CodeBuilder, value: int):
+    ptr = get_ref_counter_ptr(builder, lang_type.get_python_obj_type(), value)
+    if ptr is not None:
+        return builder.load(ptr)
 
 
-def set_ref_count(builder, obj, value):
-    builder.store(value, get_ref_counter_ptr(builder, lang_type.get_python_obj_type(), obj))
+def set_ref_count(builder: code_builder.CodeBuilder, obj, value: int):
+    print("HERE")
+    ptr = get_ref_counter_ptr(builder, lang_type.get_python_obj_type(), obj)
+    if ptr is not None:
+        return builder.store(value, ptr)
 
 
-def ref_incr(builder, value_type, value):
+def ref_incr(builder: code_builder.CodeBuilder, value_type, value):
     """
     Generate the code to increment the reference counter by one
     """
@@ -48,7 +54,7 @@ def ref_incr(builder, value_type, value):
         builder.store(ref_count, ref_ptr)
 
 
-def ref_decr(visitor, value_type, value):
+def ref_decr(visitor: ParserVisitor, value_type: lang_type.LangType, value):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 

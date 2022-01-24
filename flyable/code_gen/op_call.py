@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 def __convert_type_to_match(
-    visitor, op, type_left: lang_type.LangType, value_left, type_right, value_right
+    visitor: ParserVisitor, op: ast.operator, type_left: lang_type.LangType, value_left, type_right, value_right
 ):
     # Check the primitive type conversion
     if type_left.is_dec():
@@ -64,8 +64,8 @@ def __convert_type_to_match(
 
 
 def bin_op(
-    visitor,
-    op,
+    visitor: ParserVisitor,
+    op: ast.operator,
     type_left: lang_type.LangType,
     value_left,
     type_right: lang_type.LangType,
@@ -165,7 +165,7 @@ def bin_op(
     return result_type, apply_op(value_left, value_right)
 
 
-def cond_op(visitor, op, type_left, first_value, type_right, second_value):
+def cond_op(visitor: ParserVisitor, op: ast.operator, type_left, first_value, type_right, second_value):
     builder = visitor.get_builder()
 
     # Check the primitive type conversion

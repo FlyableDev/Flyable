@@ -20,6 +20,7 @@ from flyable.code_gen.code_type import CodeType
 from flyable.code_gen.code_writer import CodeWriter
 from flyable.debug.code_builder_analyser import CodeBuilderAnalyser
 from flyable.debug.debug_flags import DebugFlags, value_if_debug
+from flyable.parse.parser import ParserVisitor
 
 
 class Linkage(enum.IntEnum):
@@ -579,13 +580,16 @@ class CodeGen:
         impl.set_code_func(new_func)
         return new_func
 
-    def fill_not_terminated_block(self, visitor):
+    def fill_not_terminated_block(self, visitor: ParserVisitor):
         """
         Some blocks of code can end without any return. We need to generate
         the code so they can return nullified value
         """
         builder = visitor.get_builder()
         func = visitor.get_func().get_code_func()
+        if func is None:
+            raise Exception("Main func has no code_func")
+        
         for block in func.blocks_iter():
             if not block.has_br_block() and not block.has_return():
                 func.get_builder().set_insert_block(block)

@@ -1,3 +1,4 @@
+from flyable.code_gen.code_builder import CodeBuilder
 import flyable.code_gen.code_gen as _code_gen
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.debug as debug
@@ -10,16 +11,16 @@ Module to call runtimes functions
 """
 
 
-def create_unicode(code_gen, builder, str):
+def create_unicode(code_gen: _code_gen.CodeGen, builder: CodeBuilder, str: str):
     """
     Generate an external call to the python function to create a string
     """
-    from_string = code_gen.get_or_create_func("PyUnicode_FromString", CodeType(CodeType.CodePrimitive.INT8).get_ptr_to()
+    from_string = code_gen.get_or_create_func("PyUnicode_FromString", CodeType(CodeType.CodePrimitive.INT8).get_ptr_to(),
     [CodeType(CodeType.CodePrimitive.INT8).get_ptr_to()])
     return builder.call(from_string, [str])
 
 
-def malloc_call(code_gen, builder, value_size):
+def malloc_call(code_gen: _code_gen.CodeGen, builder: CodeBuilder, value_size: int):
     """
     Generate an external call to the Python runtime memory allocator
     """
@@ -28,14 +29,14 @@ def malloc_call(code_gen, builder, value_size):
     return builder.call(malloc_func, [value_size])
 
 
-def free_call(code_gen, builder, memory_to_free):
+def free_call(code_gen: _code_gen.CodeGen, builder: CodeBuilder, memory_to_free: int):
     free_func = code_gen.get_or_create_func("PyMem_Free", code_type.get_void(), [code_type.get_int8_ptr()],
                                             _code_gen.Linkage.EXTERNAL)
     memory_to_free = builder.ptr_cast(memory_to_free, code_type.get_int8_ptr())
     return builder.call(free_func, [memory_to_free])
 
 
-def py_runtime_get_string(code_gen, builder, value):
+def py_runtime_get_string(code_gen: _code_gen.CodeGen, builder: CodeBuilder, value: str):
     str_ptr = builder.ptr_cast(builder.global_str(value), code_type.get_int8_ptr())
     args_type = [code_type.get_int8_ptr(), code_type.get_int64()]
     new_str_func = code_gen.get_or_create_func("PyUnicode_FromStringAndSize", code_type.get_py_obj_ptr(code_gen),
@@ -43,17 +44,17 @@ def py_runtime_get_string(code_gen, builder, value):
     return builder.call(new_str_func, [str_ptr, builder.const_int64(len(value))])
 
 
-def py_runtime_init(code_gen, builder):
+def py_runtime_init(code_gen: _code_gen.CodeGen, builder: CodeBuilder):
     init_func = code_gen.get_or_create_func("Py_Initialize", code_type.get_void(), [], _code_gen.Linkage.EXTERNAL)
     return builder.call(init_func, [])
 
 
-def py_runtime_object_print(code_gen, builder, obj):
+def py_runtime_object_print(code_gen: _code_gen.CodeGen, builder: CodeBuilder, obj: object):
     print_func = code_gen.get_or_create_func("__flyable__print", code_type.get_int32(),
                                              [code_type.get_py_obj_ptr(code_gen)], _code_gen.Linkage.EXTERNAL)
     return builder.call(print_func, [obj])
 
-def value_to_pyobj(code_gen, builder, value, value_type):
+def value_to_pyobj(code_gen: _code_gen.CodeGen, builder: CodeBuilder, value, value_type: lang_type.LangType):
     result_type = lang_type.get_python_obj_type()
 
     if value_type.is_int():
@@ -96,7 +97,7 @@ def value_to_pyobj(code_gen, builder, value, value_type):
     return result_type, value
 
 
-def py_runtime_obj_len(code_gen, builder, value):
+def py_runtime_obj_len(code_gen: _code_gen.CodeGen, builder: CodeBuilder, value):
     func_name = "PyObject_Length"
     py_func = code_gen.get_or_create_func(func_name, code_type.get_int64(), [code_type.get_py_obj_ptr(code_gen)],
                                           _code_gen.Linkage.EXTERNAL)

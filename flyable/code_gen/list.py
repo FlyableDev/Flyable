@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from flyable.code_gen.code_builder import CodeBuilder
     from flyable.code_gen.code_gen import CodeGen
+    from flyable.parse.parser_visitor import ParserVisitor
 
-from flyable.parse.parser_visitor import ParserVisitor
 import flyable.code_gen.exception as excp
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.code_type as code_type
@@ -28,7 +28,7 @@ def instanciate_python_list(code_gen: CodeGen, builder: CodeBuilder, len: int):
     return builder.call(new_list_func, [len])
 
 
-def python_list_set(visitor, list, index, item):
+def python_list_set(visitor: ParserVisitor, list, index: int, item):
     """
     Generate the code to set an element in a Python List
     """
@@ -41,7 +41,7 @@ def python_list_set(visitor, list, index, item):
     return result
 
 
-def python_list_append(visitor, list, item_type, item):
+def python_list_append(visitor: ParserVisitor, list, item_type: lang_type.LangType, item):
     """
     Generate the code to set an element in a Python List
     """

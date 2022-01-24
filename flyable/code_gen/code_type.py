@@ -101,7 +101,7 @@ class CodeType:
         FUNC = 9,
         ARRAY = 10
 
-    def __init__(self, type=CodePrimitive.VOID, id=0):
+    def __init__(self, type:CodePrimitive=CodePrimitive.VOID, id=0):
         self.__type = type
         self.__ptr_level = 0
         self.__struct_id = id

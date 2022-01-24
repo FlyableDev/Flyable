@@ -9,6 +9,7 @@ import flyable.code_gen.type as gen_type
 import flyable.code_gen.debug as debug
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.data.lang_type as lang_type
+from flyable.parse.parser import ParserVisitor
 
 
 def check_py_obj_is_func_type(visitor, func_to_call):
@@ -17,7 +18,7 @@ def check_py_obj_is_func_type(visitor, func_to_call):
     return visitor.get_builder().eq(obj_type, func_type)
 
 
-def call_py_func_vec_call(visitor, obj, func_to_call, args, func_to_call_type=None):
+def call_py_func_vec_call(visitor: ParserVisitor, obj, func_to_call, args, func_to_call_type=None):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
