@@ -118,7 +118,7 @@ def python_list_array_get_item(visitor: ParserVisitor, list_type: lang_type.Lang
 
 
 def python_list_array_get_item_unsafe(visitor: ParserVisitor, list_type: lang_type.LangType, list: int, index: int):
-    builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
+    builder = visitor.get_builder()
     content = python_list_get_content_ptr(visitor, list)
     content = builder.load(content)
     content = builder.ptr_cast(content, list_type.get_content().to_code_type(visitor.get_code_gen()).get_ptr_to())

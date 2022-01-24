@@ -41,54 +41,103 @@ class CodeBuilder:
         return self.__current_block
 
     def add(self, v1: int, v2: int):
+        """
+        Addition
+        """
         return self.__make_op(1, v1, v2)
 
     def sub(self, v1: int, v2: int):
+        """
+        Substraction
+        """
         return self.__make_op(2, v1, v2)
 
-    def mul(self, v1, v2):
+    def mul(self, v1: int, v2: int):
+        """
+        Multiplication
+        """
         return self.__make_op(3, v1, v2)
 
     def div(self, v1, v2):
+        """
+        Division
+        """
         return self.__make_op(4, v1, v2)
 
     def eq(self, v1, v2):
+        """
+        Equality check
+        """
         return self.__make_op(5, v1, v2)
 
     def ne(self, v1, v2):
+        """
+        Non-Equality check
+        """
         return self.__make_op(6, v1, v2)
 
     def lt(self, v1, v2):
+        """
+        Less than
+        """
         return self.__make_op(7, v1, v2)
 
     def lte(self, v1, v2):
+        """
+        Less than or equal
+        """
         return self.__make_op(8, v1, v2)
 
     def gt(self, v1, v2):
+        """
+        Greater than
+        """
         return self.__make_op(9, v1, v2)
 
     def gte(self, v1, v2):
+        """
+        Greater than or equal
+        """
         return self.__make_op(10, v1, v2)
 
     def neg(self, value):
+        """
+        Negation operator
+        """
         return self.__make_op(11, value)
 
+    # And operator
     def _and(self, v1, v2):
         return self.__make_op(12, v1, v2)
 
     def _or(self, v1, v2):
+        """
+        Or operator
+        """
         return self.__make_op(13, v1, v2)
 
     def mod(self, v1, v2):
+        """
+        Modulo operator
+        """
         return self.__make_op(14, v1, v2)
 
     def _not(self, value):
+        """
+        Not operator
+        """
         return self.__make_op(15, value)
 
     def store(self, value: int, store: int):
+        """
+        Store value in memory
+        """
         return self.__make_op(100, value, store)
 
     def load(self, value: int):
+        """
+        Load value from memory
+        """
         return self.__make_op(101, value)
 
     def br(self, block: CodeFunc.CodeBlock):
@@ -119,9 +168,15 @@ class CodeBuilder:
         return self.__gen_value()
 
     def call(self, func: CodeFunc, args):
+        """
+        Function call with CodeFunc
+        """
         return self.__make_op(170, func.get_id(), len(args), *args)
 
-    def call_ptr(self, ptr, args, call_conv=None):
+    def call_ptr(self, ptr: int, args, call_conv:bool=None):
+        """
+        Function call with pointer
+        """
         return self.__make_op(
             171,
             ptr,
@@ -131,50 +186,83 @@ class CodeBuilder:
         )
 
     def const_int64(self, value: int):
+        """
+        Allocate int64 memory location
+        """
         self.__write_opcode(1000)
         self.writer.add_int64(value)
         return self.__gen_value()
 
     def const_int32(self, value: int):
+        """
+        Allocate int32 memory location
+        """
         return self.__make_op(1001, value)
 
     def const_int16(self, value: int):
+        """
+        Allocate int16 memory location
+        """
         return self.__make_op(1002, value)
 
     def const_int8(self, value: int):
+        """
+        Allocate int8 memory location
+        """
         return self.__make_op(1003, value)
 
     def const_int1(self, value: int | bool):
+        """
+        Allocate int1 memory location
+        """
         return self.__make_op(1007, int(value))
 
     def const_float32(self, value: int):
+        """
+        Allocate float32 memory location
+        """
         self.__write_opcode(1004)
         self.writer.add_float32(value)
         return self.__gen_value()
 
     def const_float64(self, value: int):
+        """
+        Allocate float64 memory location
+        """
         self.__write_opcode(1005)
         self.writer.add_float64(value)
         return self.__gen_value()
 
     def const_null(self, type: CodeType):
+        """
+        Allocate null memory location
+        """
         self.__write_opcode(1006)
         type.write_to_code(self.writer)
         return self.__gen_value()
 
     def ptr_cast(self, value: int, type: CodeType):
+        """
+        Value to pointer
+        """
         self.__write_opcode(1010)
         self.writer.add_int32(value)
         type.write_to_code(self.writer)
         return self.__gen_value()
 
     def int_cast(self, value: int, type: CodeType):
+        """
+        Cast int
+        """
         self.__write_opcode(1011)
         self.writer.add_int32(value)
         type.write_to_code(self.writer)
         return self.__gen_value()
 
     def float_cast(self, value: int, type: CodeType):
+        """
+        Cast float
+        """
         self.__write_opcode(1012)
         self.writer.add_int32(value)
         type.write_to_code(self.writer)
