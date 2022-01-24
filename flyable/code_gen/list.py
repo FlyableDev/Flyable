@@ -83,18 +83,18 @@ def python_list_append(visitor: ParserVisitor, list, item_type: lang_type.LangTy
     builder.store(new_size, size_ptr)  # Set the new size in case it didn't enter the resize
 
 
-def python_list_capacity_ptr(visitor, list):
+def python_list_capacity_ptr(visitor: ParserVisitor, list: int):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     list = builder.ptr_cast(list, code_type.get_list_obj_ptr(code_gen))
     return builder.gep(list, builder.const_int32(0), builder.const_int32(4))
 
 
-def python_list_get_content_ptr(visitor, list):
+def python_list_get_content_ptr(visitor: ParserVisitor, list: int):
     list = visitor.get_builder().ptr_cast(list, code_type.get_list_obj_ptr(visitor.get_code_gen()))
     return visitor.get_builder().gep(list, visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(3))
 
 
-def python_list_array_get_item(visitor, list_type, list, index):
+def python_list_array_get_item(visitor: ParserVisitor, list_type: lang_type.LangType, list, index):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     valid_index_block = builder.create_block()
     wrong_index_block = builder.create_block()
@@ -117,7 +117,7 @@ def python_list_array_get_item(visitor, list_type, list, index):
     return result
 
 
-def python_list_array_get_item_unsafe(visitor: ParserVisitor, list_type: lang_type.LangType, list, index: int):
+def python_list_array_get_item_unsafe(visitor: ParserVisitor, list_type: lang_type.LangType, list: int, index: int):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     content = python_list_get_content_ptr(visitor, list)
     content = builder.load(content)
@@ -127,12 +127,12 @@ def python_list_array_get_item_unsafe(visitor: ParserVisitor, list_type: lang_ty
     return result
 
 
-def python_list_len_ptr(visitor: ParserVisitor, list):
+def python_list_len_ptr(visitor: ParserVisitor, list: int):
     list = visitor.get_builder().ptr_cast(list, code_type.get_list_obj_ptr(visitor.get_code_gen()))
     return visitor.get_builder().gep(list, visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(2))
 
 
-def python_list_len(visitor, list):
+def python_list_len(visitor: ParserVisitor, list: int):
     """
     Generate the code that returns the len of the list
     """

@@ -1,10 +1,14 @@
-from flyable.code_gen.code_builder import CodeBuilder
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import flyable.code_gen.code_gen as _code_gen
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.debug as debug
 import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as type_hint
 from flyable.code_gen.code_type import CodeType
+
+if TYPE_CHECKING:
+    from flyable.code_gen.code_builder import CodeBuilder
 
 """
 Module to call runtimes functions
