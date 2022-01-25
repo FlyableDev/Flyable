@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, Callable, Any, Iterable
 
 
+# ###################################### Step ###################################### #
 @dataclass
 class Step:
     name: str
@@ -34,3 +35,39 @@ def end_step():
     global __current_step
     __current_step and __current_step.end()
     __current_step = None
+
+
+# ###################################### list utils ###################################### #
+
+def find_first(predicate: Callable[[Any], bool], iterable: Iterable):
+    """Returns the first value that matches in the iterable"""
+    for value in iterable:
+        if predicate(value):
+            return value
+    return None
+
+
+def find_last(predicate: Callable[[Any], bool], iterable: Iterable):
+    """Returns the first value that matches in the iterable"""
+    last_match = None
+    for value in iterable:
+        if predicate(value):
+            last_match = value
+    return last_match
+
+
+def find_first_idx(predicate: Callable[[Any], bool], iterable: Iterable):
+    """Returns the index of the first value that matches in the iterable"""
+    for idx, value in enumerate(iterable):
+        if predicate(value):
+            return idx
+    return None
+
+
+def find_last_idx(predicate: Callable[[Any], bool], iterable: Iterable):
+    """Returns the first value that matches in the iterable"""
+    last_idx = None
+    for idx, value in enumerate(iterable):
+        if predicate(value):
+            last_idx = idx
+    return last_idx
