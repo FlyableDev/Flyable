@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, Type, Union
 
 if TYPE_CHECKING:
     from flyable.data.lang_type import LangType
+    from flyable.data.attribute import Attribut
+    from flyable.parse.variable import Variable
 
 
 class TypeHint:
@@ -165,7 +167,7 @@ class TypeHintRefCount(TypeHint):
     Hint that indicates how many counts there is on the item when the counts is known
     """
 
-    def __init__(self, count):
+    def __init__(self, count: int):
         self.__count = count
 
     def get_count(self):
@@ -178,7 +180,7 @@ Gives hints from where the type comes from
 """
 
 
-def get_type_source(hint_type):
+def get_type_source(hint_type: LangType):
     for e in hint_type.iter_hints():
         if isinstance(e, TypeHintDataSource):
             return e
@@ -190,7 +192,7 @@ class TypeHintDataSource(TypeHint):
     Hint that indicates that the type comes from a data source
     """
 
-    def __init__(self, var):
+    def __init__(self, var: Variable | Attribut):
         self.__source = var
 
     def get_source(self):
@@ -202,7 +204,7 @@ class TypeHintSourceLocalVariable(TypeHintDataSource):
     Hint that indicates that the type comes from a local variable
     """
 
-    def __init__(self, var):
+    def __init__(self, var: Variable):
         super().__init__(var)
 
 
@@ -211,7 +213,7 @@ class TypeHintSourceAttribute(TypeHintDataSource):
     Hint that indicates that the type comes from an object attribute
     """
 
-    def __init__(self, attribute):
+    def __init__(self, attribute: Attribut):
         super().__init__(attribute)
 
 
@@ -225,11 +227,11 @@ class TypeHintIntRange(TypeHint):
     Hints that represents stuff
     """
 
-    def __init__(self, minimum=0, maximum=0):
+    def __init__(self, minimum:int=0, maximum:int=0):
         self.__min_range = minimum
         self.__max_range = maximum
 
-    def set_range(self, minimum, maximum):
+    def set_range(self, minimum: int, maximum: int):
         self.__min_range = minimum
         self.__max_range = maximum
 

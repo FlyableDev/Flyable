@@ -10,13 +10,13 @@ class Attribut:
         self.__type = type.LangType()
         self.__id = - 1
 
-    def set_id(self, id):
+    def set_id(self, id: int):
         self.__id = id
 
     def get_id(self):
         return self.__id
 
-    def set_name(self, name):
+    def set_name(self, name: str):
         self.__name = name
 
     def get_name(self):

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterator
 
 if TYPE_CHECKING:
     from flyable.data.lang_class import LangClass
@@ -64,7 +64,7 @@ class LangFunc:
     def impls_iter(self):
         return iter(self.__impls)
 
-    def find_impl_by_signature(self, args_type) -> LangFuncImpl | None:
+    def find_impl_by_signature(self, args_type: list[type.LangType]) -> LangFuncImpl | None:
         for impl in self.__impls:
             if not impl.is_unknown() and impl.get_args_count() == len(args_type):  # Same arguments count
                 same_signature = True
@@ -120,12 +120,12 @@ class LangFunc:
             return len(arg_node.args)
         return 0
 
-    def args_iter(self):
+    def args_iter(self) -> Iterator[ast.arg]:
         if isinstance(self.__node, ast.FunctionDef):
             return iter(self.__node.args.args)
         return iter([])
 
-    def set_global(self, _global):
+    def set_global(self, _global: bool):
         self.__is_global = _global
 
     def is_global(self):

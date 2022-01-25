@@ -8,7 +8,6 @@ import flyable.code_gen.code_gen as gen
 
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeFunc
-    from flyable.data.lang_func import LangFunc
 
 class CodeBuilder:
     """
@@ -315,7 +314,7 @@ class CodeBuilder:
         self.writer.add_str(value)
         return self.__gen_value()
 
-    def func_ptr(self, func: LangFunc):
+    def func_ptr(self, func: CodeFunc):
         return self.__make_op(3002, func.get_id())
 
     def size_of_type(self, type: CodeType):

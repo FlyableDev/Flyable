@@ -1354,7 +1354,7 @@ class ParserVisitor(NodeVisitor):
                 new_var.set_code_gen_value(new_var_alloca)
                 current += 1
 
-    def __find_active_var(self, name):
+    def __find_active_var(self, name: str):
         result = self.__func.get_context().find_active_var(name)
         if result is None:
             parent_func = self.__func.get_parent_func().get_file().get_global_func()

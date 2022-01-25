@@ -9,15 +9,16 @@ import flyable.code_gen.caller as caller
 
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeGen
+    from flyable.data.lang_class import LangClass
 
 class LangClassType:
     """
     Class containing all of the relevant functions that need to be generated for a Python type definition
     """
 
-    def __init__(self, _class):
+    def __init__(self, _class: LangClass):
         self.__lang_class = _class
-        self.__type_global_instance = None
+        self.__type_global_instance: gen.GlobalVar | None = None
         self.__traverse_func = None
         self.__get_attr_func = None
         self.__set_attr_func = None
@@ -29,7 +30,7 @@ class LangClassType:
         code_gen.add_global_var(global_instance)
         self.set_type_global_instance(global_instance)
 
-    def generate(self, _class, code_gen, builder):
+    def generate(self, _class: LangClass, code_gen: CodeGen, builder: code_builder.CodeBuilder):
         """
         Generate the code that creates the type instance
         """
@@ -71,15 +72,28 @@ class LangClassType:
 
         for i, current_func in enumerate(_class.funcs_iter()):
             vec_impl = current_func.get_vec_call_impl()
+            if vec_impl is None:
+                raise Exception("Vec implementation of class not set.")
+            vec_code_func = vec_impl.get_code_func()
+            if vec_code_func is None:
+                raise Exception("Vec implementation of class has no generated function")
+            
             tp_impl = current_func.get_tp_call_impl()
+            if tp_impl is None:
+                raise Exception("Tp implementation of class not set.")
+            tp_code_func = tp_impl.get_code_func()
+            if tp_code_func is None:
+                raise Exception("Tp implementation of class has no generated function")
             method_str = builder.global_str(current_func.get_name() + "\00")
             method_str = builder.ptr_cast(method_str, code_type.get_int8_ptr())
-            tp_ptr = builder.ptr_cast(builder.func_ptr(tp_impl.get_code_func()), code_type.get_int8_ptr())
-            vec_ptr = builder.ptr_cast(builder.func_ptr(vec_impl.get_code_func()), code_type.get_int8_ptr())
+            tp_ptr = builder.ptr_cast(builder.func_ptr(tp_code_func), code_type.get_int8_ptr())
+            vec_ptr = builder.ptr_cast(builder.func_ptr(vec_code_func), code_type.get_int8_ptr())
             builder.call(set_method_func, [type_instance, method_str, tp_ptr, vec_ptr])
 
-    def set_type_global_instance(self, var):
+    def set_type_global_instance(self, var: gen.GlobalVar):
         self.__type_global_instance = var
 
     def get_type_global_instance(self):
+        if self.__type_global_instance is None:
+            raise Exception("Class has no global instance, was it setup?")
         return self.__type_global_instance

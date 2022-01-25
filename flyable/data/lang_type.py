@@ -2,7 +2,7 @@ from __future__ import annotations
 from functools import reduce
 import copy
 from enum import Enum
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, Union
 from typing import Type as PyType
 from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_type as code_type
@@ -13,14 +13,14 @@ if TYPE_CHECKING:
     from flyable.data.comp_data import CompData
 
 
-def to_code_type(code_gen: code_gen.CodeGen, type: Union[LangType, List[LangType]]):
+def to_code_type(code_gen: code_gen.CodeGen, type: Union[LangType, list[LangType]]):
     """
     Convert a list of LangType to a list of CodeType
     Or
     Convert a single LangType to a CodeType
     """
     if isinstance(type, list):
-        result: List[CodeType] = []
+        result: list[CodeType] = []
         for e in type:
             result.append(e.to_code_type(code_gen))
         return result
@@ -77,7 +77,7 @@ def get_bool_type():
     return LangType(LangType.Type.BOOLEAN)
 
 
-def get_python_obj_type(obj_hint: Union[hint.TypeHint, List[hint.TypeHint]] = None):
+def get_python_obj_type(obj_hint: Union[hint.TypeHint, list[hint.TypeHint]] = None):
     result = LangType(LangType.Type.PYTHON)
 
     if isinstance(obj_hint, list):
@@ -217,7 +217,7 @@ class LangType:
         return result
 
     def get_content(self):
-        result: List[LangType] = []
+        result: list[LangType] = []
         if self.is_collection():  # Let's look at the content of the collection to find content type
             for current_hint in self.__hints:
                 if isinstance(current_hint, hint.TypeHintCollectionContentHint):
@@ -250,7 +250,7 @@ class LangType:
         if isinstance(index, int):
             return self.__hints[index]
         else:
-            result: List[Union[hint.TypeHint, hint.TypeHintPythonType]] = []
+            result: list[Union[hint.TypeHint, hint.TypeHintPythonType]] = []
             for hint in self.__hints:
                 if isinstance(hint, index):
                     result.append(hint)

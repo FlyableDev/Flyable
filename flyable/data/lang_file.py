@@ -38,7 +38,8 @@ class LangFile:
         Returns:
             the function or the class with the matching name or None if none was found
         """
-        for e in self.__funcs + self.__classes:
+        funcs_and_classes: list[lang_func.LangFunc | lang_class.LangClass] = [*self.__funcs, *self.__classes]
+        for e in funcs_and_classes:
             if e.get_name() == name:
                 return e
         return None
@@ -55,7 +56,8 @@ class LangFile:
         Returns:
             the function or the class with the matching id or None if none was found
         """
-        for e in self.__funcs + self.__classes:
+        funcs_and_classes: list[lang_func.LangFunc | lang_class.LangClass] = [*self.__funcs, *self.__classes]
+        for e in funcs_and_classes:
             if e.get_id() == id:
                 return e
         return None
@@ -67,7 +69,8 @@ class LangFile:
 
         Also, it calls `clear_info()` on the global function if there is one
         """
-        for e in self.__classes + self.__funcs:
+        funcs_and_classes: list[lang_func.LangFunc | lang_class.LangClass] = [*self.__funcs, *self.__classes]
+        for e in funcs_and_classes:
             e.clear_info()
 
         if self.__global_func is not None:
@@ -90,7 +93,7 @@ class LangFile:
     def get_func(self, index: int):
         return self.__funcs[index]
 
-    def set_global_func(self, global_func):
+    def set_global_func(self, global_func: lang_func.LangFunc):
         self.__global_func = global_func
 
     def get_global_func(self):
