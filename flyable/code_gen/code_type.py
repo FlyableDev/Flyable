@@ -43,6 +43,7 @@ def get_py_obj_ptr(code_gen):
 def get_py_type(code_gen):
     return CodeType(CodeType.CodePrimitive.STRUCT, code_gen.get_python_type().get_id())
 
+
 def get_fly_py_type(code_gen):
     return CodeType(CodeType.CodePrimitive.STRUCT, code_gen.get_python_type().get_id())
 

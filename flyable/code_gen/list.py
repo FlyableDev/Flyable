@@ -132,7 +132,7 @@ def python_list_len_ptr(visitor: ParserVisitor, list):
     return visitor.get_builder().gep(list, visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(2))
 
 
-def python_list_len(visitor, list):
+def python_list_len(visitor: ParserVisitor, list):
     """
     Generate the code that returns the len of the list
     """

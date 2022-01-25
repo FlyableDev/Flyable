@@ -40,9 +40,9 @@ def call_py_func_vec_call(visitor, obj, func_to_call, args, func_to_call_type=No
     args_stack_memory = builder.gep(args_stack_memory, builder.const_int32(0), builder.const_int32(1))
 
     # Set the args into the stack memory
-    for i, e in enumerate(args):
+    for i, arg in enumerate(args):
         arg_gep = builder.gep2(args_stack_memory, code_type.get_py_obj_ptr(code_gen), [builder.const_int32(i)])
-        builder.store(e, arg_gep)
+        builder.store(arg, arg_gep)
 
     # Cast the stack memory to simplify the type
     args_stack_memory = builder.ptr_cast(args_stack_memory, code_type.get_py_obj_ptr(code_gen).get_ptr_to())

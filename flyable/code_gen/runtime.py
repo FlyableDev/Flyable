@@ -1,8 +1,16 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flyable.code_gen.code_builder import CodeBuilder
+    from flyable.code_gen.code_gen import CodeGen
+
 import flyable.code_gen.code_gen as _code_gen
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.debug as debug
 import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as type_hint
+
 from flyable.code_gen.code_type import CodeType
 
 """
@@ -53,6 +61,7 @@ def py_runtime_object_print(code_gen, builder, obj):
                                              [code_type.get_py_obj_ptr(code_gen)], _code_gen.Linkage.EXTERNAL)
     return builder.call(print_func, [obj])
 
+
 def value_to_pyobj(code_gen, builder, value, value_type):
     result_type = lang_type.get_python_obj_type()
 
@@ -96,7 +105,7 @@ def value_to_pyobj(code_gen, builder, value, value_type):
     return result_type, value
 
 
-def py_runtime_obj_len(code_gen, builder, value):
+def py_runtime_obj_len(code_gen: CodeGen, builder: CodeBuilder, value):
     func_name = "PyObject_Length"
     py_func = code_gen.get_or_create_func(func_name, code_type.get_int64(), [code_type.get_py_obj_ptr(code_gen)],
                                           _code_gen.Linkage.EXTERNAL)

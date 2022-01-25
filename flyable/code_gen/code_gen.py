@@ -263,12 +263,12 @@ class CodeFunc:
 class CodeGen:
 
     def __init__(self, comp_data: CompData):
-        self.__global_vars: List[GlobalVar] = []
-        self.__structs: List[StructType] = []
+        self.__global_vars: list[GlobalVar] = []
+        self.__structs: list[StructType] = []
         self.__funcs: OrderedDict[str, CodeFunc] = OrderedDict()
         self.__data = comp_data
-        self.__global_strings: Dict[str, GlobalVar] = {}
-        self.__py_constants: Dict[Any, GlobalVar] = {}  # Global variable containing python constants
+        self.__global_strings: dict[str, GlobalVar] = {}
+        self.__py_constants: dict[Any, GlobalVar] = {}  # Global variable containing python constants
 
         self.__true_var = None
         self.__false_var = None
@@ -281,7 +281,7 @@ class CodeGen:
         self.__python_list_struct = None
         self.__python_tuple_struct = None
         self.__python_func_struct = None
-        self.__python_type_struct: Union[StructType, None] = None
+        self.__python_type_struct: StructType | None = None
 
     def setup(self):
         # Create the Python object struct
@@ -408,7 +408,7 @@ class CodeGen:
             raise Exception("Setup was not called on CodeGen")
         return self.__false_var
 
-    def get_none(self):
+    def get_none(self) -> GlobalVar:
         """
         Return the global variable containing the None python object
         """
@@ -473,8 +473,10 @@ class CodeGen:
             raise Exception("Setup was not called on CodeGen")
         return self.__python_type_struct
 
-    def get_or_create_func(self, name: str, return_type: CodeType, args_type=[], link=Linkage.INTERNAL):
+    def get_or_create_func(self, name: str, return_type: CodeType, args_type=None, link=Linkage.INTERNAL):
         # Get case
+        if args_type is None:
+            args_type = []
         if name in self.__funcs:
             return self.__funcs[name]
 
@@ -509,7 +511,7 @@ class CodeGen:
             raise ValueError("Const type " + str(type(value)) + " not expected")
 
         var_type = code_type.get_int64()
-        name = "@flyable@const@" + str(len(self.__py_constants))
+        name = f"@flyable@const@{len(self.__py_constants)}"
         new_var = GlobalVar(name, code_type.get_py_obj_ptr(self), Linkage.INTERNAL)
         self.add_global_var(new_var)
         self.__py_constants[value] = new_var

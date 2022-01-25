@@ -25,7 +25,8 @@ from flyable.parse.parser_visitor import ParserVisitor
 from flyable.code_gen.code_type import CodeType
 
 
-def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.LangType, args, args_type, optional=False, protocol=True, shortcuts=True):
+def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.LangType, args, args_type, optional=False,
+             protocol=True, shortcuts=True):
     """
     Call a method independent from the called type.
     There is 3 calls scenario:
@@ -41,7 +42,7 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.La
             if optional:
                 return None, None
             raise Exception(f"Function could not be called. Not found in called class {called_class.get_full_name()}")
-        
+
         called_impl = adapter.adapt_func(
             called_func,
             [obj_type] + args_type,
@@ -50,7 +51,7 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.La
         )
         if called_impl is None:
             raise Exception(f"Could not create the specialized function {func_name}. Invalid function args.")
-        
+
         return_type = called_impl.get_return_type()
         return_type.add_hint(hint.TypeHintRefIncr())
         return return_type, visitor.get_builder().call(
@@ -194,7 +195,7 @@ def generate_python_call(visitor: ParserVisitor, obj, func_name: str, args):
     tp_call_block = builder.create_block()
 
     # If it's non-zero then it has the feature
-    builder.cond_br(can_vec, tp_call_block, vector_call_block)
+    builder.cond_br(can_vec, vector_call_block, tp_call_block)
 
     builder.set_insert_block(vector_call_block)
     vec_result = function.call_py_func_vec_call(visitor, obj, func_to_call, args, callable_type)

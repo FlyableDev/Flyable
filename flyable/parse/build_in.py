@@ -14,6 +14,8 @@ from abc import ABC, abstractmethod
 import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.list as gen_list
+import flyable.code_gen.number as gen_num
+import flyable.code_gen.code_type as code_type
 
 
 def get_build_in_name(name):
@@ -66,11 +68,7 @@ class BuildInInt(BuildInFunc):
         super().__init__()
 
     def parse(self, args_types, args, visitor):
-        if len(args_types) == 1 and args_types[0].is_str():
-            return lang_type.get_int_type(), gen_list.python_list_len(visitor, args[0])
-        else:
-            return lang_type.get_int_type(), runtime.py_runtime_obj_len(visitor.get_code_gen(), visitor.get_builder(),
-                                                                        args[0])
+        """ TODO implement optimisations """
 
 
 def get_build_in(name):
@@ -78,7 +76,7 @@ def get_build_in(name):
     build_in_funcs = {
         "list": BuildInList,
         "len": BuildInLen,
-        "int": BuildInFunc
+        # "int": BuildInInt
     }
 
     if name in build_in_funcs:
