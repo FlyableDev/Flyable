@@ -35,7 +35,7 @@ def __only_accept_ref_counting_type(func: Callable[[..., LangType, ...], Any]):
     @wraps(func)
     def guard_for_ref_count_type(*args, **kwargs):
         # gets value_type from kwargs or from args if it is passed as a positionnal argument
-        value_type = kwargs.get("value_type") or find_first(lambda arg: isinstance(arg, LangType), args)
+        value_type = kwargs.get("value_type") or find_first(lambda arg: isinstance(arg, lang_type.LangType), args)
         # if value_type is a ref_counting_type, calls the function
         if value_type is not None and is_ref_counting_type(value_type):
             return func(*args, **kwargs)
