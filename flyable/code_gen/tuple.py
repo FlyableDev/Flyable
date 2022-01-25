@@ -2,14 +2,11 @@
 Module for Python tuple related functions
 """
 
-from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.code_type as code_type
-import flyable.code_gen.list as list_gen
 import flyable.code_gen.ref_counter as ref_counter
-import flyable.data.lang_type as lang_type
 import flyable.code_gen.fly_obj as fly_obj
-
+from flyable.parse.parser_visitor import ParserVisitor
 
 def python_tuple_new(code_gen, builder, size):
     """
@@ -21,7 +18,7 @@ def python_tuple_new(code_gen, builder, size):
     return builder.call(new_list_func, [size])
 
 
-def python_tuple_new_alloca(visitor, size):
+def python_tuple_new_alloca(visitor: ParserVisitor, size):
     """
     Generate the code to allocate a Python Tuple on the stack. Much faster then an allocation on the heap.
     """

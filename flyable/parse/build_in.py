@@ -14,8 +14,6 @@ from abc import ABC, abstractmethod
 import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.list as gen_list
-import flyable.code_gen.number as gen_num
-import flyable.code_gen.code_type as code_type
 
 
 def get_build_in_name(name):

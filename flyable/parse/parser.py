@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 from typing import TYPE_CHECKING, Any
+from flyable.data.comp_data import CompData
 
 from flyable.debug.debug_flags import DebugFlags, value_if_debug
 
@@ -15,7 +16,7 @@ from flyable.parse.parser_visitor import ParserVisitor
 
 
 class Parser(ErrorThrower):
-    def __init__(self, data, code_gen: CodeGen):
+    def __init__(self, data: CompData, code_gen: CodeGen):
         super().__init__()
         self.__data = data
         self.__code_gen = code_gen

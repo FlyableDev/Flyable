@@ -1,9 +1,12 @@
+from __future__ import annotations
 import ast
-from typing import Any, Callable
-
+from typing import TYPE_CHECKING, Any, Callable
 from flyable.code_gen.code_builder import CodeBuilder
 from flyable.code_gen.code_writer import CodeWriter
 from flyable.debug.utils import dprint, ddivider
+
+if TYPE_CHECKING:
+    from flyable.code_gen.code_gen import CodeFunc
 
 CODE_BUILDER_IDS = [
     "add",
@@ -69,7 +72,7 @@ class CodeBuilderAnalyser(CodeBuilder):
     def __writer(self) -> CodeWriter:
         return getattr(self, "_CodeBuilder__writer")
 
-    def set_insert_block(self, block):
+    def set_insert_block(self, block: CodeFunc.CodeBlock):
         result = super().set_insert_block(block)
         self.__writer.add_int32 = self.__debug_writer(self.__writer.add_int32)
         return result

@@ -1,7 +1,7 @@
+from __future__ import annotations
 import ast
 import copy
-from typing import Any, Callable
-
+from typing import TYPE_CHECKING, Any, Callable
 import flyable.code_gen.caller as caller
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.code_type as code_type
@@ -10,9 +10,12 @@ import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
 import flyable.parse.op as parse_op
 
+if TYPE_CHECKING:
+    from flyable.parse.parser_visitor import ParserVisitor
+
 
 def __convert_type_to_match(
-    visitor, op, type_left: lang_type.LangType, value_left, type_right, value_right
+    visitor: ParserVisitor, op: ast.operator, type_left: lang_type.LangType, value_left, type_right, value_right
 ):
     # Check the primitive type conversion
     if type_left.is_dec():
@@ -61,8 +64,8 @@ def __convert_type_to_match(
 
 
 def bin_op(
-    visitor,
-    op,
+    visitor: ParserVisitor,
+    op: ast.operator,
     type_left: lang_type.LangType,
     value_left,
     type_right: lang_type.LangType,
@@ -162,7 +165,7 @@ def bin_op(
     return result_type, apply_op(value_left, value_right)
 
 
-def cond_op(visitor, op, type_left, first_value, type_right, second_value):
+def cond_op(visitor: ParserVisitor, op: ast.operator, type_left, first_value, type_right, second_value):
     builder = visitor.get_builder()
 
     # Check the primitive type conversion
@@ -223,7 +226,7 @@ def cond_op(visitor, op, type_left, first_value, type_right, second_value):
     return result_type, result_value
 
 
-def unary_op(visitor, type, value, node):
+def unary_op(visitor: ParserVisitor, type, value, node):
     if type.is_obj() or type.is_python_obj() or type.is_collection():
         args_types = [type]
         args = [value]

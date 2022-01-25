@@ -4,7 +4,7 @@ import ast
 import copy
 import enum
 from ast import *
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import flyable.code_gen.caller as caller
 import flyable.code_gen.code_gen as gen
@@ -32,15 +32,19 @@ import flyable.data.type_hint as hint
 import flyable.parse.adapter as adapter
 import flyable.parse.build_in as build
 import flyable.parse.op as op
-import flyable.parse.variable as _variabl
+from flyable.data.lang_type import LangType, code_type, get_none_type
 from flyable.code_gen.code_builder import CodeBuilder
 from flyable.data.lang_func_impl import LangFuncImpl
-from flyable.data.lang_type import LangType, code_type
+
+if TYPE_CHECKING:
+    from flyable.parse.parser import Parser
+    from flyable.code_gen.code_gen import CodeGen
+
 
 
 class ParserVisitor(NodeVisitor):
 
-    def __init__(self, parser, code_gen, func_impl):
+    def __init__(self, parser: Parser, code_gen: CodeGen, func_impl: LangFuncImpl):
         self.__code_gen: gen.CodeGen = code_gen
         self.__assign_type: LangType = LangType()
         self.__assign_value = None
@@ -59,11 +63,11 @@ class ParserVisitor(NodeVisitor):
         self.__cond_blocks = []  # Hierarchy of current blocks that might not get executed
         self.__exception_blocks = []  # Hierarchy of blocks to jump when an exception occur to dispatch it
 
-        self.__func.get_code_func().clear_blocks()
+        self.__get_code_func().clear_blocks()
+        
+        self.__entry_block = self.__get_code_func().add_block()
 
-        self.__entry_block = func_impl.get_code_func().add_block()
-
-        self.__builder: CodeBuilder = func_impl.get_code_func().get_builder()
+        self.__builder: CodeBuilder = self.__get_code_func().get_builder()
         self.__builder.set_insert_block(self.__entry_block)
 
     def parse(self):
@@ -122,26 +126,26 @@ class ParserVisitor(NodeVisitor):
         self.__builder.set_insert_block(self.__entry_block)
         self.__builder.br(self.__content_block)
 
-        self.__func.get_code_func().set_return_type(self.__func.get_return_type().to_code_type(self.__code_gen))
+        self.__get_code_func().set_return_type(self.__func.get_return_type().to_code_type(self.__code_gen))
         self.__code_gen.fill_not_terminated_block(self)
 
         self.__func.set_parse_status(lang_func.LangFuncImpl.ParseStatus.ENDED)
 
-    def visit(self, node):
+    def visit(self, node: AST):
         self.__current_node = node
         if isinstance(node, list):
             for e in node:
                 super().visit(e)
         else:
-            if hasattr(node, "context") and node.context is None:
+            if hasattr(node, "context") and node.context is None: # type: ignore
                 pass
             else:
                 super().visit(node)
 
-    def visit_node(self, node):
+    def visit_node(self, node: AST):
         return self.__visit_node(node)
 
-    def __visit_node(self, node):
+    def __visit_node(self, node: AST):
         self.visit(node)
         return self.__last_type, self.__last_value
 
@@ -354,8 +358,10 @@ class ParserVisitor(NodeVisitor):
                 self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
             else:
                 if found_var.get_code_gen_value() is None:
-                    found_var.set_code_gen_value(
+                    if not found_var.is_global():
+                        found_var.set_code_gen_value(
                         self.generate_entry_block_var(found_var.get_type().to_code_type(self.__code_gen), True))
+
                 self.__last_value = found_var.get_code_gen_value()
 
             # Args don't live inside an alloca so they don't need to be loaded
@@ -529,6 +535,9 @@ class ParserVisitor(NodeVisitor):
                     file = self.__func.get_parent_func().get_file()
                 else:
                     file = self.__data.get_file(self.__last_type.get_id())
+                
+                if file is None:
+                    raise Exception("File of function called not found")
 
                 content = file.find_content_by_name(name_call)
                 if isinstance(content, lang_class.LangClass):
@@ -659,7 +668,10 @@ class ParserVisitor(NodeVisitor):
             self.__parser.throw_error("'break' outside a loop", node.lineno, node.end_col_offset)
 
     def visit_Return(self, node: Return) -> Any:
+        if node.value is None:
+            raise NotImplementedError("Unsupported empty return")
         return_type, return_value = self.__visit_node(node.value)
+        
 
         if not hint.is_incremented_type(return_type):  # Need to increment if we return to be consistent to CPython
             ref_counter.ref_incr(self.__builder, return_type, return_value)
@@ -686,7 +698,12 @@ class ParserVisitor(NodeVisitor):
 
     # TODO: fix issues #39 & #41 and then complete the visitor
     def visit_Global(self, node: Global) -> Any:
-        global_func = self.__func.get_parent_func().get_file().get_global_func()
+        file = self.__func.get_parent_func().get_file()
+        if file is None:
+            raise Exception("Function of function implementationt has no file. Was the file set before parsing?")
+        global_func = file.get_global_func()
+        if global_func is None:
+            raise Exception("File has no global function. Was the function set before parsing?")
         impl = global_func.get_impl(3)
         for name in node.names:
             result = impl.get_context().find_active_var(name)
@@ -1345,6 +1362,12 @@ class ParserVisitor(NodeVisitor):
                 impl = parent_func.get_impl(4)
                 result = impl.get_context().find_active_var(name)
         return result
+    
+    def __get_code_func(self):
+        code_func = self.__func.get_code_func()
+        if code_func is None:
+            raise Exception(f"Could not instantiate ParserVisitor with function implementation {self.__func.get_id()}. Was the CodeFunc generated?")
+        return code_func
 
     def __reset_info(self):
         self.__assign_type: LangType = LangType()
@@ -1364,7 +1387,7 @@ class ParserVisitor(NodeVisitor):
         for var in self.__func.get_context().vars_iter():
             var.set_code_gen_value(None)
 
-        self.__func.get_code_func().clear_blocks()
-        self.__entry_block = self.__func.get_code_func().add_block()
+        self.__get_code_func().clear_blocks()
+        self.__entry_block = self.__get_code_func().add_block()
 
         self.__builder.set_insert_block(self.__entry_block)

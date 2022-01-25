@@ -146,7 +146,7 @@ Memory management hint
 """
 
 
-def is_incremented_type(lang_type):
+def is_incremented_type(lang_type: LangType):
     """
     Return if the type contains the TypeHintRefIncr hints
     """
