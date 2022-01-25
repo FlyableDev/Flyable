@@ -2,14 +2,8 @@
 Module with the functions related to code generation of code managing the reference counter
 """
 from __future__ import annotations
-
 from functools import wraps
 from typing import TYPE_CHECKING, Callable, Any
-
-if TYPE_CHECKING:
-    from flyable.data.lang_type import LangType
-    from flyable.code_gen.code_builder import CodeBuilder
-
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.fly_obj as fly_obj
 import flyable.code_gen.type as gen_type
@@ -17,12 +11,13 @@ import flyable.code_gen.code_type as code_type
 import flyable.data.type_hint as hint
 import flyable.code_gen.caller as caller
 import flyable.code_gen.runtime as runtime
-import flyable.code_gen.list as _list
-import flyable.code_gen.code_builder as code_builder
-import flyable.code_gen.debug as debug
-import flyable.code_gen.exception as excp
-from flyable.parse.parser import ParserVisitor
 from flyable.tool.utils import find_first
+
+if TYPE_CHECKING:
+    from flyable.data.lang_type import LangType
+    from flyable.code_gen.code_builder import CodeBuilder
+    from flyable.parse.parser import ParserVisitor
+
 
 
 def is_ref_counting_type(value_type: LangType):
@@ -177,30 +172,35 @@ def ref_decr_nullable(visitor: ParserVisitor, value_type: LangType, value: int):
     builder.set_insert_block(continue_block)
 
 
-def ref_decr_multiple(visitor, types, values):
+def ref_decr_multiple(visitor: ParserVisitor, types: list[LangType], values: list[int]):
     for i, value in enumerate(values):
         ref_decr(visitor, types[i], values[i])
 
 
-def ref_decr_multiple_incr(visitor, types, values):
+def ref_decr_multiple_incr(visitor: ParserVisitor, types: list[LangType], values: list[int]):
     for i, value in enumerate(values):
         if hint.is_incremented_type(types[i]):
             ref_decr(visitor, types[i], values[i])
 
 
-def ref_decr_incr(visitor, type, value):
+def ref_decr_incr(visitor: ParserVisitor, type: LangType, value: int):
     if hint.is_incremented_type(type):
         ref_decr(visitor, type, value)
 
 
-def decr_all_variables(visitor):
+def decr_all_variables(visitor: ParserVisitor):
     for var in visitor.get_func().get_context().vars_iter():
         if var.get_code_gen_value() is not None:
             if not var.is_arg():
                 if var.is_global():
-                    value = visitor.get_builder().global_var(var.get_code_gen_value())
+                    val = var.get_code_gen_value()
+                    if val is None or isinstance(val, int):
+                        raise Exception("Global variable ref not found.")
+                    value = visitor.get_builder().global_var(val)
                 else:
                     value = var.get_code_gen_value()
-
+                    if not isinstance(value, int):
+                        raise Exception("Variable ref not found.")
+                print(value)
                 value = visitor.get_builder().load(value)
                 ref_decr_nullable(visitor, var.get_type(), value)

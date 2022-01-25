@@ -140,7 +140,7 @@ class LangType:
         self.__type: LangType.Type = type
         self.__id: int = id
         # Hints are extra data that allows the compiler to perform more severe optimization
-        self.__hints: list[hint.TypeHint | hint.TypeHintPythonType] = []
+        self.__hints: list[hint.TypeHint] = []
 
     def is_unknown(self):
         return self.__type == LangType.Type.UNKNOWN

@@ -166,7 +166,7 @@ class CodeBuilder:
             self.writer.add_int32(index)
         return self.__gen_value()
 
-    def call(self, func: CodeFunc, args):
+    def call(self, func: CodeFunc, args: list[int]):
         """
         Function call with CodeFunc
         """

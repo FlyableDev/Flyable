@@ -1,14 +1,18 @@
 """
 Module for Python tuple related functions
 """
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.fly_obj as fly_obj
 from flyable.parse.parser_visitor import ParserVisitor
 
-def python_tuple_new(code_gen, builder, size):
+if TYPE_CHECKING:
+    from flyable.code_gen.code_builder import CodeBuilder
+
+def python_tuple_new(code_gen: gen.CodeGen, builder: CodeBuilder, size: int):
     """
     Generate the code to allocate a Python Tuple
     """
@@ -18,7 +22,7 @@ def python_tuple_new(code_gen, builder, size):
     return builder.call(new_list_func, [size])
 
 
-def python_tuple_new_alloca(visitor: ParserVisitor, size):
+def python_tuple_new_alloca(visitor: ParserVisitor, size: int):
     """
     Generate the code to allocate a Python Tuple on the stack. Much faster then an allocation on the heap.
     """
@@ -44,7 +48,7 @@ def python_tuple_new_alloca(visitor: ParserVisitor, size):
     return tuple_result
 
 
-def python_tuple_set(code_gen, builder, list, index, item):
+def python_tuple_set(code_gen: gen.CodeGen, builder: CodeBuilder, list: int, index: int, item: int):
     """
     Generate the code to set an element in a Python Tuple
     """
@@ -55,7 +59,7 @@ def python_tuple_set(code_gen, builder, list, index, item):
     return builder.call(set_item_func, [list, index, item])
 
 
-def python_tuple_set_unsafe(visitor, tuple, index, item):
+def python_tuple_set_unsafe(visitor: ParserVisitor, tuple: int, index: int, item: int):
     """
     Generate the code to set an element in a Python Tuple.
     Should only be used for filling new tuples.
@@ -69,12 +73,12 @@ def python_tuple_set_unsafe(visitor, tuple, index, item):
     builder.store(item, content)
 
 
-def python_tuple_get_content_ptr(visitor, tuple):
+def python_tuple_get_content_ptr(visitor: ParserVisitor, tuple: int):
     builder = visitor.get_builder()
     return builder.gep(tuple, builder.const_int32(0), builder.const_int32(3))
 
 
-def python_tuple_get_size_ptr(visitor, tuple):
+def python_tuple_get_size_ptr(visitor: ParserVisitor, tuple: int):
     builder = visitor.get_builder()
     return builder.gep(tuple, builder.const_int32(0), builder.const_int32(2))
 

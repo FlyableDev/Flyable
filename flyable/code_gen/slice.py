@@ -1,8 +1,13 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
 
+if TYPE_CHECKING:
+    from flyable.parse.parser import ParserVisitor
 
-def py_slice_new(visitor, start, stop, step):
+
+def py_slice_new(visitor: ParserVisitor, start: int, stop: int, step: int):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 

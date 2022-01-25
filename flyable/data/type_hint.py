@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Type, Union
+from typing import TYPE_CHECKING, Any, Type, Union
 
 if TYPE_CHECKING:
     from flyable.data.lang_type import LangType
@@ -11,7 +11,7 @@ class TypeHint:
     pass
 
 
-def get_lang_type_contained_hint_type(lang_type: LangType, hint_type: Type[TypeHint]):
+def get_lang_type_contained_hint_type(lang_type: LangType, hint_type: Type[TypeHint]) -> Any:
     for hint in lang_type.get_hints():
         if isinstance(hint, hint_type):
             return hint

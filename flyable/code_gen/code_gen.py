@@ -9,7 +9,6 @@ import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_writer as _writer
 import flyable.code_gen.library_loader as loader
 import flyable.code_gen.module as gen_module
-import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.runtime as runtime
 from flyable.data.comp_data import CompData
 from flyable.data.lang_class import LangClass
@@ -20,7 +19,10 @@ from flyable.code_gen.code_type import CodeType
 from flyable.code_gen.code_writer import CodeWriter
 from flyable.debug.code_builder_analyser import CodeBuilderAnalyser
 from flyable.debug.debug_flags import DebugFlags, value_if_debug
-from flyable.parse.parser import ParserVisitor
+import flyable.code_gen.ref_counter as ref_counter
+
+if TYPE_CHECKING:
+    from flyable.parse.parser import ParserVisitor
 
 
 class Linkage(enum.IntEnum):

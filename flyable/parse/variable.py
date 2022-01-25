@@ -1,7 +1,11 @@
+from __future__ import annotations
 import copy
-
+from typing import TYPE_CHECKING
 import flyable.data.lang_type as type
 import flyable.data.type_hint as hint
+
+if TYPE_CHECKING:
+    from flyable.code_gen.code_gen import GlobalVar
 
 
 class Variable:
@@ -43,7 +47,7 @@ class Variable:
     def is_arg(self):
         return self.__is_arg
 
-    def set_code_gen_value(self, value):
+    def set_code_gen_value(self, value: int | GlobalVar):
         self.__code_gen_value = value
 
     def get_code_gen_value(self):

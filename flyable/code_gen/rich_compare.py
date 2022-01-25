@@ -1,19 +1,25 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import flyable.code_gen.caller as caller
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.runtime as runtime
 import flyable.code_gen.type as gen_type
 import flyable.code_gen.ref_counter as ref_counter
+from flyable.data.lang_type import LangType
+
+if TYPE_CHECKING:
+    from flyable.parse.parser import ParserVisitor
 
 """
 Module to handle the Python rich compare protocol
 """
 
 
-def is_func_name_rich_compare(func_name):
+def is_func_name_rich_compare(func_name: str):
     return get_rich_compare_slots_from_func_name(func_name) is not None
 
 
-def get_rich_compare_slots_from_func_name(func_name):
+def get_rich_compare_slots_from_func_name(func_name: str):
     slots = {"__gt__": 4,
              "__lt__": 0,
              "__eq__": 2,
@@ -25,7 +31,7 @@ def get_rich_compare_slots_from_func_name(func_name):
     return None
 
 
-def call_rich_compare_protocol(visitor, func_name, obj_type, obj, instance_type, args_types, args):
+def call_rich_compare_protocol(visitor: ParserVisitor, func_name: str, obj_type: LangType, obj: int, instance_type: int, args_types: list[LangType], args: list[int]):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
@@ -39,7 +45,11 @@ def call_rich_compare_protocol(visitor, func_name, obj_type, obj, instance_type,
         num_call_args.append(new_value)
         num_call_args_types.append(new_type)
 
-    slot = builder.const_int32(get_rich_compare_slots_from_func_name(func_name))
+    rich_compare_slots = get_rich_compare_slots_from_func_name(func_name)
+    if rich_compare_slots is None:
+        raise Exception("Rich compare slot is None")
+        
+    slot = builder.const_int32(rich_compare_slots)
 
     rich_compare_func = gen_type.py_object_type_get_tp_richcompare_ptr(visitor, instance_type)
     rich_compare_func = builder.load(rich_compare_func)

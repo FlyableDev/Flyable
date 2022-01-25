@@ -25,7 +25,7 @@ from flyable.parse.parser_visitor import ParserVisitor
 from flyable.code_gen.code_type import CodeType
 
 
-def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.LangType, args, args_type, optional=False,
+def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType], optional=False,
              protocol=True, shortcuts=True):
     """
     Call a method independent from the called type.

@@ -1,13 +1,16 @@
 """
 Module routine to handle set
 """
-
-from flyable.code_gen.code_type import CodeType
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.code_type as code_type
 
+if TYPE_CHECKING:
+    from flyable.parse.parser import ParserVisitor
 
-def instanciate_python_set(visitor, obj):
+
+def instanciate_python_set(visitor: ParserVisitor, obj: int):
     """
     Generate the code to allocate a Python Set
     """
@@ -19,7 +22,7 @@ def instanciate_python_set(visitor, obj):
     return builder.call(new_list_func, [obj])
 
 
-def python_set_add(visitor, set_obj, item):
+def python_set_add(visitor: ParserVisitor, set_obj: int, item: int):
     """
     Generate the code to set an element in a Python Set
     """
@@ -31,7 +34,7 @@ def python_set_add(visitor, set_obj, item):
     return builder.call(set_item_func, [set_obj, item])
 
 
-def python_set_len(visitor, set_obj):
+def python_set_len(visitor: ParserVisitor, set_obj: int):
     """
     Generate the code that returns the len of the Set
     """

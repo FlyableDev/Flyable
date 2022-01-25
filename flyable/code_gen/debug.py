@@ -1,9 +1,14 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.ref_counter as ref_count
 
+if TYPE_CHECKING:
+    from flyable.parse.parser import ParserVisitor
 
-def debug_call_addr_minus(visitor, v1, v2):
+
+def debug_call_addr_minus(visitor: ParserVisitor, v1: int, v2: int):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
     func_name = "flyable_debug_addr_minus"
