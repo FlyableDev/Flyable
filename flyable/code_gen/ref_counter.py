@@ -201,6 +201,5 @@ def decr_all_variables(visitor: ParserVisitor):
                     value = var.get_code_gen_value()
                     if not isinstance(value, int):
                         raise Exception("Variable ref not found.")
-                print(value)
                 value = visitor.get_builder().load(value)
                 ref_decr_nullable(visitor, var.get_type(), value)

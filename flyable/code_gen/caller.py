@@ -25,7 +25,8 @@ from flyable.parse.parser_visitor import ParserVisitor
 from flyable.code_gen.code_type import CodeType
 
 
-def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType], optional=False,
+def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.LangType, args: list[int],
+             args_type: list[lang_type.LangType], optional=False,
              protocol=True, shortcuts=True):
     """
     Call a method independent from the called type.
@@ -188,16 +189,16 @@ def generate_python_call(visitor: ParserVisitor, obj, func_name: str, args):
     tp_flag = builder.load(tp_flag)
 
     can_vec = builder._and(tp_flag, builder.const_int32(2048))  # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
-    debug.flyable_debug_print_int64(code_gen, builder, builder.int_cast(tp_flag, code_type.get_int64()))
-    can_vec = builder.eq(can_vec, builder.const_int32(0))
+    cannot_vec = builder.eq(can_vec, builder.const_int32(0))
 
     vector_call_block = builder.create_block()
     tp_call_block = builder.create_block()
 
     # If it's non-zero then it has the feature
-    builder.cond_br(can_vec, vector_call_block, tp_call_block)
+    builder.cond_br(cannot_vec, tp_call_block, vector_call_block)
 
     builder.set_insert_block(vector_call_block)
+    debug.flyable_debug_print_int64(code_gen, builder, builder.const_int64(2229))
     vec_result = function.call_py_func_vec_call(visitor, obj, func_to_call, args, callable_type)
     builder.store(vec_result, call_result_var)
     continue_block = builder.create_block()
