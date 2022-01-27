@@ -49,7 +49,7 @@ class ParserVisitor(NodeVisitor):
         self.__assign_type: LangType = LangType()
         self.__assign_value = None
         self.__last_type: Union[LangType, None] = LangType()
-        self.__last_value = None
+        self.__last_value: int | None = None
         self.__aug_mode = False
         self.__func: LangFuncImpl = func_impl
         self.__parser = parser
@@ -767,7 +767,7 @@ class ParserVisitor(NodeVisitor):
         new_var = self.generate_entry_block_var(common_type.to_code_type(self.__code_gen))
 
         self.__builder.set_insert_block(true_cond)
-        true_value = self.__code_gen.convert_type(self.__builder, true_type, true_value, common_type)
+        true_value = self.__code_gen.convert_type(self.__builder, self.__code_gen, true_type, true_value, common_type)
         self.__builder.store(true_value, new_var)
         self.__builder.br(continue_cond)
 

@@ -22,9 +22,7 @@ Module related to the python number protocol
 """
 
 
-def call_number_protocol(
-        visitor, func_name: str, obj_type, obj, instance_type, args_types, args
-):
+def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_type.LangType, obj: int, instance_type: int, args_types: list[lang_type.LangType], args: list[int]):
     code_gen: CodeGen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
@@ -106,6 +104,8 @@ def call_number_protocol(
     elif is_number_ternary_func_valid(func_name, args_size):
         basic_call_type, basic_call_value = caller.call_obj(visitor, func_name, obj, obj_type, num_call_args,
                                                             num_call_args_types, False, False, False)
+        if basic_call_value is None: 
+            raise Exception("Could not call pow protocol")
         builder.store(basic_call_value, protocol_result)
     else:
         basic_call_type, basic_call_value = caller.call_obj(
@@ -118,6 +118,9 @@ def call_number_protocol(
             False,
             False,
         )
+
+        if basic_call_value is None: 
+            raise Exception("Could not call fallback protocol")
 
         builder.store(basic_call_value, protocol_result)
     builder.br(continue_block)

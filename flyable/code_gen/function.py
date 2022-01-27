@@ -12,13 +12,13 @@ import flyable.data.lang_type as lang_type
 from flyable.parse.parser import ParserVisitor
 
 
-def check_py_obj_is_func_type(visitor, func_to_call):
+def check_py_obj_is_func_type(visitor: ParserVisitor, func_to_call: int):
     obj_type = fly_obj.get_py_obj_type(visitor.get_builder(), func_to_call)
     func_type = visitor.get_builder().global_var(visitor.get_code_gen().get_py_func_type())
     return visitor.get_builder().eq(obj_type, func_type)
 
 
-def get_vector_call_ptr(visitor: ParserVisitor, python_callable):
+def get_vector_call_ptr(visitor: ParserVisitor, python_callable: int):
     """
     Retrieves vector call pointer from Python callable.
     :param visitor: Parser visitor
@@ -38,7 +38,7 @@ def get_vector_call_ptr(visitor: ParserVisitor, python_callable):
     return builder.load(vector_call_ptr)
 
 
-def call_py_func_vec_call(visitor: ParserVisitor, obj, func_to_call, args, vector_call_ptr):
+def call_py_func_vec_call(visitor: ParserVisitor, obj: int, func_to_call: int, args: list[int], vector_call_ptr: int):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
@@ -66,7 +66,7 @@ def call_py_func_vec_call(visitor: ParserVisitor, obj, func_to_call, args, vecto
     return result
 
 
-def call_py_func_tp_call(visitor, obj, func_to_call, args):
+def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, args: list[int]):
     """
     Call a python function using the tp_call convention
     """
@@ -93,13 +93,13 @@ def call_py_func_tp_call(visitor, obj, func_to_call, args):
     return result
 
 
-def py_obj_func_get_vectorcall_ptr(visitor, func):
+def py_obj_func_get_vectorcall_ptr(visitor: ParserVisitor, func: int):
     func = visitor.get_builder().ptr_cast(func, visitor.get_code_gen().get_py_func_struct().to_code_type().get_ptr_to())
     gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(14)]
     return visitor.get_builder().gep2(func, visitor.get_code_gen().get_py_func_struct().to_code_type(), gep_indices)
 
 
-def py_obj_type_get_tp_call(visitor, func_type):
+def py_obj_type_get_tp_call(visitor: ParserVisitor, func_type: int):
     func_type = visitor.get_builder().ptr_cast(func_type,
                                                visitor.get_code_gen().get_python_type().to_code_type().get_ptr_to())
     gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(16)]
@@ -107,7 +107,7 @@ def py_obj_type_get_tp_call(visitor, func_type):
                                       gep_indices)
 
 
-def py_obj_type_get_tp_flag_ptr(visitor, func_type):
+def py_obj_type_get_tp_flag_ptr(visitor: ParserVisitor, func_type: int):
     func_type = visitor.get_builder().ptr_cast(func_type,
                                                visitor.get_code_gen().get_python_type().to_code_type().get_ptr_to())
     gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(21)]
@@ -115,12 +115,12 @@ def py_obj_type_get_tp_flag_ptr(visitor, func_type):
                                       gep_indices)
 
 
-def is_py_obj_method(visit, obj):
+def is_py_obj_method(visit: ParserVisitor, obj: int):
     """
     Return a value containing if obj is a python method
     """
     code_gen = visit.get_code_gen()
     builder = visit.get_builder()
-    obj_type = fly_obj.get_py_obj_type(visit, obj)
+    obj_type = fly_obj.get_py_obj_type(builder, obj)
     return builder.eq(obj_type, builder.global_var(code_gen.get_method_type()))
 

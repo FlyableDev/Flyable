@@ -17,7 +17,7 @@ module to handle flyable object info
 """
 
 
-def py_obj_get_attr(visitor: ParserVisitor, obj, name: str, obj_type=None):
+def py_obj_get_attr(visitor: ParserVisitor, obj: int, name: str, obj_type:int=None):
     """
     Obtain the attribute of an object by calling get_attr or get_attro.
     If a type is supplied it will avoid loading the type again
@@ -72,7 +72,7 @@ def py_obj_get_attr(visitor: ParserVisitor, obj, name: str, obj_type=None):
     return builder.load(attr_found_var)
 
 
-def py_obj_set_attr(visitor, obj, name, obj_set, obj_type=None):
+def py_obj_set_attr(visitor: ParserVisitor, obj: int, name: str, obj_set: int, obj_type:int=None):
     """
     Obtain the attribute of an object by calling get_attr or get_attro.
     If a type is supplied it will avoid loading the type again
@@ -125,7 +125,7 @@ def py_obj_set_attr(visitor, obj, name, obj_set, obj_type=None):
     builder.set_insert_block(continue_block)
 
 
-def py_obj_del_attr(visitor, obj, name):
+def py_obj_del_attr(visitor: ParserVisitor, obj: int, name: str):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
@@ -146,30 +146,30 @@ def get_obj_attribute_start_index():
     return 2
 
 
-def get_py_obj_type_ptr(builder: CodeBuilder, obj):
+def get_py_obj_type_ptr(builder: CodeBuilder, obj: int):
     return builder.gep(obj, builder.const_int32(0), builder.const_int32(1))
 
 
-def get_py_obj_type(builder: CodeBuilder, obj):
+def get_py_obj_type(builder: CodeBuilder, obj: int):
     return builder.load(get_py_obj_type_ptr(builder, obj))
 
 
-def get_py_obj_type_getattr_ptr(visitor: ParserVisitor, obj):
+def get_py_obj_type_getattr_ptr(visitor: ParserVisitor, obj: int):
     builder = visitor.get_builder()
     return visitor.get_builder().gep(obj, builder.const_int32(0), builder.const_int32(8))
 
 
-def get_py_obj_type_getattro_ptr(visitor, obj):
+def get_py_obj_type_getattro_ptr(visitor: ParserVisitor, obj: int):
     builder = visitor.get_builder()
     return visitor.get_builder().gep(obj, builder.const_int32(0), builder.const_int32(18))
 
 
-def get_py_obj_type_setattro_ptr(visitor, obj):
+def get_py_obj_type_setattro_ptr(visitor: ParserVisitor, obj: int):
     builder = visitor.get_builder()
     return visitor.get_builder().gep(obj, builder.const_int32(0), builder.const_int32(19))
 
 
-def get_py_obj_type_setattr_ptr(visitor, obj):
+def get_py_obj_type_setattr_ptr(visitor: ParserVisitor, obj: int):
     builder = visitor.get_builder()
     return visitor.get_builder().gep(obj, builder.const_int32(0), builder.const_int32(9))
 

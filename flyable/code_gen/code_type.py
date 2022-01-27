@@ -1,7 +1,12 @@
+from __future__ import annotations
 import copy
 import enum
+from typing import TYPE_CHECKING
 
-from flyable.code_gen.code_writer import CodeWriter
+if TYPE_CHECKING:
+    from flyable.code_gen.code_gen import CodeGen
+    from flyable.code_gen.code_writer import CodeWriter
+    from flyable.code_gen.code_builder import CodeBuilder
 
 
 def get_void():
@@ -32,11 +37,11 @@ def get_int8_ptr():
     return get_int8().get_ptr_to()
 
 
-def get_py_obj(code_gen):
+def get_py_obj(code_gen: CodeGen):
     return CodeType(CodeType.CodePrimitive.STRUCT, code_gen.get_py_obj_struct().get_id())
 
 
-def get_py_obj_ptr(code_gen):
+def get_py_obj_ptr(code_gen: CodeGen):
     return get_py_obj(code_gen).get_ptr_to()
 
 
@@ -64,21 +69,21 @@ def get_double():
     return CodeType(CodeType.CodePrimitive.DOUBLE)
 
 
-def get_func(return_type, args):
+def get_func(return_type: CodeType, args: list[CodeType]):
     result = CodeType(CodeType.CodePrimitive.FUNC)
     result.set_func_return_type(return_type)
     result.set_func_args(args)
     return result
 
 
-def get_array_of(type, size):
+def get_array_of(type: CodeType, size: int):
     result = CodeType(CodeType.CodePrimitive.ARRAY)
     result.set_array_type(type)
     result.set_array_size(size)
     return result
 
 
-def get_vector_call_func(code_gen):
+def get_vector_call_func(code_gen: CodeGen):
     args = [get_py_obj_ptr(code_gen), get_py_obj_ptr(code_gen).get_ptr_to(), get_int64(), get_py_obj_ptr(code_gen)]
     return get_func(get_py_obj_ptr(code_gen), args)
 
@@ -102,7 +107,7 @@ class CodeType:
         FUNC = 9,
         ARRAY = 10
 
-    def __init__(self, type:CodePrimitive=CodePrimitive.VOID, id=0):
+    def __init__(self, type:CodePrimitive=CodePrimitive.VOID, id:int=0):
         self.__type = type
         self.__ptr_level = 0
         self.__struct_id = id
@@ -122,21 +127,21 @@ class CodeType:
     def get_ptr_level(self):
         return self.__ptr_level
 
-    def get_null_value(self, builder):
+    def get_null_value(self, builder: CodeBuilder):
         if self.__ptr_level == 0:
             if self.__type == CodeType.CodePrimitive.INT64:
                 return builder
 
-    def set_func_args(self, args):
+    def set_func_args(self, args: list[CodeType]):
         self.__func_args = args
 
-    def set_func_return_type(self, return_type):
+    def set_func_return_type(self, return_type: CodeType):
         self.__func_return_type = return_type
 
-    def set_array_type(self, array_type):
+    def set_array_type(self, array_type: CodeType):
         self.__array_type = array_type
 
-    def set_array_size(self, size):
+    def set_array_size(self, size: int):
         self.__array_size = size
 
     def write_to_code(self, writer: CodeWriter):
@@ -145,15 +150,19 @@ class CodeType:
         writer.add_int32(int(self.__struct_id))
 
         if self.__type == CodeType.CodePrimitive.FUNC:
+            if self.__func_return_type is None:
+                raise Exception(f"CodeType Function was not properly set")
             self.__func_return_type.write_to_code(writer)
             writer.add_int32(len(self.__func_args))
             for arg in self.__func_args:
                 arg.write_to_code(writer)
         elif self.__type == CodeType.CodePrimitive.ARRAY:
+            if self.__array_type is None:
+                raise Exception(f"CodeType Array was not properly set")
             self.__array_type.write_to_code(writer)
             writer.add_int32(self.__array_size)
 
-    def __eq__(self, other):
+    def __eq__(self, other: CodeType):
         return self.__type == other.__type \
                and self.__struct_id == other.__struct_id \
                and self.__ptr_level == other.__ptr_level
