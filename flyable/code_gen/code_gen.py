@@ -3,7 +3,7 @@ import copy
 import enum
 import platform
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Union, TypeAlias
 
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_writer as _writer
@@ -118,6 +118,9 @@ class GlobalVar:
         return self.__str__()
 
 
+
+CodeBlock: TypeAlias = "CodeFunc.CodeBlock"
+
 class CodeFunc:
     """
     Represents a low level function with machine instructions
@@ -134,7 +137,7 @@ class CodeFunc:
             self.__code_writer = CodeWriter()
             self.__id = id
             self.__has_return: bool = False
-            self.__br_blocks: List[CodeGen] = []
+            self.__br_blocks: list[CodeBlock] = []
 
         def get_id(self):
             return self.__id
@@ -152,7 +155,7 @@ class CodeFunc:
             writer.add_str(self.get_name())
             self.__code_writer.write_to_code(writer)
 
-        def add_br_block(self, block: CodeGen):
+        def add_br_block(self, block: CodeBlock):
             self.__br_blocks.append(block)
 
         def has_br_block(self):
@@ -181,7 +184,7 @@ class CodeFunc:
         self.__name: str = name
         self.__args = []
         self.__return_type = CodeType()
-        self.__blocks: List[CodeFunc.CodeBlock] = []
+        self.__blocks: list[CodeBlock] = []
         self.__builder = value_if_debug(CodeBuilder(self), CodeBuilderAnalyser(self), DebugFlags.SHOW_OUTPUT_BUILDER)
 
     def set_linkage(self, link: Linkage):
@@ -733,3 +736,5 @@ class CodeGen:
             return builder.const_int1(False)
         else:
             return builder.const_null(type.to_code_type(self.__data))
+
+

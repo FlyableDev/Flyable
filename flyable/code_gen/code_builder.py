@@ -8,6 +8,8 @@ import flyable.code_gen.code_gen as gen
 
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeFunc
+    from flyable.code_gen.code_gen import CodeBlock
+
 
 class CodeBuilder:
     """
@@ -32,7 +34,8 @@ class CodeBuilder:
     def create_block(self):
         return self.__gen_block()
 
-    def set_insert_block(self, block: CodeFunc.CodeBlock):
+    def set_insert_block(self, block: CodeBlock):
+        """Makes the block passed in argument the current block"""
         self.__writer = block.get_writer()
         self.__current_block = block
 
@@ -139,13 +142,21 @@ class CodeBuilder:
         """
         return self.__make_op(101, value)
 
-    def br(self, block: CodeFunc.CodeBlock):
+    def br(self, block: CodeBlock):
+        """Adds the block as a new (br)anch to the current block"""
         self.__write_opcode(150)
         self.writer.add_int32(block.get_id())
         self.__current_block.add_br_block(block)
         self.writer.lock()
 
-    def cond_br(self, value: int, block_true: CodeFunc.CodeBlock, block_false: CodeFunc.CodeBlock):
+    def cond_br(self, value: int, block_true: CodeBlock, block_false: CodeBlock):
+        """Adds the blocks as (cond)itionnal (br)anches (cond_br) to the current block.
+
+        :param value: the value checked to decide the branch to take
+        :param block_true: the block to go to if the check value was true
+        :param block_false: the block to go to if the check value was false
+        """
+
         self.__write_opcode(151)
         self.writer.add_int32(value)
         self.writer.add_int32(block_true.get_id())
@@ -155,9 +166,11 @@ class CodeBuilder:
         self.writer.lock()
 
     def gep(self, value: int, first_index: int, second_index: int):
+        """llvm instruction to (G)et an (E)lement (P)ointer (GEP) from two indices"""
         return self.__make_op(152, value, first_index, second_index)
 
     def gep2(self, value: int, type: CodeType, array_indices: list[int]):
+        """llvm instruction to (G)et an (E)lement (P)ointer (GEP) from a type and an array of indices"""
         self.__write_opcode(153)
         type.write_to_code(self.writer)
         self.writer.add_int32(value)
@@ -172,7 +185,7 @@ class CodeBuilder:
         """
         return self.__make_op(170, func.get_id(), len(args), *args)
 
-    def call_ptr(self, ptr: int, args, call_conv:bool=None):
+    def call_ptr(self, ptr: int, args, call_conv: bool = None):
         """
         Function call with pointer
         """
