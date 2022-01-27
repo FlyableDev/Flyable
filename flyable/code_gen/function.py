@@ -18,20 +18,29 @@ def check_py_obj_is_func_type(visitor, func_to_call):
     return visitor.get_builder().eq(obj_type, func_type)
 
 
-def call_py_func_vec_call(visitor: ParserVisitor, obj, func_to_call, args, func_to_call_type=None):
-    code_gen = visitor.get_code_gen()
+def get_vector_call_ptr(visitor: ParserVisitor, python_callable):
+    """
+    Retrieves vector call pointer from Python callable.
+    :param visitor: Parser visitor
+    :param python_callable: Python callable
+    :return: Loaded vector call pointer
+    """
     builder = visitor.get_builder()
 
-    if func_to_call_type is None:
-        func_to_call_type = fly_obj.get_py_obj_type(builder, func_to_call)
+    func_py_obj_type = fly_obj.get_py_obj_type(builder, python_callable)
 
-    offset = builder.load(gen_type.py_object_type_get_vectorcall_offset_ptr(visitor, func_to_call_type))
+    vector_call_offset = builder.load(gen_type.py_object_type_get_vectorcall_offset_ptr(visitor, func_py_obj_type))
 
-    func_to_call_i8_ptr = builder.ptr_cast(func_to_call, code_type.get_int8_ptr())
-    offset_result = builder.gep2(func_to_call_i8_ptr, code_type.get_int8(), [offset])
-    vec_call = builder.ptr_cast(offset_result,
-                                code_type.get_vector_call_func(visitor.get_code_gen()).get_ptr_to().get_ptr_to())
-    vec_call = builder.load(vec_call)
+    callable_ptr = builder.ptr_cast(python_callable, code_type.get_int8_ptr())
+    vector_call = builder.gep2(callable_ptr, code_type.get_int8(), [vector_call_offset])
+    vector_call_ptr = builder.ptr_cast(vector_call,
+                                       code_type.get_vector_call_func(visitor.get_code_gen()).get_ptr_to().get_ptr_to())
+    return builder.load(vector_call_ptr)
+
+
+def call_py_func_vec_call(visitor: ParserVisitor, obj, func_to_call, args, vector_call_ptr):
+    code_gen = visitor.get_code_gen()
+    builder = visitor.get_builder()
 
     # Allocate memory for the args on the stack so it's much faster
     args_stack_memory = visitor.generate_entry_block_var(
@@ -53,7 +62,7 @@ def call_py_func_vec_call(visitor: ParserVisitor, obj, func_to_call, args, func_
     nargs = builder._or(builder.const_int64(len(args)), arguments_offset)
     vec_args = [func_to_call, args_stack_memory, nargs, builder.const_null(code_type.get_py_obj_ptr(code_gen))]
 
-    result = builder.call_ptr(vec_call, vec_args)
+    result = builder.call_ptr(vector_call_ptr, vec_args)
     return result
 
 
@@ -114,3 +123,4 @@ def is_py_obj_method(visit, obj):
     builder = visit.get_builder()
     obj_type = fly_obj.get_py_obj_type(visit, obj)
     return builder.eq(obj_type, builder.global_var(code_gen.get_method_type()))
+
