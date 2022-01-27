@@ -166,11 +166,18 @@ class CodeBuilder:
         self.writer.lock()
 
     def gep(self, value: int, first_index: int, second_index: int):
-        """llvm instruction to (G)et an (E)lement (P)ointer (GEP) from two indices"""
+        """llvm instruction to (G)et an (E)lement (P)ointer (GEP) from two indices
+
+        To use when you have a loaded structure, and you want to access its attributes
+        """
         return self.__make_op(152, value, first_index, second_index)
 
     def gep2(self, value: int, type: CodeType, array_indices: list[int]):
-        """llvm instruction to (G)et an (E)lement (P)ointer (GEP) from a type and an array of indices"""
+        """llvm instruction to (G)et an (E)lement (P)ointer (GEP) from a type and an array of indices
+
+        To use when you want to access an address from a pointer.
+        Like a pointer to a float (since the pointer might represent an array of float)
+        """
         self.__write_opcode(153)
         type.write_to_code(self.writer)
         self.writer.add_int32(value)
