@@ -17,12 +17,22 @@ class DebugFlags(Enum):
     """STEP_LEVEL: Value range between 0 and 4"""
 
     @classmethod
+    def __get_default_debug_flag_value(cls, debug_flag: DebugFlags):
+        """Returns the default value for the flag or None if it doesn't have any"""
+        default_debug_flag_values = {
+            DebugFlags.SHOW_STEP_LEVEL: 1
+        }
+        return default_debug_flag_values.get(debug_flag)
+
+    @classmethod
     def enable_debug_flags(cls, *debug_flags: DebugFlags | tuple[DebugFlags, Any]):
         """Method to toggle on multiple debug flags easly"""
         for debug_flag in debug_flags:
             if isinstance(debug_flag, tuple):
                 debug_flag, value = debug_flag
                 debug_flag.__value = value
+            else:
+                debug_flag.__value = cls.__get_default_debug_flag_value(debug_flag)
             debug_flag.__is_enabled = True
 
     @classmethod
