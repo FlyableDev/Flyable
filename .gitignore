@@ -157,3 +157,4 @@ build/**/*.exe
 build/**/*.o
 test.py
 test_nbody.py
+/cli

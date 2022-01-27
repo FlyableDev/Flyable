@@ -4,7 +4,7 @@ import ast
 import copy
 import enum
 from ast import *
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Union, TypeAlias, Generic, Type, Optional, TypeVar
 
 import flyable.code_gen.caller as caller
 import flyable.code_gen.code_gen as gen
@@ -40,9 +40,12 @@ if TYPE_CHECKING:
     from flyable.parse.parser import Parser
     from flyable.code_gen.code_gen import CodeGen
 
+AstSubclass = TypeVar('AstSubclass', bound=AST)
+
+AstSubclassOrList = AstSubclass | list[AstSubclass]
 
 
-class ParserVisitor(NodeVisitor):
+class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
     def __init__(self, parser: Parser, code_gen: CodeGen, func_impl: LangFuncImpl):
         self.__code_gen: gen.CodeGen = code_gen
@@ -54,7 +57,7 @@ class ParserVisitor(NodeVisitor):
         self.__func: LangFuncImpl = func_impl
         self.__parser = parser
         self.__data: comp_data.CompData = parser.get_data()
-        self.__current_node = None
+        self.__current_node: Optional[AstSubclass] = None
         self.__reset_visit = False
 
         self.__assign_depth = 0
@@ -64,7 +67,7 @@ class ParserVisitor(NodeVisitor):
         self.__exception_blocks = []  # Hierarchy of blocks to jump when an exception occur to dispatch it
 
         self.__get_code_func().clear_blocks()
-        
+
         self.__entry_block = self.__get_code_func().add_block()
 
         self.__builder: CodeBuilder = self.__get_code_func().get_builder()
@@ -131,21 +134,22 @@ class ParserVisitor(NodeVisitor):
 
         self.__func.set_parse_status(lang_func.LangFuncImpl.ParseStatus.ENDED)
 
-    def visit(self, node: AST):
-        self.__current_node = node
+    def visit(self, node: AstSubclassOrList):
+        self.__current_node = node  # type: ignore
         if isinstance(node, list):
-            for e in node:
+            for e in node:  # type: AstSubclass
                 super().visit(e)
-        else:
-            if hasattr(node, "context") and node.context is None: # type: ignore
-                pass
-            else:
-                super().visit(node)
+            return
 
-    def visit_node(self, node: AST):
+        if hasattr(node, "context") and node.context is None:  # type: ignore
+            return
+
+        super().visit(node)
+
+    def visit_node(self, node: AstSubclassOrList):
         return self.__visit_node(node)
 
-    def __visit_node(self, node: AST):
+    def __visit_node(self, node: AstSubclassOrList):
         self.visit(node)
         return self.__last_type, self.__last_value
 
@@ -360,7 +364,7 @@ class ParserVisitor(NodeVisitor):
                 if found_var.get_code_gen_value() is None:
                     if not found_var.is_global():
                         found_var.set_code_gen_value(
-                        self.generate_entry_block_var(found_var.get_type().to_code_type(self.__code_gen), True))
+                            self.generate_entry_block_var(found_var.get_type().to_code_type(self.__code_gen), True))
 
                 self.__last_value = found_var.get_code_gen_value()
 
@@ -529,13 +533,14 @@ class ParserVisitor(NodeVisitor):
                     module = self.__builder.global_var(self.__code_gen.get_build_in_module())
                     module = self.__builder.load(module)
                     self.__last_type, self.__last_value = caller.call_obj(self, name_call, module,
-                                                                          lang_type.get_python_obj_type(), args, args_types)
+                                                                          lang_type.get_python_obj_type(), args,
+                                                                          args_types)
             else:
                 if self.__last_type is None:
                     file = self.__func.get_parent_func().get_file()
                 else:
                     file = self.__data.get_file(self.__last_type.get_id())
-                
+
                 if file is None:
                     raise Exception("File of function called not found")
 
@@ -597,7 +602,8 @@ class ParserVisitor(NodeVisitor):
 
         if isinstance(node.ctx, ast.Store):
             source = hint.get_type_source(value_type)
-            if source is not None:  # TODO: find a better fix to support a store in a 2+D list (define types for a precise range)
+            # TODO: find a better fix to support a store in a 2+D list (define types for a precise range)
+            if source is not None:
                 source_data = source.get_source()
 
             common_type = lang_type.get_most_common_type(self.__data, value_type, self.__assign_type)
@@ -633,26 +639,23 @@ class ParserVisitor(NodeVisitor):
         ref_counter.ref_decr_multiple_incr(self, args_types, args)
 
     def visit_Slice(self, node: Slice) -> Any:
-        if node.lower is not None:
-            lower_type, lower_value = self.__visit_node(node.lower)
-            lower_type, lower_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, lower_value, lower_type)
-        else:
-            lower_type = lang_type.get_none_type()
-            lower_value = self.__builder.load(self.__builder.global_var(self.__code_gen.get_none()))
+        def parse_slice_part(expression: Optional[expr]):
+            """Parses the slice part and returns the correct type and value"""
+            if expression is not None:
+                slice_part_type, slice_part_value = self.__visit_node(expression)
+                slice_part_type, slice_part_value = runtime.value_to_pyobj(
+                    self.__code_gen, self.__builder,
+                    slice_part_value,
+                    slice_part_type
+                )
+            else:
+                slice_part_type = lang_type.get_none_type()
+                slice_part_value = self.__builder.load(self.__builder.global_var(self.__code_gen.get_none()))
+            return slice_part_type, slice_part_value
 
-        if node.upper is not None:
-            upper_type, upper_value = self.__visit_node(node.upper)
-            upper_type, upper_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, upper_value, upper_type)
-        else:
-            upper_type = lang_type.get_none_type()
-            upper_value = self.__builder.load(self.__builder.global_var(self.__code_gen.get_none()))
-
-        if node.step is not None:
-            step_type, step_value = self.__visit_node(node.step)
-            step_type, step_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, step_value, step_type)
-        else:
-            step_type = lang_type.get_none_type()
-            step_value = self.__builder.load(self.__builder.global_var(self.__code_gen.get_none()))
+        lower_type, lower_value = parse_slice_part(node.lower)
+        upper_type, upper_value = parse_slice_part(node.upper)
+        step_type, step_value = parse_slice_part(node.step)
 
         self.__last_type = lang_type.get_python_obj_type()
         self.__last_value = gen_slice.py_slice_new(self, lower_value, upper_value, step_value)
@@ -671,7 +674,6 @@ class ParserVisitor(NodeVisitor):
         if node.value is None:
             raise NotImplementedError("Unsupported empty return")
         return_type, return_value = self.__visit_node(node.value)
-        
 
         if not hint.is_incremented_type(return_type):  # Need to increment if we return to be consistent to CPython
             ref_counter.ref_incr(self.__builder, return_type, return_value)
@@ -830,7 +832,6 @@ class ParserVisitor(NodeVisitor):
 
         ref_counter.ref_decr_incr(self, test_type, test_value)
         ref_counter.ref_decr_incr(self, cond_type, cond_value)
-
 
         if node.orelse is None:
             self.__builder.cond_br(cond_value, block_while_in, block_continue)
@@ -1170,8 +1171,15 @@ class ParserVisitor(NodeVisitor):
         content_try.parse_try(self, node)
 
     def visit_Raise(self, node: Raise) -> Any:
+
         self.__func.set_can_raise(True)  # There is a raise so it can raise an exception
         self.__last_type, self.__last_value = self.__visit_node(node.exc)
+        excp.py_runtime_set_excp(
+            self,
+            self.__last_value,
+            self.__last_value
+        )
+
         if node.cause is not None:
             self.__visit_node(node.cause)
 
@@ -1362,11 +1370,12 @@ class ParserVisitor(NodeVisitor):
                 impl = parent_func.get_impl(4)
                 result = impl.get_context().find_active_var(name)
         return result
-    
+
     def __get_code_func(self):
         code_func = self.__func.get_code_func()
         if code_func is None:
-            raise Exception(f"Could not instantiate ParserVisitor with function implementation {self.__func.get_id()}. Was the CodeFunc generated?")
+            raise Exception(
+                f"Could not instantiate ParserVisitor with function implementation {self.__func.get_id()}. Was the CodeFunc generated?")
         return code_func
 
     def __reset_info(self):
