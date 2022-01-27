@@ -12,7 +12,7 @@ class DebugFlags(Enum):
     SHOW_OPCODE_ON_EXEC = auto()
     PRINT_FUNC_IMPL = auto()
     PRINT_INT64 = auto()
-
+    
     SHOW_STEP_LEVEL = auto()
     """STEP_LEVEL: Value range between 0 and 4"""
 
