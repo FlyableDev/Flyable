@@ -14,7 +14,7 @@ class DebugFlags(Enum):
     PRINT_INT64 = auto()
 
     SHOW_STEP_LEVEL = auto()
-    """STEP_LEVEL: Value range between 0 and 4"""
+    """SHOW_STEP_LEVEL: int values"""
 
     @classmethod
     def __get_default_debug_flag_value(cls, debug_flag: DebugFlags):

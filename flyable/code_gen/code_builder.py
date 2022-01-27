@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 from flyable.code_gen.code_type import CodeType
 from flyable.code_gen.code_writer import CodeWriter
 import flyable.debug.debug_flags as debug_flags
@@ -18,9 +18,9 @@ class CodeBuilder:
     """
 
     def __init__(self, func):
-        self.__current_block: Any = None
+        self.__current_block: Optional[CodeBlock] = None
         self.__func: gen.CodeFunc = func
-        self.__writer: CodeWriter | None = None
+        self.__writer: Optional[CodeWriter] = None
 
     @property
     def writer(self):

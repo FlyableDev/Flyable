@@ -19,6 +19,7 @@ from flyable.code_gen.code_type import CodeType
 from flyable.code_gen.code_writer import CodeWriter
 from flyable.debug.code_builder_analyser import CodeBuilderAnalyser
 from flyable.debug.debug_flags import DebugFlags, value_if_debug
+from flyable.debug.code_branch_viewer import BranchViewer
 import flyable.code_gen.ref_counter as ref_counter
 
 if TYPE_CHECKING:
@@ -118,8 +119,8 @@ class GlobalVar:
         return self.__str__()
 
 
-
 CodeBlock: TypeAlias = "CodeFunc.CodeBlock"
+
 
 class CodeFunc:
     """
@@ -186,6 +187,7 @@ class CodeFunc:
         self.__return_type = CodeType()
         self.__blocks: list[CodeBlock] = []
         self.__builder = value_if_debug(CodeBuilder(self), CodeBuilderAnalyser(self), DebugFlags.SHOW_OUTPUT_BUILDER)
+        # self.branch_viewer = BranchViewer(self.__builder)
 
     def set_linkage(self, link: Linkage):
         self.__linkage = link
@@ -596,7 +598,7 @@ class CodeGen:
         func = visitor.get_func().get_code_func()
         if func is None:
             raise Exception("Main func has no code_func")
-        
+
         for block in func.blocks_iter():
             if not block.has_br_block() and not block.has_return():
                 func.get_builder().set_insert_block(block)
@@ -736,5 +738,3 @@ class CodeGen:
             return builder.const_int1(False)
         else:
             return builder.const_null(type.to_code_type(self.__data))
-
-
