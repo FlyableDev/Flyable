@@ -16,14 +16,14 @@ import flyable.compiler as com
 import flyable.tool.platform as plat
 from flyable import constants
 from flyable.debug.debug_flags import DebugFlags
-from flyable.tool.utils import end_step, start_step
+from flyable.tool.utils import end_step, add_step
 
 ENABLED_DEBUG_FLAGS: list[DebugFlags] = [
 ]
 
 
 def main(file: str, output_dir: str = ".", exec_name: str = "a"):
-    start_step("Compiling")
+    add_step("Compiling")
 
     compiler = com.Compiler()
     compiler.add_file(file)
@@ -36,7 +36,7 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
 
     if not compiler.has_error():
         # Link the object file
-        start_step("Linking")
+        add_step("Linking")
 
         # Now link the code
         linker_args = [
@@ -61,7 +61,7 @@ def run_code(output_dir: str, exec_name: str):
         output_dir (str): the directory where the code is
         exec_name (str): the name of the executable
     """
-    start_step("Running")
+    add_step("Running")
 
     p = Popen(
         [output_dir + f"/{exec_name}.exe"],

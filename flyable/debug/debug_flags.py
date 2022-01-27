@@ -13,7 +13,7 @@ class DebugFlags(Enum):
     PRINT_FUNC_IMPL = auto()
     PRINT_INT64 = auto()
 
-    STEP_LEVEL = 1
+    STEP_LEVEL = auto()
     """STEP_LEVEL: Value range between 0 and 4"""
 
     @classmethod
