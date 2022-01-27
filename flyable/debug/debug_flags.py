@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import Callable
+from typing import Callable, Any
 
 
 class DebugFlags(Enum):
@@ -13,13 +13,16 @@ class DebugFlags(Enum):
     PRINT_FUNC_IMPL = auto()
     PRINT_INT64 = auto()
 
-    STEP_LEVEL = 1
+    SHOW_STEP_LEVEL = auto()
     """STEP_LEVEL: Value range between 0 and 4"""
 
     @classmethod
-    def enable_debug_flags(cls, *debug_flags: DebugFlags):
+    def enable_debug_flags(cls, *debug_flags: DebugFlags | tuple[DebugFlags, Any]):
         """Method to toggle on multiple debug flags easly"""
         for debug_flag in debug_flags:
+            if isinstance(debug_flag, tuple):
+                debug_flag, value = debug_flag
+                debug_flag.__value = value
             debug_flag.__is_enabled = True
 
     @classmethod
@@ -40,13 +43,18 @@ class DebugFlags(Enum):
         """Constructor that sets the property is_enabled to False"""
         super().__init__()
         self.__is_enabled = False
+        self.__value = None
 
     @property
     def is_enabled(self):
         return self.__is_enabled
 
+    @property
+    def val(self):
+        return self.__value
+
     def __str__(self) -> str:
-        return f"{self.name}={self.is_enabled}"
+        return f"{self.name}(enabled:{self.is_enabled}, value:{self.val})"
 
 
 def get_flag_value(flag: DebugFlags):
@@ -71,7 +79,7 @@ def value_if_debug(
 
     :returns: Either the normal value or the debug value, depending if the flag is enabled
     """
-    if flag.is_enabled and (condition is None or condition(flag.value)):
+    if flag.is_enabled and (condition is None or condition(flag.val)):
         return debug_value
     else:
         return normal_value

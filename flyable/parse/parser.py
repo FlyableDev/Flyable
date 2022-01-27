@@ -42,11 +42,9 @@ class Parser(ErrorThrower):
                     )
                     new_var.set_is_arg(True)
 
-                vis = value_if_debug(
-                    ParserVisitor(self, self.__code_gen, func_impl),
-                    parser_analyser.ParseAnalyser(self, self.__code_gen, func_impl),
-                    DebugFlags.SHOW_VISIT_AST,
-                )
+                vis = value_if_debug(ParserVisitor(self, self.__code_gen, func_impl),
+                                     parser_analyser.ParseAnalyser(self, self.__code_gen, func_impl),
+                                     DebugFlags.SHOW_VISIT_AST)
 
                 vis.parse()
 
