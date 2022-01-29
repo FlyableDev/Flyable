@@ -1174,12 +1174,6 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         self.__func.set_can_raise(True)  # There is a raise so it can raise an exception
         self.__last_type, self.__last_value = self.__visit_node(node.exc)
-        excp.py_runtime_set_excp(
-            self,
-            self.__last_value,
-            self.__last_value
-        )
-
         if node.cause is not None:
             self.__visit_node(node.cause)
 
