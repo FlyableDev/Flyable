@@ -1,6 +1,8 @@
 import os
 import platform
 
+from flyable.code_gen.code_writer import CodeWriter
+
 """
 Module related to the dynamic loading of the native code generation layer
 """
@@ -9,7 +11,7 @@ import ctypes as ctypes
 
 
 def __load_lib():
-    path = dir_path = os.path.dirname(os.path.realpath(__file__))
+    path = os.path.dirname(os.path.realpath(__file__))
     lib_path = ""
     if platform.uname()[0] == "Windows":
         path += "\\..\\dyn_lib\\win64"
@@ -30,7 +32,7 @@ def __load_lib():
         raise OSError("OS not supported")
 
 
-def call_code_generation_layer(writer, output):
+def call_code_generation_layer(writer: CodeWriter, output: str):
     lib = __load_lib()
     gen_func = lib.flyable_codegen_run
     buffer_size = len(writer)
@@ -39,12 +41,12 @@ def call_code_generation_layer(writer, output):
     gen_func(native_buffer, ctypes.c_int32(buffer_size), output_c_str)
 
 
-def load_lib_and_dependecies(path, lib):
+def load_lib_and_dependecies(path: str, lib: str):
     try:
         return ctypes.CDLL(path + lib)
     except OSError as excp:
         # Get the name of the library not found
-        error_msg = excp.args[0]
+        error_msg: str = excp.args[0]
         # Should crash for any errors that are not missing object file
         # errors, since we can't handle them
         if not "cannot open shared" in error_msg:

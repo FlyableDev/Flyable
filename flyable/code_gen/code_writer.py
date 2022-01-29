@@ -1,6 +1,5 @@
 import struct
 
-
 class CodeWriter:
     """
     This class holds all the methods to binary write data.
@@ -11,22 +10,22 @@ class CodeWriter:
         self.__data = bytearray()
 
     def to_bytes(self):
-        return self.__data.to_bytes()
+        return self.__data
 
-    def add_int32(self, value):
+    def add_int32(self, value: int):
         if not self.is_lock():
             self.__data += value.to_bytes(4, byteorder='little', signed=True)
 
-    def add_int64(self, value):
+    def add_int64(self, value: int):
         if not self.is_lock():
             self.__data += value.to_bytes(8, byteorder='little', signed=True)
 
-    def add_float32(self, value):
+    def add_float32(self, value: float):
         if not self.is_lock():
             bytes = bytearray(struct.pack("f", value))
             self.__data += bytes
 
-    def add_float64(self, value):
+    def add_float64(self, value: float):
         if not self.is_lock():
             bytes = bytearray(struct.pack("d", value))
             self.__data += bytes
@@ -36,7 +35,7 @@ class CodeWriter:
             self.add_int32(len(value))
             self.__data += str.encode(value)
 
-    def add_bytes(self, bytes):
+    def add_bytes(self, bytes: bytes):
         if not self.is_lock():
             self.__data += bytes
 

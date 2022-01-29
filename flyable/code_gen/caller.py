@@ -3,11 +3,7 @@ Module that handles function calls.
 Specifically Python ones
 """
 import copy
-from typing import Any
-
-import flyable.code_gen.code_gen as gen
 import flyable.code_gen.code_type as code_type
-import flyable.code_gen.debug as debug
 import flyable.code_gen.exception as excp
 import flyable.code_gen.fly_obj as fly_obj
 import flyable.code_gen.function as function
@@ -16,18 +12,16 @@ import flyable.code_gen.number as num
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.rich_compare as rich_compare
 import flyable.code_gen.runtime as runtime
-import flyable.code_gen.tuple as tuple_call
 import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as hint
 import flyable.parse.adapter as adapter
 import flyable.parse.shortcut as shortcut
 from flyable.parse.parser_visitor import ParserVisitor
-from flyable.code_gen.code_type import CodeType
 
 
-def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.LangType, args: list[int],
+def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int],
              args_type: list[lang_type.LangType], optional=False,
-             protocol=True, shortcuts=True):
+             protocol=True, shortcuts=True) -> tuple[lang_type.LangType | None, int | None]:
     """
     Call a method independent from the called type.
     There is 3 calls scenario:
@@ -42,7 +36,7 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.La
         if called_func is None:
             if optional:
                 return None, None
-            raise Exception(f"Function could not be called. Not found in called class {called_class.get_full_name()}")
+            raise Exception(f"Function {func_name} could not be called. Not found in class {called_class.get_name()}")
 
         called_impl = adapter.adapt_func(
             called_func,
@@ -55,12 +49,13 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.La
 
         return_type = called_impl.get_return_type()
         return_type.add_hint(hint.TypeHintRefIncr())
+        code_func = called_impl.get_code_func()
+        if code_func is None:
+            raise Exception(f"Function {called_impl} has no code_func")
         return return_type, visitor.get_builder().call(
-            called_impl.get_code_func(), [obj] + args
+            code_func, [obj] + args
         )
-    elif (
-            obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive()
-    ):
+    elif (obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive()):
         did_caller_conversion = False
         # The caller can be a primitive, convert if it's the case
         if obj_type.is_primitive():
@@ -100,9 +95,7 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.La
             return lang_type.get_python_obj_type(
                 hint.TypeHintRefIncr()
             ), _iter.call_iter_protocol(visitor, func_name, obj)
-        elif (
-                rich_compare.is_func_name_rich_compare(func_name) and len(args) == 1
-        ):  # Rich Compare protocol
+        elif (rich_compare.is_func_name_rich_compare(func_name) and len(args) == 1):  # Rich Compare protocol
             instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
             result = rich_compare.call_rich_compare_protocol(
                 visitor, func_name, obj_type, obj, instance_type, args_type, args
@@ -125,40 +118,28 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.La
         )
 
 
-def _handle_binary_number_protocol(
-        visitor: ParserVisitor, func_name: str, obj, obj_type: lang_type.LangType, args, args_type
-):
+def _handle_binary_number_protocol(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType]):
     instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
-    return lang_type.get_python_obj_type(
-        hint.TypeHintRefIncr()
-    ), num.call_number_protocol(
+    return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), num.call_number_protocol(
         visitor, func_name, obj_type, obj, instance_type, args_type, args
     )
 
 
-def _handle_inquiry_number_protocol(
-        visitor, func_name: str, obj, obj_type, args, args_type
-):
+def _handle_inquiry_number_protocol(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType]):
     instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
     return lang_type.get_bool_type(), num.call_number_protocol(
         visitor, func_name, obj_type, obj, instance_type, args_type, args
     )
 
 
-def _handle_ternary_number_protocol(
-        visitor, func_name: str, obj, obj_type, args: list, args_type: list
-):
+def _handle_ternary_number_protocol(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType]):
     instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
-    return lang_type.get_python_obj_type(
-        hint.TypeHintRefIncr()
-    ), num.call_number_protocol(
+    return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), num.call_number_protocol(
         visitor, func_name, obj_type, obj, instance_type, args_type, args
     )
 
 
-def _handle_default(
-        visitor, func_name: str, obj, obj_type, args: list, args_type: list
-) -> tuple[lang_type.LangType, Any]:
+def _handle_default(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType]):
     py_args = copy.copy(args)
     args_type = copy.copy(args_type)
 
@@ -175,7 +156,7 @@ def _handle_default(
 
 
 # https://docs.python.org/3/c-api/method.html
-def generate_python_call(visitor: ParserVisitor, obj, func_name: str, args):
+def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args: list[int]):
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
 
     # the found attribute is the callable function

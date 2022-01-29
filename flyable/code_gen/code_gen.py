@@ -3,8 +3,7 @@ import copy
 import enum
 import platform
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Dict, List, Union, TypeAlias
-
+from typing import TYPE_CHECKING, Any, TypeAlias
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_writer as _writer
 import flyable.code_gen.library_loader as loader
@@ -42,16 +41,16 @@ class StructType:
 
     def __init__(self, name: str):
         self.__name = name
-        self.__types = []
+        self.__types: list[CodeType] = []
         self.__id: int = 0
 
-    def add_type(self, type):
+    def add_type(self, type: CodeType):
         self.__types.append(type)
 
     def get_types_count(self):
         return len(self.__types)
 
-    def get_type(self, index):
+    def get_type(self, index: int):
         return self.__types[index]
 
     def types_iter(self):
@@ -100,7 +99,7 @@ class GlobalVar:
     def get_type(self):
         return self.__type
 
-    def set_initializer(self, data):
+    def set_initializer(self, data: Any):
         self.__initializer = data
 
     def write_to_code(self, writer: CodeWriter):
@@ -288,6 +287,7 @@ class CodeGen:
         self.__python_tuple_struct = None
         self.__python_func_struct = None
         self.__python_type_struct: StructType | None = None
+        self.__strings: dict[str, GlobalVar] = {}
 
     def setup(self):
         # Create the Python object struct
@@ -391,7 +391,7 @@ class CodeGen:
     def get_data(self):
         return self.__data
 
-    def get_c_string(self, str):
+    def get_c_string(self, str: str):
         if str in self.__strings:
             return self.__strings[str]
         new_str = GlobalVar("@flyable@str@" + str, CodeType(CodeType.CodePrimitive.INT8).get_ptr_to(), Linkage.INTERNAL)
@@ -479,7 +479,7 @@ class CodeGen:
             raise Exception("Setup was not called on CodeGen")
         return self.__python_type_struct
 
-    def get_or_create_func(self, name: str, return_type: CodeType, args_type=None, link=Linkage.INTERNAL):
+    def get_or_create_func(self, name: str, return_type: CodeType, args_type:list[CodeType]=None, link=Linkage.INTERNAL):
         # Get case
         if args_type is None:
             args_type = []
@@ -497,7 +497,7 @@ class CodeGen:
 
         return new_func
 
-    def get_or_insert_str(self, value):
+    def get_or_insert_str(self, value: str):
         if value in self.__global_strings:
             return self.__global_strings[value]
 
@@ -572,7 +572,7 @@ class CodeGen:
         return_type = impl.get_return_type().to_code_type(self)
 
         if impl.get_impl_type() == lang_func_impl.FuncImplType.SPECIALIZATION:
-            func_args = lang_type.to_code_type(self, list(impl.args_iter()))
+            func_args: list[CodeType] = lang_type.to_code_type(self, list(impl.args_iter())) # type: ignore
         elif impl.get_impl_type() == lang_func_impl.FuncImplType.TP_CALL:
             func_args = [code_type.get_py_obj_ptr(self)] * 3
             return_type = code_type.get_py_obj_ptr(self)
@@ -714,11 +714,11 @@ class CodeGen:
         else:
             builder.ret(builder.const_int32(0))
 
-    def convert_type(self, builder: CodeBuilder, type_from, value, type_to):
+    def convert_type(self, builder: CodeBuilder, code_gen: CodeGen, type_from: lang_type.LangType, value: int, type_to: lang_type.LangType):
         if type_to.is_python_obj():
             return runtime.value_to_pyobj(self, builder, value, type_from)[1]
         elif type_to.is_obj():
-            return builder.ptr_cast(type_to.get_id())
+            return builder.ptr_cast(type_to.get_id(), code_type.get_py_obj(code_gen))
         elif type_to.is_primitive():
             if type_to.is_int():
                 return builder.int_cast(value, code_type.get_int64())
@@ -727,7 +727,7 @@ class CodeGen:
         else:
             raise ValueError("Impossible to convert the type")
 
-    def get_null_from_type(self, builder: CodeBuilder, type: lang_type.LangType):
+    def get_null_from_type(self, builder: CodeBuilder, code_gen: CodeGen, type: lang_type.LangType):
         if type.is_int():
             return builder.const_int64(0)
         elif type.is_dec():
@@ -735,6 +735,6 @@ class CodeGen:
         elif type.is_bool():
             return builder.const_int1(False)
         else:
-            return builder.const_null(type.to_code_type(self.__data))
+            return builder.const_null(type.to_code_type(code_gen))
 
 

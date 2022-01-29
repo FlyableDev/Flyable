@@ -60,56 +60,56 @@ class CodeBuilder:
         """
         return self.__make_op(3, v1, v2)
 
-    def div(self, v1, v2):
+    def div(self, v1: int, v2: int):
         """
         Division
         """
         return self.__make_op(4, v1, v2)
 
-    def eq(self, v1, v2):
+    def eq(self, v1: int, v2: int):
         """
         Equality check
         """
         return self.__make_op(5, v1, v2)
 
-    def ne(self, v1, v2):
+    def ne(self, v1: int, v2: int):
         """
         Non-Equality check
         """
         return self.__make_op(6, v1, v2)
 
-    def lt(self, v1, v2):
+    def lt(self, v1: int, v2: int):
         """
         Less than
         """
         return self.__make_op(7, v1, v2)
 
-    def lte(self, v1, v2):
+    def lte(self, v1: int, v2: int):
         """
         Less than or equal
         """
         return self.__make_op(8, v1, v2)
 
-    def gt(self, v1, v2):
+    def gt(self, v1: int, v2: int):
         """
         Greater than
         """
         return self.__make_op(9, v1, v2)
 
-    def gte(self, v1, v2):
+    def gte(self, v1: int, v2: int):
         """
         Greater than or equal
         """
         return self.__make_op(10, v1, v2)
 
-    def neg(self, value):
+    def neg(self, value: int):
         """
         Negation operator
         """
         return self.__make_op(11, value)
 
     # And operator
-    def _and(self, v1, v2):
+    def _and(self, v1: int, v2: int):
         return self.__make_op(12, v1, v2)
 
     def _or(self, v1, v2):
@@ -118,13 +118,13 @@ class CodeBuilder:
         """
         return self.__make_op(13, v1, v2)
 
-    def mod(self, v1, v2):
+    def mod(self, v1: int, v2: int):
         """
         Modulo operator
         """
         return self.__make_op(14, v1, v2)
 
-    def _not(self, value):
+    def _not(self, value: int):
         """
         Not operator
         """
@@ -241,7 +241,7 @@ class CodeBuilder:
         """
         return self.__make_op(1007, int(value))
 
-    def const_float32(self, value: int):
+    def const_float32(self, value: float):
         """
         Allocate float32 memory location
         """
@@ -249,7 +249,7 @@ class CodeBuilder:
         self.writer.add_float32(value)
         return self.__gen_value()
 
-    def const_float64(self, value: int):
+    def const_float64(self, value: float):
         """
         Allocate float64 memory location
         """
@@ -363,7 +363,7 @@ class CodeBuilder:
         self.__write_opcode(10002)
 
     def get_total_value(self):
-        return self.__current_id
+        return self.__current_id  # type: ignore
 
     def get_total_block(self):
         return self.__current_block

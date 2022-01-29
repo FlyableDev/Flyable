@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import flyable.code_gen.list as _list
 import flyable.code_gen.tuple as _tuple
 import flyable.code_gen.set as _set
@@ -5,12 +7,12 @@ import flyable.code_gen.dict as _dict
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.caller as caller
-import flyable.data.type_hint as hint
-import flyable.code_gen.debug as debug
 import flyable.code_gen.ref_counter as ref_counter
 
+if TYPE_CHECKING:
+    from flyable.parse.parser import ParserVisitor
 
-def value_to_cond(visitor, value_type, value):
+def value_to_cond(visitor: ParserVisitor, value_type: lang_type.LangType, value: int):
     """
     Convert the value into an integer usable into a conditional branching
     """
@@ -40,7 +42,7 @@ def value_to_cond(visitor, value_type, value):
         return lang_type.get_bool_type(), test_obj_true(visitor, value_type, value)
 
 
-def test_obj_true(visitor, value_type, value):
+def test_obj_true(visitor: ParserVisitor, value_type: lang_type.LangType, value: int):
     """
     This function implements quicker way to test if a condition is True.
     - We first test if it's the true object.
@@ -68,6 +70,8 @@ def test_obj_true(visitor, value_type, value):
     builder.set_insert_block(test_true_with_call_block)
 
     cond_type, cond_value = caller.call_obj(visitor, "__bool__", value, value_type, [], [])
+    if cond_type is None or cond_value is None: 
+        raise Exception("Could not test object thruthy value")
 
     false_block = builder.create_block()
     if cond_type.is_python_obj() or cond_type.is_collection() or cond_type.is_obj():
@@ -80,7 +84,8 @@ def test_obj_true(visitor, value_type, value):
         builder.cond_br(builder.int_cast(cond_value, code_type.get_int1()), true_block, false_block)
     else:
         error_str = "__bool__ should return bool, returned '" + cond_type.to_str(code_gen.get_data()) + "' instead"
-        visitor.get_parser().throw_error(error_str, visitor.get_current_node().line_no, 0)
+        current_node = visitor.get_current_node()
+        visitor.get_parser().throw_error(error_str, current_node.lineno if current_node else None, 0)
 
     builder.set_insert_block(false_block)
     builder.store(builder.const_int1(False), result)
