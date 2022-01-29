@@ -5,6 +5,7 @@ from flyable.code_gen.code_writer import CodeWriter
 import flyable.debug.debug_flags as debug_flags
 import inspect
 import flyable.code_gen.code_gen as gen
+from flyable.debug.debug_flags_list import FLAG_SHOW_OPCODE_ON_EXEC
 
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeFunc
@@ -31,8 +32,14 @@ class CodeBuilder:
     def to_bytes(self):
         return self.writer.to_bytes()
 
-    def create_block(self):
-        return self.__gen_block()
+    def create_block(self, label: str = None):
+        """
+        Creates a new block
+
+        :param label: For debug purposes, attaches a label to the block
+        :return:
+        """
+        return self.__gen_block(label)
 
     def set_insert_block(self, block: CodeBlock):
         """Makes the block passed in argument the current block"""
@@ -376,8 +383,8 @@ class CodeBuilder:
         self.writer.add_int32(new_value)
         return new_value
 
-    def __gen_block(self):
-        result = self.__func.add_block()
+    def __gen_block(self, label: str = None):
+        result = self.__func.add_block(label)
         return result
 
     def __make_op(self, id: int, *values: int) -> int:
@@ -398,7 +405,7 @@ class CodeBuilder:
         return self.__gen_value()
 
     def __write_opcode(self, opcode: int):
-        if debug_flags.DebugFlags.SHOW_OPCODE_ON_EXEC.is_enabled:
+        if FLAG_SHOW_OPCODE_ON_EXEC.is_enabled:
             stack_str = ""
             for stack_info in inspect.stack():
                 file = stack_info.filename

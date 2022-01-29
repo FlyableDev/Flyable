@@ -16,11 +16,12 @@ from typing import Any
 import flyable.compiler as com
 import flyable.tool.platform as plat
 from flyable import constants
-from flyable.debug.debug_flags import DebugFlags
+from flyable.debug.code_branch_viewer import BranchViewer
+from flyable.debug.debug_flags import DebugFlag, DebugFlagListType, enable_debug_flags
+from flyable.debug.debug_flags_list import *
 from flyable.tool.utils import end_step, add_step
 
-ENABLED_DEBUG_FLAGS: list[DebugFlags | tuple[DebugFlags, Any]] = [
-    (DebugFlags.SHOW_STEP_LEVEL, 2)
+ENABLED_DEBUG_FLAGS: DebugFlagListType = [
 ]
 """
 Debug flags to be enabled during the compiling, the linking and the running process\n
@@ -59,7 +60,6 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
 
         end_step()
 
-
 def run_code(output_dir: str, exec_name: str):
     """Runs the code
 
@@ -88,7 +88,7 @@ def run_code(output_dir: str, exec_name: str):
 
 if __name__ == "__main__":
     # toggles on the debug flags
-    DebugFlags.enable_debug_flags(*ENABLED_DEBUG_FLAGS)
+    enable_debug_flags(*ENABLED_DEBUG_FLAGS)
     dir = f"./build/{plat.get_platform_folder()}"
     main("test.py", dir, "a")
     run_code("./build/win64/", "a")

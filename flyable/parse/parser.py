@@ -4,7 +4,8 @@ import ast
 from typing import TYPE_CHECKING, Any
 from flyable.data.comp_data import CompData
 
-from flyable.debug.debug_flags import DebugFlags, value_if_debug
+from flyable.debug.debug_flags import DebugFlag, value_if_debug
+from flyable.debug.debug_flags_list import FLAG_SHOW_VISIT_AST
 
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeGen
@@ -32,8 +33,8 @@ class Parser(ErrorThrower):
     def parse_impl(self, func_impl):
         if not func_impl.is_unknown():
             if (
-                func_impl.get_parse_status()
-                == impl.LangFuncImpl.ParseStatus.NOT_STARTED
+                    func_impl.get_parse_status()
+                    == impl.LangFuncImpl.ParseStatus.NOT_STARTED
             ):
                 func_impl.set_parse_status(impl.LangFuncImpl.ParseStatus.STARTED)
                 for i, e in enumerate(func_impl.args_iter()):
@@ -42,9 +43,11 @@ class Parser(ErrorThrower):
                     )
                     new_var.set_is_arg(True)
 
-                vis = value_if_debug(ParserVisitor(self, self.__code_gen, func_impl),
-                                     parser_analyser.ParseAnalyser(self, self.__code_gen, func_impl),
-                                     DebugFlags.SHOW_VISIT_AST)
+                vis = value_if_debug(
+                    ParserVisitor(self, self.__code_gen, func_impl),
+                    parser_analyser.ParseAnalyser(self, self.__code_gen, func_impl),
+                    FLAG_SHOW_VISIT_AST,
+                )
 
                 vis.parse()
 
