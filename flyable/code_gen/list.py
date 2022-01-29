@@ -28,7 +28,7 @@ def instanciate_python_list(code_gen: CodeGen, builder: CodeBuilder, len: int):
     return builder.call(new_list_func, [len])
 
 
-def python_list_set(visitor: ParserVisitor, list, index: int, item):
+def python_list_set(visitor: ParserVisitor, list: int, index: int, item):
     """
     Generate the code to set an element in a Python List
     """
@@ -41,7 +41,7 @@ def python_list_set(visitor: ParserVisitor, list, index: int, item):
     return result
 
 
-def python_list_append(visitor: ParserVisitor, list, item_type: lang_type.LangType, item):
+def python_list_append(visitor: ParserVisitor, list: int, item_type: lang_type.LangType, item: int):
     """
     Generate the code to set an element in a Python List
     """
@@ -94,7 +94,7 @@ def python_list_get_content_ptr(visitor: ParserVisitor, list: int):
     return visitor.get_builder().gep(list, visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(3))
 
 
-def python_list_array_get_item(visitor: ParserVisitor, list_type: lang_type.LangType, list, index):
+def python_list_array_get_item(visitor: ParserVisitor, list_type: lang_type.LangType, list: int, index: int):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     valid_index_block = builder.create_block()
     wrong_index_block = builder.create_block()
