@@ -4,25 +4,25 @@ from dataclasses import dataclass, field
 
 from typing import Callable, Generic, TypeVar, Optional, TypeAlias
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 _DEBUG_FLAGS_LIST: list[DebugFlag] = []
-DebugFlagListType: TypeAlias = "list[DebugFlag[T] | tuple[DebugFlag[T], T]]"
+DebugFlagListType: TypeAlias = "list[DebugFlag[_T] | tuple[DebugFlag[_T], _T]]"
 
 
 @dataclass
-class DebugFlag(Generic[T]):
+class DebugFlag(Generic[_T]):
     """Class where are defined the properties of a debug flag"""
 
-    default_value: Optional[T] = field(default=None)
-    value: T = field(init=False)
+    default_value: Optional[_T] = field(default=None)
+    value: _T = field(init=False)
     is_enabled: bool = field(default=False, init=False)
 
     def __post_init__(self):
         self.value = self.default_value
         _DEBUG_FLAGS_LIST.append(self)
 
-    def enable(self, value: T = None):
+    def enable(self, value: _T = None):
         if value is not None:
             self.value = value
         self.is_enabled = True
@@ -35,7 +35,7 @@ class DebugFlag(Generic[T]):
         return self.is_enabled
 
 
-def enable_debug_flags(*debug_flags: DebugFlag[T] | tuple[DebugFlag[T], T]):
+def enable_debug_flags(*debug_flags: DebugFlag[_T] | tuple[DebugFlag[_T], _T]):
     """Method to toggle on multiple debug flags easly"""
     for debug_flag in debug_flags:
         if isinstance(debug_flag, tuple):
@@ -44,7 +44,7 @@ def enable_debug_flags(*debug_flags: DebugFlag[T] | tuple[DebugFlag[T], T]):
             debug_flag.enable()
 
 
-def disable_debug_flags(*debug_flags: DebugFlag[T]):
+def disable_debug_flags(*debug_flags: DebugFlag[_T]):
     """Method to toggle off multiple debug flags easly"""
     for debug_flag in debug_flags:
         debug_flag.disable()
@@ -61,8 +61,8 @@ def get_all_debug_flags() -> list[DebugFlag]:
 def value_if_debug(
         normal_value,
         debug_value,
-        flag: DebugFlag[T],
-        condition: Callable[[T], bool] = None,
+        flag: DebugFlag[_T],
+        condition: Callable[[_T], bool] = None,
 ):
     """Convenience function that returns the normal value if the flag is not enabled or the flag's value doesn't meet
     the requirements and returns the debug value if it is enabled and its value meets the requirements
@@ -87,10 +87,10 @@ def value_if_debug(
 
 def do_if_debug(
         func: Callable,
-        flag: DebugFlag[T],
+        flag: DebugFlag[_T],
         args: tuple = (),
         kwargs: dict = None,
-        condition: Callable[[T], bool] = None,
+        condition: Callable[[_T], bool] = None,
 ):
     """Convenience function that calls a function if the flag is enabled and the flag's value meets the requirements
 

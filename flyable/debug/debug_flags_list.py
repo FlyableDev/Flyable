@@ -1,4 +1,20 @@
+"""
+Module where are declared the diffenrent debug flags
+"""
+
 from flyable.debug.debug_flags import DebugFlag
+
+"""
+Conventions:
+1. Debug flag's name must start with FLAG_
+2. Every debug flag must be type hinted
+3. If the flag can have value, set default_value in the constructor to avoid errors 
+
+template with value: 
+    FLAG_<name>: DebugFlag[<type>] = DebugFlag(default_value=<value>)
+template without value:
+    FLAG_<name>: DebugFlag = DebugFlag()
+"""
 
 FLAG_SHOW_VISIT_AST: DebugFlag[int] = DebugFlag(default_value=2)
 
