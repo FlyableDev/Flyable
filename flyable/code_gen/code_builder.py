@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Optional
 from flyable.code_gen.code_type import CodeType
 from flyable.code_gen.code_writer import CodeWriter
 import flyable.debug.debug_flags as debug_flags
@@ -19,7 +19,7 @@ class CodeBuilder:
 
     def __init__(self, func):
         self.__current_block: Optional[CodeBlock] = None
-        self.__func: gen.CodeFunc = func
+        self.__func: CodeFunc = func
         self.__writer: Optional[CodeWriter] = None
 
     @property
@@ -39,7 +39,7 @@ class CodeBuilder:
         self.__writer = block.get_writer()
         self.__current_block = block
 
-    def get_current_block(self):
+    def get_current_block(self) -> Optional[CodeBlock]:
         return self.__current_block
 
     def add(self, v1: int, v2: int):
@@ -60,56 +60,56 @@ class CodeBuilder:
         """
         return self.__make_op(3, v1, v2)
 
-    def div(self, v1, v2):
+    def div(self, v1: int, v2: int):
         """
         Division
         """
         return self.__make_op(4, v1, v2)
 
-    def eq(self, v1, v2):
+    def eq(self, v1: int, v2: int):
         """
         Equality check
         """
         return self.__make_op(5, v1, v2)
 
-    def ne(self, v1, v2):
+    def ne(self, v1: int, v2: int):
         """
         Non-Equality check
         """
         return self.__make_op(6, v1, v2)
 
-    def lt(self, v1, v2):
+    def lt(self, v1: int, v2: int):
         """
         Less than
         """
         return self.__make_op(7, v1, v2)
 
-    def lte(self, v1, v2):
+    def lte(self, v1: int, v2: int):
         """
         Less than or equal
         """
         return self.__make_op(8, v1, v2)
 
-    def gt(self, v1, v2):
+    def gt(self, v1: int, v2: int):
         """
         Greater than
         """
         return self.__make_op(9, v1, v2)
 
-    def gte(self, v1, v2):
+    def gte(self, v1: int, v2: int):
         """
         Greater than or equal
         """
         return self.__make_op(10, v1, v2)
 
-    def neg(self, value):
+    def neg(self, value: int):
         """
         Negation operator
         """
         return self.__make_op(11, value)
 
     # And operator
-    def _and(self, v1, v2):
+    def _and(self, v1: int, v2: int):
         return self.__make_op(12, v1, v2)
 
     def _or(self, v1, v2):
@@ -118,13 +118,13 @@ class CodeBuilder:
         """
         return self.__make_op(13, v1, v2)
 
-    def mod(self, v1, v2):
+    def mod(self, v1: int, v2: int):
         """
         Modulo operator
         """
         return self.__make_op(14, v1, v2)
 
-    def _not(self, value):
+    def _not(self, value: int):
         """
         Not operator
         """
@@ -144,6 +144,9 @@ class CodeBuilder:
 
     def br(self, block: CodeBlock):
         """Adds the block as a new (br)anch to the current block"""
+        if self.__current_block is None:
+            raise ValueError(f"There is no current block to branch from")
+
         self.__write_opcode(150)
         self.writer.add_int32(block.get_id())
         self.__current_block.add_br_block(block)
@@ -156,6 +159,8 @@ class CodeBuilder:
         :param block_true: the block to go to if the check value was true
         :param block_false: the block to go to if the check value was false
         """
+        if self.__current_block is None:
+            raise ValueError(f"There is no current block to branch from")
 
         self.__write_opcode(151)
         self.writer.add_int32(value)
@@ -172,14 +177,14 @@ class CodeBuilder:
         """
         return self.__make_op(152, value, first_index, second_index)
 
-    def gep2(self, value: int, type: CodeType, array_indices: list[int]):
+    def gep2(self, value: int, type_: CodeType, array_indices: list[int]):
         """llvm instruction to (G)et an (E)lement (P)ointer (GEP) from a type and an array of indices
 
         To use when you want to access an address from a pointer.
         Like a pointer to a float (since the pointer might represent an array of float)
         """
         self.__write_opcode(153)
-        type.write_to_code(self.writer)
+        type_.write_to_code(self.writer)
         self.writer.add_int32(value)
         self.writer.add_int32(len(array_indices))
         for index in array_indices:
@@ -192,7 +197,7 @@ class CodeBuilder:
         """
         return self.__make_op(170, func.get_id(), len(args), *args)
 
-    def call_ptr(self, ptr: int, args, call_conv: bool = None):
+    def call_ptr(self, ptr: int, args: list[int], call_conv: bool = None):
         """
         Function call with pointer
         """
@@ -236,7 +241,7 @@ class CodeBuilder:
         """
         return self.__make_op(1007, int(value))
 
-    def const_float32(self, value: int):
+    def const_float32(self, value: float):
         """
         Allocate float32 memory location
         """
@@ -244,7 +249,7 @@ class CodeBuilder:
         self.writer.add_float32(value)
         return self.__gen_value()
 
-    def const_float64(self, value: int):
+    def const_float64(self, value: float):
         """
         Allocate float64 memory location
         """
@@ -252,39 +257,39 @@ class CodeBuilder:
         self.writer.add_float64(value)
         return self.__gen_value()
 
-    def const_null(self, type: CodeType):
+    def const_null(self, type_: CodeType):
         """
         Allocate null memory location
         """
         self.__write_opcode(1006)
-        type.write_to_code(self.writer)
+        type_.write_to_code(self.writer)
         return self.__gen_value()
 
-    def ptr_cast(self, value: int, type: CodeType):
+    def ptr_cast(self, value: int, type_: CodeType):
         """
         Value to pointer
         """
         self.__write_opcode(1010)
         self.writer.add_int32(value)
-        type.write_to_code(self.writer)
+        type_.write_to_code(self.writer)
         return self.__gen_value()
 
-    def int_cast(self, value: int, type: CodeType):
+    def int_cast(self, value: int, type_: CodeType):
         """
         Cast int
         """
         self.__write_opcode(1011)
         self.writer.add_int32(value)
-        type.write_to_code(self.writer)
+        type_.write_to_code(self.writer)
         return self.__gen_value()
 
-    def float_cast(self, value: int, type: CodeType):
+    def float_cast(self, value: int, type_: CodeType):
         """
         Cast float
         """
         self.__write_opcode(1012)
         self.writer.add_int32(value)
-        type.write_to_code(self.writer)
+        type_.write_to_code(self.writer)
         return self.__gen_value()
 
     def int_to_ptr(self, value: int, ptr_type: CodeType):
@@ -305,9 +310,9 @@ class CodeBuilder:
         cast_type.write_to_code(self.writer)
         return self.__gen_value()
 
-    def alloca(self, type: CodeType):
+    def alloca(self, type_: CodeType):
         self.__write_opcode(1050)
-        type.write_to_code(self.writer)
+        type_.write_to_code(self.writer)
         return self.__gen_value()
 
     def ret(self, value: int):
@@ -337,14 +342,14 @@ class CodeBuilder:
     def func_ptr(self, func: CodeFunc):
         return self.__make_op(3002, func.get_id())
 
-    def size_of_type(self, type: CodeType):
+    def size_of_type(self, type_: CodeType):
         self.__write_opcode(9998)
-        type.write_to_code(self.writer)
+        type_.write_to_code(self.writer)
         return self.__gen_value()
 
-    def size_of_type_ptr_element(self, type: CodeType):
+    def size_of_type_ptr_element(self, type_: CodeType):
         self.__write_opcode(9999)
-        type.write_to_code(self.writer)
+        type_.write_to_code(self.writer)
         return self.__gen_value()
 
     def print_value_type(self, value: int):
@@ -358,7 +363,7 @@ class CodeBuilder:
         self.__write_opcode(10002)
 
     def get_total_value(self):
-        return self.__current_id
+        return self.__current_id  # type: ignore
 
     def get_total_block(self):
         return self.__current_block

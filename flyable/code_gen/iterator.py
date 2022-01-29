@@ -5,17 +5,18 @@ import flyable.code_gen.caller as caller
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.debug as debug
 import flyable.code_gen.exception as excp
+from flyable.parse.parser import ParserVisitor
 
 """
 Module related to the code generation of the iter / next protocol
 """
 
 
-def is_iter_func_name(name):
+def is_iter_func_name(name: str):
     return name == "__next__" or name == "__iter__"
 
 
-def call_iter_protocol(visitor, name, obj):
+def call_iter_protocol(visitor: ParserVisitor, name: str, obj: int):
     if name == "__next__":
         return call_iter_next(visitor, obj)
     elif name == "__iter__":
@@ -23,7 +24,7 @@ def call_iter_protocol(visitor, name, obj):
     raise Exception("Func with name" + name + " not supported for iterator protocol")
 
 
-def call_iter_next(visitor, obj):
+def call_iter_next(visitor: ParserVisitor, obj: int):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
@@ -58,7 +59,7 @@ def call_iter_next(visitor, obj):
     return builder.load(result)
 
 
-def call_iter_iter(visitor, obj):
+def call_iter_iter(visitor: ParserVisitor, obj: int):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 

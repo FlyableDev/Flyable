@@ -20,7 +20,7 @@ def debug_call_addr_minus(visitor: ParserVisitor, v1: int, v2: int):
     builder.call(func_call, [v1, v2])
 
 
-def debug_support_vec(visitor, callable):
+def debug_support_vec(visitor: ParserVisitor, callable: int):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
     func_name = "flyable_debug_support_vec"
@@ -31,7 +31,7 @@ def debug_support_vec(visitor, callable):
     builder.call(func_call, [callable])
 
 
-def flyable_debug_show_vec(visitor, callable, ptr):
+def flyable_debug_show_vec(visitor: ParserVisitor, callable: int, ptr: int):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
     func_name = "flyable_debug_show_vec"
@@ -43,21 +43,23 @@ def flyable_debug_show_vec(visitor, callable, ptr):
     builder.call(func_call, [callable, ptr])
 
 
-def flyable_debug_print_int64(code_gen, builder, value):
+def flyable_debug_print_int64(code_gen: gen.CodeGen, builder: gen.CodeBuilder, value: int):
     func_name = "flyable_debug_print_int64"
     func_call = code_gen.get_or_create_func(func_name, code_type.get_void(), [code_type.get_int64()],
                                             gen.Linkage.EXTERNAL)
     builder.call(func_call, [value])
 
 
-def flyable_print_obj_ref_count(code_gen, builder, value):
+def flyable_print_obj_ref_count(code_gen: gen.CodeGen, builder: gen.CodeBuilder, value: int):
     # Make sure the object is a python object
     value = builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
     count = ref_count.get_ref_count(builder, value)
+    if count is None:
+        raise Exception("Could not print ref count since it's None")
     flyable_debug_print_int64(code_gen, builder, count)
 
 
-def flyable_debug_print_ptr(visitor, value):
+def flyable_debug_print_ptr(visitor: ParserVisitor, value: int):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
     func_name = "flyable_debug_print_ptr"
