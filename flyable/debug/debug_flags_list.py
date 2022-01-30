@@ -23,7 +23,9 @@ FLAG_SHOW_OUTPUT_BUILDER: DebugFlag = DebugFlag()
 FLAG_SHOW_OPCODE_ON_EXEC: DebugFlag = DebugFlag()
 """Used to tell it's a debug build or not"""
 
-FLAG_SHOW_BLOCK_BRANCHES: DebugFlag = DebugFlag()
+FLAG_SHOW_BLOCK_BRANCHES: DebugFlag[int] = DebugFlag(default_value=1)
+"""Precision level: int"""
+
 FLAG_PRINT_FUNC_IMPL: DebugFlag = DebugFlag()
 FLAG_PRINT_INT64: DebugFlag = DebugFlag()
 

@@ -14,7 +14,7 @@ DebugFlagListType: TypeAlias = "list[DebugFlag[_T] | tuple[DebugFlag[_T], _T]]"
 class DebugFlag(Generic[_T]):
     """Class where are defined the properties of a debug flag"""
 
-    default_value: Optional[_T] = field(default=None)
+    default_value: Optional[_T] = None
     value: _T = field(init=False)
     is_enabled: bool = field(default=False, init=False)
 
@@ -84,6 +84,16 @@ def value_if_debug(
     else:
         return normal_value
 
+
+def flag_is_valid(flag: DebugFlag[_T], condition: Callable[[_T], bool] = None):
+    """
+    Concise way to test a flag and it's value
+
+    :param flag: The flag tested
+    :param condition: Function which takes the value of the flag and returns True if it's valid and False otherwise
+    :return: True if the flag is enabled and it's value passes the condition
+    """
+    return flag.is_enabled and (condition is None or condition(flag.value))
 
 def do_if_debug(
         func: Callable,

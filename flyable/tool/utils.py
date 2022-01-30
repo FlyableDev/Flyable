@@ -45,6 +45,12 @@ def get_step_idx(step_name: str):
     return find_first_idx(lambda step_: step_.name == step_name, _current_step)
 
 
+def wrap_in_step(step_name: str, func: Callable):
+    start_step(step_name)
+    func()
+    end_step(step_name)
+
+
 def add_step(step_name: str, start: bool = True):
     step = Step(name=step_name)
     _current_step.append(step)
