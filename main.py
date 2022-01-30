@@ -19,6 +19,7 @@ from flyable.debug.debug_flags import DebugFlags
 from flyable.tool.utils import end_step, add_step
 
 ENABLED_DEBUG_FLAGS: list[DebugFlags] = [
+    DebugFlags.SHOW_VISIT_AST
 ]
 
 

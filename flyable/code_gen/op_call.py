@@ -198,7 +198,7 @@ def cond_op(visitor: ParserVisitor, op: ast.operator, type_left, first_value, ty
         )
 
     # the binary conditionnal operator we want to apply
-    apply_op: Callable[[Any, Any], Any]
+    apply_op: Callable[[int, int], int]
     if isinstance(op, ast.And):
         apply_op = builder._and
     elif isinstance(op, ast.Or):

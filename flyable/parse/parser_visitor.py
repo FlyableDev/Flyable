@@ -252,43 +252,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         self.__last_type, self.__last_value = current_type, current_value
 
     def visit_Compare(self, node: Compare) -> Any:
-        all = [node.left] + node.comparators
-        first_type = None
-        first_value = None
-        compare_types = []
-        compare_values = []
-        for e in range(len(node.ops)):
-            if e == 0:
-                first_type, first_value = self.__visit_node(all[e])
-            second_type, second_value = self.__visit_node(all[e + 1])
-            current_op = node.ops[e]
-            compare_type, compare_value = op_call.cond_op(self, current_op, first_type, first_value, second_type,
-                                                          second_value)
-            compare_types.append(compare_type)
-            compare_values.append(compare_value)
-            if e == len(node.ops) - 1:
-                ref_counter.ref_decr_multiple_incr(self, [first_type, second_type], [first_value, second_value])
-            else:
-                ref_counter.ref_decr_incr(self, first_type, first_value)
-            first_type, first_value = second_type, second_value
-        if len(node.ops) == 1:
-            self.__last_value = compare_values[0]
-            self.__last_type = compare_types[0]
-        else:
-            compare_value = None
-            compare_type = None
-            for e in range(len(compare_values) - 1):
-                if e == 0:
-                    first_value = compare_values[e]
-                    first_type = compare_types[e]
-                second_value = compare_values[e + 1]
-                second_type = compare_types[e + 1]
-                compare_type, compare_value = op_call.cond_op(self, ast.And(), first_type, first_value, second_type,
-                                                              second_value)
-                ref_counter.ref_decr_multiple_incr(self, [first_type, second_type], [first_value, second_value])
-                first_type, first_value = compare_type, compare_value
-            self.__last_value = compare_value
-            self.__last_type = compare_type
+        from flyable.parse.content.compare import parse_compare
+        self.__last_type, self.__last_value = parse_compare(self, node)
 
     def visit_AugAssign(self, node: AugAssign) -> Any:
         import flyable.tool.token_change as token_change
