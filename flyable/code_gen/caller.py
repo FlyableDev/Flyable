@@ -198,8 +198,8 @@ def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args:
     result = builder.load(call_result_var)
     ref_counter.ref_decr(visitor, lang_type.get_python_obj_type(), func_to_call)
 
-    excp.py_runtime_print_error(code_gen, builder)
-    excp.check_excp(visitor, result)
+    #excp.py_runtime_print_error(code_gen, builder)
+    #excp.check_excp(visitor, result)
 
     return result
 
