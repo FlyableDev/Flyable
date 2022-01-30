@@ -240,6 +240,8 @@ class CodeFunc:
         return self.__builder
 
     def clear_blocks(self):
+        if self.__branch_viewer is not None:
+            self.__branch_viewer.clear()
         self.__blocks.clear()
 
     def get_blocks_count(self):
@@ -668,7 +670,7 @@ class CodeGen:
 
         main_func = self.get_or_create_func(main_name, code_type.get_int32(), [], Linkage.EXTERNAL)
         builder = CodeBuilder(main_func)
-        entry_block = builder.create_block()
+        entry_block = builder.create_block("Main Function Block")
         builder.set_insert_block(entry_block)
 
         runtime.py_runtime_init(self, builder)  # This call is required to properly starts the CPython interpreter

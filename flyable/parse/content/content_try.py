@@ -37,7 +37,7 @@ def parse_try(visitor: ParserVisitor, node: Try):
         |-> finally_block
     |> else
         |-> continue_block
-    
+
     excp_block:
     |> if has_handlers
         |-> handlers_cond_block
@@ -75,8 +75,8 @@ def parse_try(visitor: ParserVisitor, node: Try):
     has_else = len(node.orelse) > 0
     has_finally = len(node.finalbody) > 0
 
-    continue_block = builder.create_block("Continue")
-    excp_block = builder.create_block("Except")
+    continue_block = builder.create_block("After Try")
+    excp_block = builder.create_block("Exceptions Handlers")
     excp_not_found_block = builder.create_block("Exception not found")
     finally_block = builder.create_block("Finally") if has_finally else None
     else_block = builder.create_block("Else") if has_else else None
@@ -87,8 +87,8 @@ def parse_try(visitor: ParserVisitor, node: Try):
     handlers_block = []
     handlers_cond_block = []
     for handler in node.handlers:
-        handlers_block.append(builder.create_block(f"Handler for {handler.type.id}"))  # type: ignore
-        handlers_cond_block.append(builder.create_block(f"Handler condition for {handler.type.id}"))  # type: ignore
+        handlers_block.append(builder.create_block(f"Except body: {handler.type.id}"))  # type: ignore
+        handlers_cond_block.append(builder.create_block(f"Except check: {handler.type.id}"))  # type: ignore
 
     # visiting the body of the try statement
     visitor.visit_node(node.body)
@@ -109,6 +109,7 @@ def parse_try(visitor: ParserVisitor, node: Try):
             excp_not_found_block,
             finally_block,
         )
+
         # defining the content of the excp block w/ handlers
         builder.set_insert_block(excp_block)
         builder.br(handlers_cond_block[0])

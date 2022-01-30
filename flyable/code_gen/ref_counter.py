@@ -85,8 +85,8 @@ def ref_decr(visitor: ParserVisitor, value_type: LangType, value: int):
 
     ref_count = builder.load(ref_ptr)
 
-    dealloc_block = builder.create_block()
-    decrement_block = builder.create_block()
+    dealloc_block = builder.create_block("Value Deallocation")
+    decrement_block = builder.create_block("Value Ref Decrement")
 
     need_to_dealloc = builder.eq(ref_count, builder.const_int64(1))
     builder.cond_br(need_to_dealloc, dealloc_block, decrement_block)
@@ -142,7 +142,7 @@ def ref_decr(visitor: ParserVisitor, value_type: LangType, value: int):
     else:
         raise TypeError("Type " + str(value_type) + " unsupported to decrement the ref counter")
 
-    continue_block = builder.create_block()
+    continue_block = builder.create_block("After Ref Decrement")
 
     builder.br(continue_block)
 
@@ -159,8 +159,8 @@ def ref_decr_nullable(visitor: ParserVisitor, value_type: LangType, value: int):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
-    not_null_block = builder.create_block()
-    continue_block = builder.create_block()
+    not_null_block = builder.create_block("Value Not Null")
+    continue_block = builder.create_block("After Ref Decrement")
 
     is_null = builder.eq(value, builder.const_null(value_type.to_code_type(code_gen)))
     builder.cond_br(is_null, continue_block, not_null_block)

@@ -39,7 +39,7 @@ class Compiler(ErrorThrower):
             if flag_is_valid(FLAG_SHOW_STEP_LEVEL, lambda level: level >= 2):
                 wrap_in_step("Parsing", self.__parse)
             else:
-                self.__pre_parse()
+                self.__parse()
 
         self.throw_errors(self.__parser.get_errors())
 

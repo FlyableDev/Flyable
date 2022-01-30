@@ -30,9 +30,9 @@ def py_obj_get_attr(visitor: ParserVisitor, obj: int, name: str, obj_type:int=No
     # First need to call get_attro, then the get_attr if get_attro is null
 
     attr_found_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
-    get_attro_block = builder.create_block()
-    get_attr_block = builder.create_block()
-    continue_block = builder.create_block()
+    get_attro_block = builder.create_block("Get Attro")
+    get_attr_block = builder.create_block("Get Attr")
+    continue_block = builder.create_block("After Get")
 
     # Get the function first
     if obj_type is None:

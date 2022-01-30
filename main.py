@@ -22,6 +22,7 @@ from flyable.debug.debug_flags_list import *
 from flyable.tool.utils import end_step, add_step
 
 ENABLED_DEBUG_FLAGS: DebugFlagListType = [
+    (FLAG_SHOW_BLOCK_BRANCHES, "basic"),
 ]
 """
 Debug flags to be enabled during the compiling, the linking and the running process\n

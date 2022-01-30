@@ -11,9 +11,9 @@ def dprint(*args, sep=" ", end="\n", flush=False, file=None, indent: int = _MISS
     print(*args, sep=sep, end=end, file=file, flush=flush)
 
 
-def ddivider(divider_symbol="-", divider_length=20):
+def ddivider(divider_symbol="-", divider_length=20, indent: int = _MISSING):  # type: ignore
     """"""
-    print("\t" * __tabs, end="")
+    print("\t" * (__tabs if indent is _MISSING else indent), end="")
     print(divider_symbol * divider_length)
 
 
