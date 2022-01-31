@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from flyable.debug.debug_flags_list import FLAG_PRINT_FUNC_IMPL
+
 if TYPE_CHECKING:
     from flyable.parse.parser import Parser
     from flyable.code_gen.code_gen import CompData, CodeGen
@@ -8,7 +10,6 @@ if TYPE_CHECKING:
     from flyable.data.lang_func import LangFunc
 
 import flyable.data.lang_func_impl as lang_func_impl
-from flyable.debug.debug_flags import DebugFlags, debug_flag_enabled
 
 
 def adapt_call(func_name: str, call_type: LangType, args: list, comp_data: CompData, parser: Parser, codegen: CodeGen):
@@ -76,7 +77,7 @@ def __adapt_python_impl(func: LangFunc, comp_data: CompData, parser: Parser):
     tp_adapted_impl = func.get_tp_call_impl()
     vec_adapted_impl = func.get_vec_call_impl()
 
-    if debug_flag_enabled(DebugFlags.PRINT_FUNC_IMPL):
+    if FLAG_PRINT_FUNC_IMPL.is_enabled:
         print(f"{tp_adapted_impl=}")
         print(f"{vec_adapted_impl=}")
 

@@ -53,12 +53,12 @@ def python_list_append(visitor: ParserVisitor, list: int, item_type: lang_type.L
     if not hint.is_incremented_type(item_type):
         ref_counter.ref_incr(visitor.get_builder(), item_type, item)
 
-    new_alloca_block = builder.create_block()
-    continue_block = builder.create_block()
+    new_alloca_block = builder.create_block("List New Allocation")
+    continue_block = builder.create_block("After List")
 
-    list = visitor.get_builder().ptr_cast(list, code_type.get_list_obj_ptr(visitor.get_code_gen()))
+    list = builder.ptr_cast(list, code_type.get_list_obj_ptr(visitor.get_code_gen()))
     capacity = python_list_capacity_ptr(visitor, list)
-    capacity = visitor.get_builder().load(capacity)
+    capacity = builder.load(capacity)
 
     size_ptr = python_list_len_ptr(visitor, list)
     size = builder.load(size_ptr)
@@ -96,8 +96,8 @@ def python_list_get_content_ptr(visitor: ParserVisitor, list: int):
 
 def python_list_array_get_item(visitor: ParserVisitor, list_type: lang_type.LangType, list: int, index: int):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
-    valid_index_block = builder.create_block()
-    wrong_index_block = builder.create_block()
+    valid_index_block = builder.create_block("List Valid Index")
+    wrong_index_block = builder.create_block("List Wrong Index")
     size = python_list_len(visitor, list)
     real_index = visitor.get_builder().mod(index, size)
     valid_bounds = visitor.get_builder().lt(real_index, size)

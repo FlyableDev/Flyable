@@ -6,6 +6,9 @@ from flyable.code_gen.code_gen import CodeGen
 from flyable.data import comp_data, lang_file
 from flyable.data.error_thrower import ErrorThrower
 from flyable.parse.pre_parser import PreParser
+from flyable.debug.debug_flags import DebugFlag, value_if_debug, do_if_debug, flag_is_valid
+from flyable.debug.debug_flags_list import *
+from flyable.tool.utils import add_step, end_step, wrap_in_step
 
 
 class Compiler(ErrorThrower):
@@ -27,10 +30,16 @@ class Compiler(ErrorThrower):
         self.__data.set_config("output", path)
 
     def compile(self):
-        self.__pre_parse()
+        if flag_is_valid(FLAG_SHOW_STEP_LEVEL, lambda level: level >= 2):
+            wrap_in_step("PreParsing", self.__pre_parse)
+        else:
+            self.__pre_parse()
 
         if not self.has_error():
-            self.__parse()
+            if flag_is_valid(FLAG_SHOW_STEP_LEVEL, lambda level: level >= 2):
+                wrap_in_step("Parsing", self.__parse)
+            else:
+                self.__parse()
 
         self.throw_errors(self.__parser.get_errors())
 
@@ -72,7 +81,9 @@ class Compiler(ErrorThrower):
                 adapter.adapt_all_python_impl(self.__data, self.__parser)
 
             except Exception as exception:
-                if not self.__parser.has_error():  # If there is no error we launch the exception as a failure
+                if (
+                        not self.__parser.has_error()
+                ):  # If there is no error we launch the exception as a failure
                     raise exception
                 break
 

@@ -3,7 +3,7 @@ import copy
 import enum
 import platform
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias, Optional
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_writer as _writer
 import flyable.code_gen.library_loader as loader
@@ -17,8 +17,10 @@ from flyable.code_gen.code_builder import CodeBuilder
 from flyable.code_gen.code_type import CodeType
 from flyable.code_gen.code_writer import CodeWriter
 from flyable.debug.code_builder_analyser import CodeBuilderAnalyser
-from flyable.debug.debug_flags import DebugFlags, value_if_debug
+from flyable.debug.debug_flags import DebugFlag, value_if_debug
+from flyable.debug.code_branch_viewer import BranchViewer
 import flyable.code_gen.ref_counter as ref_counter
+from flyable.debug.debug_flags_list import *
 
 if TYPE_CHECKING:
     from flyable.parse.parser import ParserVisitor
@@ -117,8 +119,8 @@ class GlobalVar:
         return self.__str__()
 
 
-
 CodeBlock: TypeAlias = "CodeFunc.CodeBlock"
+
 
 class CodeFunc:
     """
@@ -132,11 +134,12 @@ class CodeFunc:
         use to generate IR
         """
 
-        def __init__(self, id: int = 0):
+        def __init__(self, id: int = 0, label: str = None):
             self.__code_writer = CodeWriter()
             self.__id = id
             self.__has_return: bool = False
             self.__br_blocks: list[CodeBlock] = []
+            self.__label: Optional[str] = label
 
         def get_id(self):
             return self.__id
@@ -157,6 +160,9 @@ class CodeFunc:
         def add_br_block(self, block: CodeBlock):
             self.__br_blocks.append(block)
 
+        def get_br_blocks(self):
+            return self.__br_blocks
+
         def has_br_block(self):
             return len(self.__br_blocks) > 0
 
@@ -176,6 +182,9 @@ class CodeFunc:
             self.__br_blocks.clear()
             self.__has_return = False
 
+        def __repr__(self):
+            return self.get_name() + (f"({self.__label})" if self.__label is not None else "")
+
     def __init__(self, name: str):
         self.__id: int = -1
         self.__value_id: int = 0
@@ -184,7 +193,8 @@ class CodeFunc:
         self.__args = []
         self.__return_type = CodeType()
         self.__blocks: list[CodeBlock] = []
-        self.__builder = value_if_debug(CodeBuilder(self), CodeBuilderAnalyser(self), DebugFlags.SHOW_OUTPUT_BUILDER)
+        self.__builder = value_if_debug(CodeBuilder(self), CodeBuilderAnalyser(self), FLAG_SHOW_OUTPUT_BUILDER)
+        self.__branch_viewer = BranchViewer(self.__builder) if FLAG_SHOW_BLOCK_BRANCHES else None
 
     def set_linkage(self, link: Linkage):
         self.__linkage = link
@@ -222,14 +232,16 @@ class CodeFunc:
     def get_args(self):
         return copy.copy(self.__args)
 
-    def add_block(self):
-        self.__blocks.append(CodeFunc.CodeBlock(len(self.__blocks)))
+    def add_block(self, label: str = None):
+        self.__blocks.append(CodeFunc.CodeBlock(len(self.__blocks), label))
         return self.__blocks[-1]
 
     def get_builder(self):
         return self.__builder
 
     def clear_blocks(self):
+        if self.__branch_viewer is not None:
+            self.__branch_viewer.clear()
         self.__blocks.clear()
 
     def get_blocks_count(self):
@@ -479,7 +491,8 @@ class CodeGen:
             raise Exception("Setup was not called on CodeGen")
         return self.__python_type_struct
 
-    def get_or_create_func(self, name: str, return_type: CodeType, args_type:list[CodeType]=None, link=Linkage.INTERNAL):
+    def get_or_create_func(self, name: str, return_type: CodeType, args_type: list[CodeType] = None,
+                           link=Linkage.INTERNAL):
         # Get case
         if args_type is None:
             args_type = []
@@ -572,7 +585,7 @@ class CodeGen:
         return_type = impl.get_return_type().to_code_type(self)
 
         if impl.get_impl_type() == lang_func_impl.FuncImplType.SPECIALIZATION:
-            func_args: list[CodeType] = lang_type.to_code_type(self, list(impl.args_iter())) # type: ignore
+            func_args: list[CodeType] = lang_type.to_code_type(self, list(impl.args_iter()))  # type: ignore
         elif impl.get_impl_type() == lang_func_impl.FuncImplType.TP_CALL:
             func_args = [code_type.get_py_obj_ptr(self)] * 3
             return_type = code_type.get_py_obj_ptr(self)
@@ -596,7 +609,7 @@ class CodeGen:
         func = visitor.get_func().get_code_func()
         if func is None:
             raise Exception("Main func has no code_func")
-        
+
         for block in func.blocks_iter():
             if not block.has_br_block() and not block.has_return():
                 func.get_builder().set_insert_block(block)
@@ -617,7 +630,7 @@ class CodeGen:
         writer.add_str("**Flyable format**")
 
         # Write if it's a debug build or not
-        if DebugFlags.SHOW_OPCODE_ON_EXEC.is_enabled:
+        if FLAG_SHOW_OPCODE_ON_EXEC.is_enabled:
             writer.add_int32(1)
         else:
             writer.add_int32(0)
@@ -657,7 +670,7 @@ class CodeGen:
 
         main_func = self.get_or_create_func(main_name, code_type.get_int32(), [], Linkage.EXTERNAL)
         builder = CodeBuilder(main_func)
-        entry_block = builder.create_block()
+        entry_block = builder.create_block("Main Function Block")
         builder.set_insert_block(entry_block)
 
         runtime.py_runtime_init(self, builder)  # This call is required to properly starts the CPython interpreter
@@ -714,7 +727,8 @@ class CodeGen:
         else:
             builder.ret(builder.const_int32(0))
 
-    def convert_type(self, builder: CodeBuilder, code_gen: CodeGen, type_from: lang_type.LangType, value: int, type_to: lang_type.LangType):
+    def convert_type(self, builder: CodeBuilder, code_gen: CodeGen, type_from: lang_type.LangType, value: int,
+                     type_to: lang_type.LangType):
         if type_to.is_python_obj():
             return runtime.value_to_pyobj(self, builder, value, type_from)[1]
         elif type_to.is_obj():
@@ -736,5 +750,3 @@ class CodeGen:
             return builder.const_int1(False)
         else:
             return builder.const_null(type.to_code_type(code_gen))
-
-

@@ -1,15 +1,19 @@
+from typing import Final
+
 __tabs: int = 0
 
+_MISSING: Final = object()
 
-def dprint(*args, sep=" ", end="\n", flush=False, file=None):
+
+def dprint(*args, sep=" ", end="\n", flush=False, file=None, indent: int = _MISSING):  # type: ignore
     """Emulates the print method but adds the indentation"""
-    print("\t" * __tabs, end="")
+    print("\t" * (__tabs if indent is _MISSING else indent), end="")
     print(*args, sep=sep, end=end, file=file, flush=flush)
 
 
-def ddivider(divider_symbol="-", divider_length=20):
+def ddivider(divider_symbol="-", divider_length=20, indent: int = _MISSING):  # type: ignore
     """"""
-    print("\t" * __tabs, end="")
+    print("\t" * (__tabs if indent is _MISSING else indent), end="")
     print(divider_symbol * divider_length)
 
 

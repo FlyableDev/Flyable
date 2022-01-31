@@ -1,68 +1,76 @@
 from __future__ import annotations
 
-from enum import Enum, auto
-from typing import Callable
+from dataclasses import dataclass, field
+
+from typing import Callable, Generic, TypeVar, Optional, TypeAlias
+
+_T = TypeVar("_T")
+
+_DEBUG_FLAGS_LIST: list[DebugFlag] = []
+DebugFlagListType: TypeAlias = "list[DebugFlag[_T] | tuple[DebugFlag[_T], _T]]"
 
 
-class DebugFlags(Enum):
-    """Enum where are defined the different debug flags that can be toggle on and off"""
+@dataclass
+class DebugFlag(Generic[_T]):
+    """Class where are defined the properties of a debug flag"""
 
-    SHOW_VISIT_AST = auto()
-    SHOW_OUTPUT_BUILDER = auto()
-    SHOW_OPCODE_ON_EXEC = auto()
-    PRINT_FUNC_IMPL = auto()
-    PRINT_INT64 = auto()
+    default_value: Optional[_T] = None
+    value: _T = field(init=False)
+    is_enabled: bool = field(default=False, init=False)
 
-    STEP_LEVEL = auto()
-    """STEP_LEVEL: Value range between 0 and 4"""
+    def __post_init__(self):
+        self.value = self.default_value
+        _DEBUG_FLAGS_LIST.append(self)
 
-    @classmethod
-    def enable_debug_flags(cls, *debug_flags: DebugFlags):
-        """Method to toggle on multiple debug flags easly"""
-        for debug_flag in debug_flags:
-            debug_flag.__is_enabled = True
+    def enable(self, value: _T = None):
+        if value is not None:
+            self.value = value
+        self.is_enabled = True
 
-    @classmethod
-    def disable_debug_flags(cls, *debug_flags: DebugFlags):
-        """Method to toggle off multiple debug flags easly"""
-        for debug_flag in debug_flags:
-            debug_flag.__is_enabled = False
+    def disable(self):
+        self.is_enabled = False
+        self.value = self.default_value
 
-    @classmethod
-    def get_enabled_debug_flags(cls) -> list[DebugFlags]:
-        return [flag for flag in cls.__members__.values() if flag.is_enabled]
-
-    @classmethod
-    def get_all_debug_flags(cls) -> list[str]:
-        return list(cls.__members__.keys())
-
-    def __init__(self, *_) -> None:
-        """Constructor that sets the property is_enabled to False"""
-        super().__init__()
-        self.__is_enabled = False
-
-    @property
-    def is_enabled(self):
-        return self.__is_enabled
-
-    def __str__(self) -> str:
-        return f"{self.name}={self.is_enabled}"
+    def __bool__(self):
+        return self.is_enabled
 
 
-def get_flag_value(flag: DebugFlags):
-    return flag.value
+def enable_debug_flags(*debug_flags: DebugFlag[_T] | tuple[DebugFlag[_T], _T]):
+    """Method to toggle on multiple debug flags easly"""
+    for debug_flag in debug_flags:
+        if isinstance(debug_flag, tuple):
+            debug_flag[0].enable(debug_flag[1])
+        else:
+            debug_flag.enable()
+
+
+def disable_debug_flags(*debug_flags: DebugFlag[_T]):
+    """Method to toggle off multiple debug flags easly"""
+    for debug_flag in debug_flags:
+        debug_flag.disable()
+
+
+def get_enabled_debug_flags() -> list[DebugFlag]:
+    return [flag for flag in _DEBUG_FLAGS_LIST if flag.is_enabled]
+
+
+def get_all_debug_flags() -> list[DebugFlag]:
+    return _DEBUG_FLAGS_LIST[:]
 
 
 def value_if_debug(
-        normal_value, debug_value, flag: DebugFlags, condition: Callable = None
+        normal_value,
+        debug_value,
+        flag: DebugFlag[_T],
+        condition: Callable[[_T], bool] = None,
 ):
     """Convenience function that returns the normal value if the flag is not enabled or the flag's value doesn't meet
     the requirements and returns the debug value if it is enabled and its value meets the requirements
 
     Example:
-        value_if_debug("hello", "world", DebugFlags.STEP_LEVEL, lambda level: level >= 2)
+        >>> value_if_debug("hello", "world", SHOW_STEP_LEVEL, lambda level: level >= 2)
 
-        value_if_debug("foo", "bar", DebugFlags.SHOW_VISIT_AST)
+        >>> value_if_debug("foo", "bar", SHOW_VISIT_AST)
 
     :param normal_value: (? extends T): Value to be returned if the debug flag is not enabled
     :param debug_value: (? extends T): Value to be returned if the debug flag is enabled
@@ -77,19 +85,29 @@ def value_if_debug(
         return normal_value
 
 
+def flag_is_valid(flag: DebugFlag[_T], condition: Callable[[_T], bool] = None):
+    """
+    Concise way to test a flag and it's value
+
+    :param flag: The flag tested
+    :param condition: Function which takes the value of the flag and returns True if it's valid and False otherwise
+    :return: True if the flag is enabled and it's value passes the condition
+    """
+    return flag.is_enabled and (condition is None or condition(flag.value))
+
 def do_if_debug(
         func: Callable,
-        flag: DebugFlags,
+        flag: DebugFlag[_T],
         args: tuple = (),
         kwargs: dict = None,
-        condition: Callable = None,
+        condition: Callable[[_T], bool] = None,
 ):
     """Convenience function that calls a function if the flag is enabled and the flag's value meets the requirements
 
     Example:
-        do_if_debug(print, args=("hello", "world"), kwargs={"sep": "\\\\n"}, flag=DebugFlags.STEP_LEVEL,
+        >>> do_if_debug(print, args=("hello", "world"), kwargs={"sep": "\\n"}, flag=STEP_LEVEL, \
         condition=lambda level: level >= 2)
-        do_if_debug(input, args=("Enter your message",) DebugFlags.SHOW_VISIT_AST)
+        >>> do_if_debug(input, args=("Enter your message",) SHOW_VISIT_AST)
 
     :param func: (Callable): function to call if the flag is enabled
     :param args: (tuple): args to the function
@@ -102,7 +120,3 @@ def do_if_debug(
     if flag.is_enabled and (condition is None or condition(flag.value)):
         kwargs = kwargs if kwargs is not None else {}
         return func(*args, **kwargs)
-
-
-def debug_flag_enabled(flag: DebugFlags):
-    return flag.is_enabled

@@ -68,7 +68,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         self.__get_code_func().clear_blocks()
 
-        self.__entry_block = self.__get_code_func().add_block()
+        self.__entry_block = self.__get_code_func().add_block("Entry block")
 
         self.__builder: CodeBuilder = self.__get_code_func().get_builder()
         self.__builder.set_insert_block(self.__entry_block)
@@ -121,7 +121,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     found_ptr = self.__builder.load(found_ptr)
                     var.set_code_gen_value(found_ptr)
 
-        self.__content_block = self.__builder.create_block()
+        self.__content_block = self.__builder.create_block("Main Content")
         self.__builder.set_insert_block(self.__content_block)
 
     def __parse_over(self):
@@ -710,9 +710,9 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
 
     def visit_IfExp(self, node: IfExp) -> Any:
-        true_cond = self.__builder.create_block()
-        false_cond = self.__builder.create_block()
-        continue_cond = self.__builder.create_block()
+        true_cond = self.__builder.create_block("If True")
+        false_cond = self.__builder.create_block("If False")
+        continue_cond = self.__builder.create_block("Continue If")
 
         test_type, test_value = self.__visit_node(node.test)
         self.__reset_last()
@@ -784,10 +784,10 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         for_loop.parse_for_loop(node, self)
 
     def visit_While(self, node: While) -> Any:
-        block_cond = self.__builder.create_block()
-        block_while_in = self.__builder.create_block()
-        block_else = self.__builder.create_block() if node.orelse is not None else None
-        block_continue = self.__builder.create_block()
+        block_cond = self.__builder.create_block("Condition While")
+        block_while_in = self.__builder.create_block("In While")
+        block_else = self.__builder.create_block("Else While") if node.orelse is not None else None
+        block_continue = self.__builder.create_block("After While")
 
         self.__builder.br(block_cond)
         self.__builder.set_insert_block(block_cond)
@@ -1356,6 +1356,6 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             var.set_code_gen_value(None)
 
         self.__get_code_func().clear_blocks()
-        self.__entry_block = self.__get_code_func().add_block()
+        self.__entry_block = self.__get_code_func().add_block("Entry block")
 
         self.__builder.set_insert_block(self.__entry_block)

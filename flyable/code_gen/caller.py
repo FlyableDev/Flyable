@@ -55,7 +55,7 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
         return return_type, visitor.get_builder().call(
             code_func, [obj] + args
         )
-    elif (obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive()):
+    elif obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive():
         did_caller_conversion = False
         # The caller can be a primitive, convert if it's the case
         if obj_type.is_primitive():
@@ -95,7 +95,7 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
             return lang_type.get_python_obj_type(
                 hint.TypeHintRefIncr()
             ), _iter.call_iter_protocol(visitor, func_name, obj)
-        elif (rich_compare.is_func_name_rich_compare(func_name) and len(args) == 1):  # Rich Compare protocol
+        elif rich_compare.is_func_name_rich_compare(func_name) and len(args) == 1:  # Rich Compare protocol
             instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
             result = rich_compare.call_rich_compare_protocol(
                 visitor, func_name, obj_type, obj, instance_type, args_type, args
@@ -177,15 +177,15 @@ def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args:
                                           builder.const_null(code_type.get_int8_ptr()))
 
     can_vec = builder._and(can_vec_based_on_flag, vector_call_ptr_not_null)
-    vector_call_block = builder.create_block()
-    tp_call_block = builder.create_block()
+    vector_call_block = builder.create_block("Vector call")
+    tp_call_block = builder.create_block("Tp call")
 
     builder.cond_br(can_vec, vector_call_block, tp_call_block)
 
     builder.set_insert_block(vector_call_block)
     vec_result = function.call_py_func_vec_call(visitor, obj, func_to_call, args, vector_call_ptr)
     builder.store(vec_result, call_result_var)
-    continue_block = builder.create_block()
+    continue_block = builder.create_block("After Call")
     builder.br(continue_block)
 
     builder.set_insert_block(tp_call_block)

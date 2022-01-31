@@ -58,13 +58,13 @@ def test_obj_true(visitor: ParserVisitor, value_type: lang_type.LangType, value:
     true_value = builder.load(true_ptr)
 
     is_true = builder.eq(value, true_value)
-    true_block = builder.create_block()
-    test_true_with_call_block = builder.create_block()
+    true_block = builder.create_block("Object is True")
+    test_true_with_call_block = builder.create_block("Test __bool__ Call")
     builder.cond_br(is_true, true_block, test_true_with_call_block)
 
     builder.set_insert_block(true_block)
     builder.store(builder.const_int1(True), result)
-    continue_block = builder.create_block()
+    continue_block = builder.create_block("Test End")
     builder.br(continue_block)
 
     builder.set_insert_block(test_true_with_call_block)
@@ -73,7 +73,7 @@ def test_obj_true(visitor: ParserVisitor, value_type: lang_type.LangType, value:
     if cond_type is None or cond_value is None: 
         raise Exception("Could not test object thruthy value")
 
-    false_block = builder.create_block()
+    false_block = builder.create_block("Test is False")
     if cond_type.is_python_obj() or cond_type.is_collection() or cond_type.is_obj():
         is_true_2 = builder.eq(cond_value, true_value)
         ref_counter.ref_decr_incr(visitor, cond_type, cond_value)
