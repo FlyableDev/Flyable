@@ -21,6 +21,7 @@ from flyable.debug.debug_flags import DebugFlag, DebugFlagListType, enable_debug
 from flyable.debug.debug_flags_list import *
 from flyable.tool.utils import end_step, add_step
 
+
 ENABLED_DEBUG_FLAGS: DebugFlagListType = [
 ]
 """
