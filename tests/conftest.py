@@ -1,3 +1,8 @@
+"""
+Methods for generating python files from test functions
+to be executed for testing
+"""
+
 import os
 import shutil
 from sys import stderr, stdin, stdout
@@ -27,7 +32,6 @@ def compiled_value(request: SubRequest):
     try:
         _remove_old_python_file(function_file_temp_path)
         _generate_current_test_python_file(function_file_temp_path, function_name, request)
-        print(function_file_temp_path)
         res = get_compiled_value_from_test_file(function_file_temp_path, temp_working_dir)
         return res
     finally:
@@ -99,11 +103,11 @@ def get_compiled_value_from_test_file(file_name: str, output_dir: str) -> Any:
 
         if p.returncode != 0:
             raise Exception("Linking error")
-
-        p2 = Popen([f"{output_dir}/a.exe"], cwd=output_dir, stdin=PIPE, stdout=PIPE, text=True, encoding="utf8")
         
+        p2 = Popen([f"{output_dir}/a.exe"], cwd=output_dir, stdin=stdin, stderr=stderr, stdout=stdout, encoding="utf8")
         outputs, errors = p2.communicate()
-        
+
+        print(outputs)
         if outputs is None or outputs == "":
             raise Exception(f"No assert statement in function")
 
