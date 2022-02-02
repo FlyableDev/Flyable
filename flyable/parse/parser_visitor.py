@@ -510,6 +510,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     raise Exception("File of function called not found")
 
                 content = file.find_content_by_name(name_call)
+
                 if isinstance(content, lang_class.LangClass):
                     # New instance class call
                     self.__last_type = lang_type.get_obj_type(content.get_id())
@@ -536,6 +537,22 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     else:
                         self.__parser.throw_error("Function " + node.func.id + " not found", node.lineno,
                                                   node.end_col_offset)
+                elif content is None:
+                    # If content is None, this could still be the __call__ method on a class
+                    self.__last_type, self.__last_value = self.__visit_node(node.func)
+                    calling_class = self.__data.get_class(self.__last_type.get_id())
+                    method_name = "__call__"
+                    func_to_call = calling_class.get_func(method_name)
+
+                    if func_to_call is not None:
+                        self.__last_type, self.__last_value = caller.call_obj(self, method_name, self.__last_value,
+                                                                              self.__last_type, args, args_types)
+                        if self.__last_type.is_unknown():
+                            self.__last_type = lang_type.get_none_type()
+                            self.__last_value = self.__builder.const_int32(0)
+                    else:
+                        str_error = f"Method '{method_name}' not found"
+                        self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
                 else:
                     self.__parser.throw_error("'" + name_call + "' unrecognized", node.lineno, node.end_col_offset)
         elif self.__last_type.is_python_obj() or self.__last_type.is_collection():  # Python call object

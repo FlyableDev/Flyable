@@ -27,3 +27,4 @@ def test_zero_and_one_bool_comparison_with_is(compiled_value):
 def test_zero_and_one_bool_comparison_with_equal(compiled_value):
     int_to_bool_equality = 1 == True
     assert int_to_bool_equality == compiled_value
+
