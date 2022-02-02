@@ -1,14 +1,39 @@
 import ast
 
 
-def is_op_cond(op):
-    return isinstance(op, (ast.Eq,  ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.Is, ast.IsNot, ast.In, ast.NotIn))
+def is_op_cond(op: ast.operator):
+    return op.__class__ in {
+        ast.Eq,
+        ast.NotEq,
+        ast.Lt,
+        ast.LtE,
+        ast.Gt,
+        ast.Is,
+        ast.IsNot,
+        ast.In,
+        ast.NotIn,
+    }
 
 
-def get_op_func_call(op):
+def is_op_cond_special_case(op: ast.operator):
+    return op.__class__ in {ast.NotIn, ast.Is, ast.IsNot}
+
+
+def get_op_func_call(op: ast.operator):
     """
-    Convert an operator into the right python func call
+    Convert an operator into the right python func call\n
+
+    WARNING The operator 'In' is a special case. Because the __contains__ method doesn't behave
+    like other dunder methods\n
+    >>> 'a' in 'abc' == 'abc'.__contains__('a')\n
+    it must be handled on it's own
     """
+    if is_op_cond_special_case(op):
+        raise ValueError(
+            f"The operator '{op.__class__.__name__}' is a special case and doesn't have a "
+            f"dunder method associated to it"
+        )
+
     result = ""
     if isinstance(op, ast.Add):
         result = "__add__"
@@ -52,13 +77,5 @@ def get_op_func_call(op):
         result = "__gt__"
     elif isinstance(op, ast.GtE):
         result = "__ge__"
-    elif isinstance(op, ast.Is):
-        result = "__is__"
-    elif isinstance(op, ast.IsNot):
-        result = "__is_not__"  # TODO: Confirm the op
-    elif isinstance(op, ast.In):
-        result = "__in__"
-    elif isinstance(op, ast.NotIn):
-        result = "__not_in__"  # Todo: Confirm the op
 
     return result

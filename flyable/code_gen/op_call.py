@@ -12,10 +12,16 @@ import flyable.parse.op as parse_op
 
 if TYPE_CHECKING:
     from flyable.parse.parser_visitor import ParserVisitor
+    from flyable.data.lang_type import LangType
 
 
 def __convert_type_to_match(
-    visitor: ParserVisitor, op: ast.operator, type_left: lang_type.LangType, value_left, type_right, value_right
+        visitor: ParserVisitor,
+        op: ast.operator,
+        type_left: LangType,
+        value_left,
+        type_right,
+        value_right,
 ):
     # Check the primitive type conversion
     if type_left.is_dec():
@@ -64,12 +70,12 @@ def __convert_type_to_match(
 
 
 def bin_op(
-    visitor: ParserVisitor,
-    op: ast.operator,
-    type_left: lang_type.LangType,
-    value_left,
-    type_right: lang_type.LangType,
-    value_right,
+        visitor: ParserVisitor,
+        op: ast.operator,
+        type_left: LangType,
+        value_left: int,
+        type_right: LangType,
+        value_right: int,
 ):
     builder = visitor.get_builder()
 
@@ -79,9 +85,9 @@ def bin_op(
     )
 
     if (  # left
-        type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection()
+            type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection()
     ) or (  # right
-        type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection()
+            type_right.is_obj() or type_right.is_python_obj() or type_right.is_collection()
     ):
         args_types = [type_right]
         args = [value_right]
@@ -165,7 +171,14 @@ def bin_op(
     return result_type, apply_op(value_left, value_right)
 
 
-def cond_op(visitor: ParserVisitor, op: ast.operator, type_left, first_value, type_right, second_value):
+def cond_op(
+        visitor: ParserVisitor,
+        op: ast.operator,
+        type_left: LangType,
+        first_value: int,
+        type_right: LangType,
+        second_value: int,
+):
     builder = visitor.get_builder()
 
     # Check the primitive type conversion
@@ -174,23 +187,30 @@ def cond_op(visitor: ParserVisitor, op: ast.operator, type_left, first_value, ty
     )
 
     if (
-        type_left.is_obj()
-        or type_left.is_python_obj()
-        or type_left.is_collection()
-        or type_right.is_obj()
-        or type_right.is_python_obj()
-        or type_right.is_collection()
+            type_left.is_obj()
+            or type_left.is_python_obj()
+            or type_left.is_collection()
+            or type_right.is_obj()
+            or type_right.is_python_obj()
+            or type_right.is_collection()
     ):
         """
         If one of the two values is a python object then both objects need to be a python object
         """
+        # if parse_op.is_op_cond_special_case(op):
+        #    handle_op_cond_special_cases(visitor, op, type_left, first_value, type_right, second_value)
+
+        func_name = parse_op.get_op_func_call(op)
+        if func_name == "__contains__":
+            type_right, type_left = type_left, type_right
+            second_value, first_value = first_value, second_value
 
         args_types = [type_right]
         args = [second_value]
 
         return caller.call_obj(
             visitor,
-            parse_op.get_op_func_call(op),
+            func_name,
             first_value,
             type_left,
             args,
@@ -224,6 +244,25 @@ def cond_op(visitor: ParserVisitor, op: ast.operator, type_left, first_value, ty
         first_value, second_value
     )
     return result_type, result_value
+
+
+def handle_op_cond_special_cases(visitor: ParserVisitor, op: ast.operator, type_left, first_value, type_right,
+                                 second_value):
+    """
+    There are special cases for the operations:\n
+    Is, IsNot and NotIn
+    """
+    if not parse_op.is_op_cond_special_case(op):
+        raise ValueError("Operator is not a special case")
+
+    op_type = op.__class__
+    if op_type is ast.In:
+        type_right, type_left = type_left, type_right
+        second_value, first_value = first_value, second_value
+    """
+    CPython has a special case for __contains__ where the left and right args are inversed
+    ex: "a" in "abc" --> "abc".__contains__("a")
+    """
 
 
 def unary_op(visitor: ParserVisitor, type, value, node):
@@ -354,10 +393,10 @@ def bool_op_and(visitor, left_type, left_value, right_type, right_value):
             left_value, right_value
         )
     elif (
-        left_type.is_obj()
-        or left_type.is_python_obj()
-        or left_type.is_list()
-        or left_type.is_dict()
+            left_type.is_obj()
+            or left_type.is_python_obj()
+            or left_type.is_list()
+            or left_type.is_dict()
     ):
         types = [right_type]
         values = [right_value]
@@ -378,10 +417,10 @@ def bool_op_or(visitor, left_type, left_value, right_type, right_value):
             left_value, right_value
         )
     elif (
-        left_type.is_obj()
-        or left_type.is_python_obj()
-        or left_type.is_list()
-        or left_type.is_dict()
+            left_type.is_obj()
+            or left_type.is_python_obj()
+            or left_type.is_list()
+            or left_type.is_dict()
     ):
         types = [right_type]
         values = [right_value]
