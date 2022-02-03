@@ -78,4 +78,8 @@ def get_op_func_call(op: ast.operator):
     elif isinstance(op, ast.GtE):
         result = "__ge__"
 
+    elif isinstance(op, ast.In):
+        """SPECIAL CASE: SEE FUNCTION DOCSTRING!"""
+        result = "__contains__"
+
     return result

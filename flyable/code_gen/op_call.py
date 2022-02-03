@@ -1,7 +1,7 @@
 from __future__ import annotations
 import ast
 import copy
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Optional
 import flyable.code_gen.caller as caller
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.code_type as code_type
@@ -9,6 +9,7 @@ import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
 import flyable.parse.op as parse_op
+from flyable.code_gen import debug
 
 if TYPE_CHECKING:
     from flyable.parse.parser_visitor import ParserVisitor
@@ -197,11 +198,18 @@ def cond_op(
         """
         If one of the two values is a python object then both objects need to be a python object
         """
-        # if parse_op.is_op_cond_special_case(op):
-        #    handle_op_cond_special_cases(visitor, op, type_left, first_value, type_right, second_value)
+        if parse_op.is_op_cond_special_case(op):
+            """Special handling of cases without a dunder method"""
+            return handle_op_cond_special_cases(
+                visitor, op, type_left, first_value, type_right, second_value
+            )
 
         func_name = parse_op.get_op_func_call(op)
         if func_name == "__contains__":
+            """
+            CPython has a special case for __contains__ where the left and right args are inversed
+            ex: "a" in "abc" --> "abc".__contains__("a")
+            """
             type_right, type_left = type_left, type_right
             second_value, first_value = first_value, second_value
 
@@ -235,8 +243,6 @@ def cond_op(
         apply_op = builder.gt
     elif isinstance(op, ast.GtE):
         apply_op = builder.gte
-    elif isinstance(op, ast.Is):
-        apply_op = builder.eq
     else:
         raise NotImplementedError("Compare op " + str(type(op)) + " not supported")
 
@@ -246,23 +252,58 @@ def cond_op(
     return result_type, result_value
 
 
-def handle_op_cond_special_cases(visitor: ParserVisitor, op: ast.operator, type_left, first_value, type_right,
-                                 second_value):
+def handle_op_cond_special_cases(
+        visitor: ParserVisitor,
+        op: ast.operator,
+        type_left: LangType,
+        first_value: int,
+        type_right: LangType,
+        second_value: int,
+):
     """
     There are special cases for the operations:\n
     Is, IsNot and NotIn
     """
+    builder = visitor.get_builder()
+    code_gen = visitor.get_code_gen()
+
+    func_name: str
+    result: Optional[int] = None
+    result_type: LangType = lang_type.get_bool_type()
+
     if not parse_op.is_op_cond_special_case(op):
         raise ValueError("Operator is not a special case")
 
     op_type = op.__class__
-    if op_type is ast.In:
-        type_right, type_left = type_left, type_right
-        second_value, first_value = first_value, second_value
-    """
-    CPython has a special case for __contains__ where the left and right args are inversed
-    ex: "a" in "abc" --> "abc".__contains__("a")
-    """
+    if op_type is ast.NotIn:
+        """Inversion of the values and types to call __contains__ properly"""
+        # TODO inverse the result of not in
+        raise NotImplementedError("Sorry, the NotIn operation is not currently working...")
+        iresult_type, result = caller.call_obj(
+            visitor,
+            "__contains__",
+            second_value,
+            type_right,
+            [first_value],
+            [type_left],
+        )
+
+        #result = builder.eq(
+        #    a,
+        #    builder.int_to_ptr(builder.const_int1(False), iresult_type.to_code_type(code_gen))
+        #)
+
+    elif op_type in {ast.Is, ast.IsNot}:
+        # TODO implement the Is and IsNot
+        raise NotImplementedError("Sorry, the Is and IsNot operations are not currently working...")
+        result = builder.eq(
+            first_value,
+            second_value,
+        )
+        if op_type is ast.IsNot:
+            result = builder._not(result)
+
+    return result_type, result
 
 
 def unary_op(visitor: ParserVisitor, type, value, node):

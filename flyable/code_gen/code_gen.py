@@ -287,9 +287,9 @@ class CodeGen:
         self.__global_strings: dict[str, GlobalVar] = {}
         self.__py_constants: dict[Any, GlobalVar] = {}  # Global variable containing python constants
 
-        self.__true_var = None
-        self.__false_var = None
-        self.__none_var = None
+        self.__true_var: Optional[GlobalVar] = None
+        self.__false_var: Optional[GlobalVar] = None
+        self.__none_var: Optional[GlobalVar] = None
         self.__method_type = None
         self.__tuple_type = None
         self.__methode_type = None

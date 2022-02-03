@@ -292,7 +292,7 @@ class LangType:
             to_str = "Flyable type"
         return to_str
 
-    def __str__(self):
+    def __repr__(self):
         str_types = {
             LangType.Type.UNKNOWN: "Unknown",
             LangType.Type.INTEGER: "int",
