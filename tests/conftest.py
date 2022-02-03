@@ -1,3 +1,8 @@
+"""
+Methods for generating python files from test functions
+to be executed for testing
+"""
+
 import os
 import shutil
 from sys import stderr, stdin, stdout
@@ -27,14 +32,18 @@ def compiled_value(request: SubRequest):
     try:
         _remove_old_python_file(function_file_temp_path)
         _generate_current_test_python_file(function_file_temp_path, function_name, request)
-        print(function_file_temp_path)
         res = get_compiled_value_from_test_file(function_file_temp_path, temp_working_dir)
         return res
     finally:
         shutil.rmtree(temp_working_dir)
 
 
+
 def _generate_current_test_python_file(function_file_temp_path: str, function_name: str, request):
+    """
+    Generates from a test_module's lines of code a new python file to be compiled
+    and return the compiled value
+    """
     python_file = None
     test_function_indentation = None
     for code_line in inspect.getsourcelines(request.module)[0]:
@@ -73,15 +82,24 @@ def _generate_current_test_python_file(function_file_temp_path: str, function_na
 
 
 def _is_end_of_test_function_reached(test_function_indentation: int, code_line: str) -> bool:
+    """
+    Test if the end of the method was reached.
+    """
     return test_function_indentation is not None and _get_line_indentation(code_line) == \
                 test_function_indentation
 
 
 def _get_line_indentation(line: str) -> int:
+    """
+    Get the line indentation (number of whitespaces)
+    """
     return len(line) - len(line.lstrip())
 
 
 def get_compiled_value_from_test_file(file_name: str, output_dir: str) -> Any:
+    """
+    Compiles and executes the python file and returns the compiled value.
+    """
     compiler = com.Compiler()
     compiler.add_file(file_name)
     compiler.set_output_path(f"{output_dir}/output.o")
@@ -99,11 +117,11 @@ def get_compiled_value_from_test_file(file_name: str, output_dir: str) -> Any:
 
         if p.returncode != 0:
             raise Exception("Linking error")
-
-        p2 = Popen([f"{output_dir}/a.exe"], cwd=output_dir, stdin=PIPE, stdout=PIPE, text=True, encoding="utf8")
         
+        p2 = Popen([f"{output_dir}/a.exe"], cwd=output_dir, stdin=stdin, stderr=stderr, stdout=stdout, encoding="utf8")
         outputs, errors = p2.communicate()
-        
+
+        print(outputs)
         if outputs is None or outputs == "":
             raise Exception(f"No assert statement in function")
 
@@ -111,5 +129,8 @@ def get_compiled_value_from_test_file(file_name: str, output_dir: str) -> Any:
 
 
 def _remove_old_python_file(path): 
+    """
+    Removes an old python file
+    """
     if os.path.exists(path):
         os.remove(path)
