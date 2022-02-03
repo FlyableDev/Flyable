@@ -653,9 +653,11 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             self.__parser.throw_error("'break' outside a loop", node.lineno, node.end_col_offset)
 
     def visit_Return(self, node: Return) -> Any:
+        # If return is void, assumes a return type of None (which python does)
         if node.value is None:
-            raise NotImplementedError("Unsupported empty return")
-        return_type, return_value = self.__visit_node(node.value)
+            return_type, return_value = lang_type.get_none_type(), self.__builder.const_int32(0)
+        else: 
+            return_type, return_value = self.__visit_node(node.value)
 
         if not hint.is_incremented_type(return_type):  # Need to increment if we return to be consistent to CPython
             ref_counter.ref_incr(self.__builder, return_type, return_value)
@@ -666,10 +668,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         if self.__func.get_return_type().is_unknown():
             self.__func.set_return_type(return_type)
-            if node.value is None:
-                self.__builder.ret_void()
-            else:
-                self.__builder.ret(return_value)
+            self.__builder.ret(return_value)
         elif return_type == self.__func.get_return_type():
             self.__builder.ret(return_value)
         else:
