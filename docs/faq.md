@@ -19,7 +19,7 @@ Flyable is the solution! Speeding up your Python code will reduce server workloa
 
 ### How do I get started?
 
-It's simple! Visit the [download page](get-started.md#_1-install), and follow the instructions.
+It's simple! Visit the [get started page](get-started.md), and follow the instructions.
 
 ### Is Flyable free?
 
@@ -45,7 +45,7 @@ Yes. Flyable works closely with the Python interpreter (CPython) to ensure that 
 
 ### Can my Python code call a Flyable module?
 
-Not for now. Right now, Flyable only creates static modules to facilitate calls from Flyable to Flyable and calls from Flyable to Python. We do expect to make it work in the future.
+Yes.
 
 <br />
 <br />
@@ -67,7 +67,7 @@ Sure, as long as it stays in the bounds of the Python functionalities that Flyab
 
 ### What is the expected speedup?
 
-For now, Flyable is expected to speed up your entire software execution time by 20-30%. This number highly varies depending on what the code is doing and how it's written. For specific algorithms Flyable can boost Python to make it up to 70 times faster. 
+For now, Flyable is expected to speed up your entire software execution time by 50%. This number highly varies depending on what the code is doing and how it's written. For specific algorithms Flyable can boost Python to make it up to 80 times faster. You can take a look at the [benchmarks page](https://www.flyabledev.com/benchmarks.html) for more detailed numbers.
 Also, although Flyable supports Python modules, it doesn't speed them up for now so only the parts of the code that do not depend on Python modules will be accelerated by Flyable.
 
 ### How does Flyable make Python faster and more lightweight?
@@ -80,7 +80,7 @@ Flyable lexes and parses the Python code with the help of the Python ast module 
 
 ### What architectures can I run Flyable on?
 
-Flyable produces x86 instructions that run on Windows 64 bits. Support for Linux and MacOS is planned. ARM support is also planned. 32 bits support isn’t planned in the near future.
+Flyable produces x86 instructions that run on Windows 64 bits and ARM instructions that run on MacOS. Support for Linux is planned. 32 bits support isn’t planned in the near future.
 
 ### What does Flyable produce?
 
@@ -94,7 +94,7 @@ We're also planning to offer the possibility to package all the required modules
 
 ### Can I be a part of Flyable’s development process?
 
-Yes! To download Flyable, visit the [download page](get-started.md#_1-install). To contribute to Flyable, visit [Flyable’s GitHub repository](https://github.com/FlyableDev/Flyable).
+Yes! To get started with Flyable, visit the [get started page](get-started.md). To contribute to Flyable, visit [Flyable’s GitHub repository](https://github.com/FlyableDev/Flyable).
 
 ### Is Flyable open-source?
 
@@ -107,7 +107,7 @@ Yes it is! You can see the code [here](https://github.com/FlyableDev/Flyable).
 
 ### How does Flyable help with data science?
 
-Flyable helps you develop more performant Python code. Our benchmarks show that Flyable makes Python code up to 70x faster while using 80% less memory. This helps developers be more efficient and build better software and it helps organizations cut operating expenses.
+Flyable helps you develop more performant Python code. Our benchmarks show that Flyable makes Python code up to 80x faster. This helps developers be more efficient and build better software and it helps organizations cut operating expenses.
 
 ### How can I connect with the Flyable team/community?
 
