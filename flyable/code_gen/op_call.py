@@ -12,7 +12,7 @@ import flyable.parse.op as parse_op
 from flyable.code_gen import debug
 
 if TYPE_CHECKING:
-    from flyable.parse.parser_visitor import ParserVisitor
+    from flyable.parse.parser import ParserVisitor
     from flyable.data.lang_type import LangType
 
 

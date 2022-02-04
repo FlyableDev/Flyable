@@ -345,6 +345,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                         self.__last_value = found_var.get_code_gen_value()
                         self.__last_type = copy.copy(found_var.get_type())
                         self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
+                    # Else assign new value to variable
                     else:
                         # Decrement the old content
                         old_content = self.__builder.load(self.__last_value)
@@ -364,9 +365,12 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                         if self.__last_type.is_python_obj():
                             _, value_assign = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_assign,
                                                                     self.__assign_type)
+                        hint.remove_hint_type(self.__last_type, hint.TypeHintConstInt)
                         self.__builder.store(value_assign, self.__last_value)
                         self.__last_become_assign()
                 else:
+                    #if found_var.is_global() and found_var.get_context() != self.__func.get_context():
+                    #    self.__parser.throw_error("Not found variable '" + node.id + "'", node.lineno, node.col_offset)
                     self.__last_value = self.__builder.load(self.__last_value)
                     self.__last_type = copy.copy(found_var.get_type())
                     self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
