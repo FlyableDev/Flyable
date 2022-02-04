@@ -11,6 +11,7 @@ class Context:
         new_var = Variable(len(self.__vars))
         new_var.set_name(name)
         new_var.set_type(type)
+        new_var.set_context(self)
         self.__vars.append(new_var)
         return new_var
 
