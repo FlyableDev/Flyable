@@ -48,11 +48,11 @@ class BodyTest:
         return compile("".join(self.lines), self.file_name, "exec")
 
     def fly_compile(self):
-        #temp_working_dir = tempfile.mkdtemp()
+        # temp_working_dir = tempfile.mkdtemp()
         temp_working_dir = f'generated_scripts'
-        function_file_temp_path = f"{temp_working_dir}/{self.file_name}.py"#os.path.join(temp_working_dir, f"{self.file_name}.py")
-        python_file = open(function_file_temp_path, "a")
-        python_file.write("\n".join(self.lines))
+        function_file_temp_path = f"{temp_working_dir}/{self.file_name}"
+        with open(function_file_temp_path, "w") as python_file:
+            python_file.write("".join(self.lines))
 
         compiler = com.Compiler()
         compiler.add_file(function_file_temp_path)
@@ -62,7 +62,6 @@ class BodyTest:
             compiler.compile()
         except Exception as e:
             return f"COMPILATION_ERROR: {e}"
-        
 
         if not compiler.has_error():
             linker_args = [
@@ -77,7 +76,6 @@ class BodyTest:
             if p.returncode != 0:
                 raise Exception("Linking error")
 
-            
             p2 = Popen(
                 [temp_working_dir + f"/a.exe"],
                 cwd=temp_working_dir,
@@ -85,9 +83,19 @@ class BodyTest:
                 text=True
             )
 
-            print(p2.communicate()[0])
-            
+            print(p2.communicate()[0], end="")
 
+    def py_exec(self):
+        exec(self.py_compile(), {}, {})
+
+    def py_exec_matches_flyable_exec(self, stdout: StdOut):
+        self.py_exec()
+        python_stdout = stdout.content
+        stdout.clear()
+        """Flyable exec"""
+        self.fly_compile()
+        flyable_stdout = stdout.content
+        return flyable_stdout == python_stdout
 
     @property
     def name(self):
