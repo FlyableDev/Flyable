@@ -1,12 +1,14 @@
+import sys
 from functools import wraps
 from os import path
 from types import FunctionType
+from typing import Callable
 
 import pytest
 from tests.tools.tests_separated.utils.body_test_parser import parse_body_test_file
 
 
-def flytest(func: FunctionType):
+def flytest(func: Callable):
     @wraps(func)
     def inner(*args, **kwargs):
         body_name = func.__name__.split("test_", 1)[1]
@@ -29,3 +31,15 @@ def get_body_of_tests(current_file_path: str) -> dict:
 @pytest.fixture(scope="module", name="test_body")
 def get_body_test():
     return get_body_of_tests("test_str.py")
+
+
+@pytest.fixture
+def stdout_content(monkeypatch):
+    buffer = {"stdout": "", "write_calls": 0}
+
+    def fake_write(s):
+        buffer["stdout"] += s
+        buffer["write_calls"] += 1
+
+    monkeypatch.setattr(sys.stdout, 'write', fake_write)
+    return buffer

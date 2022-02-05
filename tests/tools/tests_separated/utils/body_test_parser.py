@@ -6,17 +6,17 @@ from typing import Literal, TypeAlias, Optional, Callable
 from tests.tools.tests_separated.utils.utils import (
     TAG_START,
     TAGS,
-    TestState,
-    TestBody,
+    BodyTestState,
+    BodyTest,
     FLY_TEST_INFOS,
 )
 
 
 @dataclass
-class TestParser:
+class BodyTestParser:
     file_name: str
-    current_state: TestState = TestState.None_
-    parsed_tests: list[TestBody] = field(default_factory=list)
+    current_state: BodyTestState = BodyTestState.None_
+    parsed_tests: list[BodyTest] = field(default_factory=list)
 
     @property
     def current_test(self):
@@ -28,20 +28,20 @@ class TestParser:
         self.current_state = TAGS[tag](tag_arg, self)
 
     def parse_line(self, line: str):
-        if self.current_state is TestState.None_:
+        if self.current_state is BodyTestState.None_:
             return
 
-        elif self.current_state is TestState.New:
-            self.parsed_tests.append(TestBody(self.file_name))
-            self.current_state = TestState.Infos
+        elif self.current_state is BodyTestState.New:
+            self.parsed_tests.append(BodyTest(self.file_name))
+            self.current_state = BodyTestState.Infos
 
-        elif self.current_state is TestState.End:
-            self.current_state = TestState.None_
+        elif self.current_state is BodyTestState.End:
+            self.current_state = BodyTestState.None_
 
-        elif self.current_state is TestState.Body:
+        elif self.current_state is BodyTestState.Body:
             self.current_test.lines.append(line)
 
-        elif self.current_state is TestState.Infos:
+        elif self.current_state is BodyTestState.Infos:
             if not line or line.strip() == '"""':
                 return
             info_name, info_content = line.split(":", 1)
@@ -53,7 +53,7 @@ class TestParser:
 
 
 def parse_body_test_file(file_path: str):
-    test_parser = TestParser(path.basename(file_path))
+    test_parser = BodyTestParser(path.basename(file_path))
 
     with open(file_path, "r") as f:
         lines = f.readlines()

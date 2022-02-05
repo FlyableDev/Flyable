@@ -4,13 +4,13 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.tools.tests_separated.utils.body_test_parser import TestParser
+    from tests.tools.tests_separated.utils.body_test_parser import BodyTestParser
 
 from dataclasses import dataclass, field
 from typing import Optional, Callable
 
 
-class TestState(Enum):
+class BodyTestState(Enum):
     New = auto()
     Infos = auto()
     Body = auto()
@@ -19,7 +19,7 @@ class TestState(Enum):
 
 
 @dataclass
-class TestBody:
+class BodyTest:
     file_name: str
     infos: dict[str, str] = field(default_factory=dict)
     lines: list[str] = field(default_factory=list)
@@ -37,25 +37,25 @@ class TestBody:
 
 
 # ********************** tag functions **********************
-def tag_new(args: list[str], test: TestParser) -> TestState:
-    if test.current_state is not TestState.None_:
+def tag_new(args: list[str], test: BodyTestParser) -> BodyTestState:
+    if test.current_state is not BodyTestState.None_:
         raise ValueError("You must end a test before starting a new one")
-    return TestState.New
+    return BodyTestState.New
 
 
-def tag_start(args: list[str], test: TestParser) -> TestState:
-    if test.current_state is TestState.None_:
+def tag_start(args: list[str], test: BodyTestParser) -> BodyTestState:
+    if test.current_state is BodyTestState.None_:
         raise ValueError("You must create a test before defining its body")
-    return TestState.Body
+    return BodyTestState.Body
 
 
-def tag_end(args: list[str], test: TestParser) -> TestState:
-    if test.current_state is not TestState.Body:
+def tag_end(args: list[str], test: BodyTestParser) -> BodyTestState:
+    if test.current_state is not BodyTestState.Body:
         raise ValueError("You must create a test before defining its body")
-    return TestState.End
+    return BodyTestState.End
 
 
-TAGS: dict[str, Callable[[list[str], TestParser], TestState]] = {
+TAGS: dict[str, Callable[[list[str], BodyTestParser], BodyTestState]] = {
     "new": tag_new,
     "start": tag_start,
     "end": tag_end,
