@@ -9,7 +9,8 @@ Description: Test that the result of "" equals the result of calling str()
 # Flytest:start
 litteral_str = ""
 litteral_str_by_method = str()
-print(litteral_str == litteral_str_by_method)
+print("YOOOOOOOOOOOOOOOOOOOOOOLOOOOOOOOOOOOOOO")
+#print(litteral_str == litteral_str_by_method)
 # Flytest:end
 
 

@@ -14,8 +14,8 @@ def flytest(func: Callable):
     @wraps(func)
     def inner(*args, **kwargs):
         body_name = func.__name__.split("test_", 1)[1]
-        if "test_body" in kwargs:
-            kwargs["test_body"] = kwargs["test_body"][body_name]
+        if "body_test" in kwargs:
+            kwargs["body_test"] = kwargs["body_test"][body_name]
         return func(*args, **kwargs)
 
     return inner
@@ -30,13 +30,13 @@ def get_body_of_tests(current_file_path: str) -> dict:
     return parsed_tests
 
 
-@pytest.fixture(scope="module", name="test_body")
-def get_body_test():
+@pytest.fixture(scope="module", name="body_test")
+def body_test():
     return get_body_of_tests("test_str.py")
 
 
 @pytest.fixture
-def stdout_content(monkeypatch):
+def stdout(monkeypatch):
     buffer = StdOut()
 
     def fake_write(s):

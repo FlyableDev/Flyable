@@ -3,10 +3,18 @@ from tests.tools.tests_separated.utils.utils import BodyTest, StdOut
 
 
 @flytest
-def test_empty_str_creation(test_body: BodyTest, stdout_content: StdOut):
-    test_body.py_compile()
+def test_empty_str_creation(body_test: BodyTest, stdout: StdOut):
+    exec(body_test.py_compile())
+    python_exec = stdout.content
+    stdout.clear()
+
+    body_test.fly_compile()
+    fly_exec = stdout.content
+    stdout.clear()
+
+    assert python_exec == fly_exec
 
 
 @flytest
-def test_len_str(test_body: BodyTest, stdout_content: StdOut):
+def test_len_str(body_test: BodyTest, stdout: StdOut):
     pass
