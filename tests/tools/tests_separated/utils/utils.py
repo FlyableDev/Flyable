@@ -10,6 +10,12 @@ from dataclasses import dataclass, field
 from typing import Optional, Callable
 
 
+@dataclass
+class StdOut:
+    content: str = ""
+    write_calls: int = 0
+
+
 class BodyTestState(Enum):
     New = auto()
     Infos = auto()

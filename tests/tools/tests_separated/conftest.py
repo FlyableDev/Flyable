@@ -1,4 +1,5 @@
 import sys
+from dataclasses import dataclass
 from functools import wraps
 from os import path
 from types import FunctionType
@@ -6,6 +7,7 @@ from typing import Callable
 
 import pytest
 from tests.tools.tests_separated.utils.body_test_parser import parse_body_test_file
+from tests.tools.tests_separated.utils.utils import StdOut
 
 
 def flytest(func: Callable):
@@ -35,11 +37,11 @@ def get_body_test():
 
 @pytest.fixture
 def stdout_content(monkeypatch):
-    buffer = {"stdout": "", "write_calls": 0}
+    buffer = StdOut()
 
     def fake_write(s):
-        buffer["stdout"] += s
-        buffer["write_calls"] += 1
+        buffer.content += s
+        buffer.write_calls += 1
 
     monkeypatch.setattr(sys.stdout, 'write', fake_write)
     return buffer
