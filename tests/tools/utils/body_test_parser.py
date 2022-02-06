@@ -1,9 +1,8 @@
 from dataclasses import dataclass, field
 from os import path
 import re
-from typing import Literal, TypeAlias, Optional, Callable
 
-from tests.tools.tests_separated.utils.utils import (
+from tests.tools.utils.utils import (
     TAG_START,
     TAGS,
     BodyTestState,

@@ -1,19 +1,16 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-import os
 from subprocess import PIPE, Popen
-from sys import stderr, stdin, stdout
-import tempfile
 from typing import TYPE_CHECKING
 from flyable import constants
 import flyable.compiler as com
 
 if TYPE_CHECKING:
-    from tests.tools.tests_separated.utils.body_test_parser import BodyTestParser
+    from tests.tools.utils.body_test_parser import BodyTestParser
 
 from dataclasses import dataclass, field
-from typing import Optional, Callable
+from typing import Callable
 
 
 @dataclass
@@ -51,7 +48,7 @@ class BodyTest:
         # temp_working_dir = tempfile.mkdtemp()
         temp_working_dir = f'generated_scripts'
         function_file_temp_path = f"{temp_working_dir}/{self.file_name}"
-        with open(function_file_temp_path, "w") as python_file:
+        with open(function_file_temp_path, "w+") as python_file:
             python_file.write("".join(self.lines))
 
         compiler = com.Compiler()

@@ -1,7 +1,5 @@
-import pytest
-
-from tests.tools.tests_separated.conftest import flytest
-from tests.tools.tests_separated.utils.utils import BodyTest, StdOut
+from tests.tools.conftest import flytest
+from tests.tools.utils.utils import BodyTest, StdOut
 
 
 @flytest

@@ -1,13 +1,11 @@
 import sys
-from dataclasses import dataclass
 from functools import wraps
 from os import path
-from types import FunctionType
 from typing import Callable
 
 import pytest
-from tests.tools.tests_separated.utils.body_test_parser import parse_body_test_file
-from tests.tools.tests_separated.utils.utils import StdOut
+from tests.tools.utils.body_test_parser import parse_body_test_file
+from tests.tools.utils.utils import StdOut
 
 
 def flytest(func: Callable):
