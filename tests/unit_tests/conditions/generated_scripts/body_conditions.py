@@ -1,6 +1,3 @@
-x = 0
-
+my_val = ""
 if True:
-  x = 1
-
-print(x)
+    print(1)

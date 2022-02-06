@@ -14,6 +14,10 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 
+class CompilationError(Exception):
+    pass
+
+
 @dataclass
 class StdOut:
     content: str = ""
@@ -86,6 +90,8 @@ class BodyTest:
 
     def fly_exec(self, stdout: StdOut):
         p = self.fly_compile()
+        if isinstance(p, str):
+            raise CompilationError(p)
         print(p.communicate()[0], end="")
         result = stdout.content
         stdout.clear()

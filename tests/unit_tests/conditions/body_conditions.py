@@ -1,4 +1,4 @@
-"""Module where str body tests are created"""
+"""Module where conditions body tests are created"""
 
 # Flytest:new
 """
@@ -7,12 +7,9 @@ Flyable-version: v0.1a1
 Description: Test that the if statement works properly
 """
 # Flytest:start
-x = 0
-
+my_val = ""
 if True:
-  x = 1
-
-print(x)
+    print(1)
 # Flytest:end
 
 
@@ -23,12 +20,10 @@ Flyable-version: v0.1a1
 Description: Test that the if else statement works properly
 """
 # Flytest:start
-x = 0
 if False:
-    x = 1
+    print(1)
 else:
-    x = 2
-print(x)
+    print(2)
 # Flytest:end
 
 
