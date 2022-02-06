@@ -5,9 +5,10 @@ from subprocess import PIPE, Popen
 from typing import TYPE_CHECKING
 from flyable import constants
 import flyable.compiler as com
+import os
 
 if TYPE_CHECKING:
-    from tests.tools.utils.body_test_parser import BodyTestParser
+    from tests.unit_tests.utils.body_test_parser import BodyTestParser
 
 from dataclasses import dataclass, field
 from typing import Callable
@@ -47,6 +48,8 @@ class BodyTest:
     def fly_compile(self):
         # temp_working_dir = tempfile.mkdtemp()
         temp_working_dir = f'generated_scripts'
+        if not os.path.exists(temp_working_dir):
+            os.makedirs(temp_working_dir)
         function_file_temp_path = f"{temp_working_dir}/{self.file_name}"
         with open(function_file_temp_path, "w+") as python_file:
             python_file.write("".join(self.lines))

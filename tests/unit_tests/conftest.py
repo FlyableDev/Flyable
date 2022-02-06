@@ -1,11 +1,12 @@
-import sys
+import sys, os
 from functools import wraps
 from os import path
 from typing import Callable
 
 import pytest
-from tests.tools.utils.body_test_parser import parse_body_test_file
-from tests.tools.utils.utils import StdOut
+from _pytest.fixtures import SubRequest
+from tests.unit_tests.utils.body_test_parser import parse_body_test_file
+from tests.unit_tests.utils.utils import StdOut
 
 
 def flytest(func: Callable):
@@ -19,18 +20,18 @@ def flytest(func: Callable):
     return inner
 
 
-def get_body_of_tests(current_file_path: str) -> dict:
+def get_body_of_tests(dir_name: str, current_file_path: str) -> dict:
     current_file_name = path.basename(current_file_path)[:-3]  # removes the extension .py
     test_body_file_name = "body_" + current_file_name.split("_", 1)[1] + ".py"
-    test_body_file_path = path.dirname(current_file_path) + test_body_file_name
+    test_body_file_path = dir_name + "/" + path.dirname(current_file_path) + test_body_file_name
     parsed_tests = parse_body_test_file(test_body_file_path)
 
     return parsed_tests
 
 
 @pytest.fixture(scope="module", name="body_test")
-def body_test():
-    return get_body_of_tests("test_str.py")
+def body_test(request: SubRequest):
+    return get_body_of_tests(request.fspath.dirname, os.getenv('PYTEST_CURRENT_TEST').split("::")[0])
 
 
 @pytest.fixture

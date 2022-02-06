@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from os import path
 import re
 
-from tests.tools.utils.utils import (
+from tests.unit_tests.utils.utils import (
     TAG_START,
     TAGS,
     BodyTestState,
