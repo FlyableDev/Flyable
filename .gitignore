@@ -158,4 +158,4 @@ build/**/*.o
 test.py
 test_nbody.py
 /cli
-/tests/tools/generated_scripts/*
+/tests/generated_scripts/*

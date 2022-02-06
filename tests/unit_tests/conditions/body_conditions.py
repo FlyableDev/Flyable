@@ -7,9 +7,12 @@ Flyable-version: v0.1a1
 Description: Test that the if statement works properly
 """
 # Flytest:start
-my_val = ""
+x = 0
+
 if True:
-    print("The condition passed")
+  x = 1
+
+print(x)
 # Flytest:end
 
 
@@ -20,10 +23,12 @@ Flyable-version: v0.1a1
 Description: Test that the if else statement works properly
 """
 # Flytest:start
+x = 0
 if False:
-    print(1)
+    x = 1
 else:
-    print(2)
+    x = 2
+print(x)
 # Flytest:end
 
 

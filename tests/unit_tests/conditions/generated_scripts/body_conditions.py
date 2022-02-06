@@ -1,6 +1,6 @@
-if False:
-    print(1)
-elif False:
-    print(2)
-else:
-    print(3)
+x = 0
+
+if True:
+  x = 1
+
+print(x)

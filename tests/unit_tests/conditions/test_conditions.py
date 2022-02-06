@@ -4,7 +4,7 @@ from tests.unit_tests.utils.utils import BodyTest, StdOut
 
 @flytest
 def test_if_statement(body_test: BodyTest, stdout: StdOut):
-    assert body_test.py_exec(stdout) == body_test.fly_exec(stdout)
+    assert body_test.fly_exec(stdout) == body_test.py_exec(stdout)
 
 
 @flytest
