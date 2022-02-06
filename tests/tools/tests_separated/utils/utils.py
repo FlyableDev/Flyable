@@ -82,20 +82,20 @@ class BodyTest:
                 stdout=PIPE,
                 text=True
             )
+            return p2
 
-            print(p2.communicate()[0], end="")
-
-    def py_exec(self):
-        exec(self.py_compile(), {}, {})
-
-    def py_exec_matches_flyable_exec(self, stdout: StdOut):
-        self.py_exec()
-        python_stdout = stdout.content
+    def fly_exec(self, stdout: StdOut):
+        p = self.fly_compile()
+        print(p.communicate()[0], end="")
+        result = stdout.content
         stdout.clear()
-        """Flyable exec"""
-        self.fly_compile()
-        flyable_stdout = stdout.content
-        return flyable_stdout == python_stdout
+        return result
+
+    def py_exec(self, stdout: StdOut):
+        exec(self.py_compile(), {}, {})
+        result = stdout.content
+        stdout.clear()
+        return result
 
     @property
     def name(self):

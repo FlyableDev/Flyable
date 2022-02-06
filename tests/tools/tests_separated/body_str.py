@@ -9,8 +9,8 @@ Description: Test that the result of "" equals the result of calling str()
 # Flytest:start
 litteral_str = ""
 litteral_str_by_method = str()
-print("YOOOOOOOOOOOOOOOOOOOOOOLOOOOOOOOOOOOOOO")
-#print(litteral_str == litteral_str_by_method)
+print(litteral_str == litteral_str_by_method)
+# print(litteral_str == litteral_str_by_method)
 # Flytest:end
 
 
@@ -22,6 +22,10 @@ Description: Test that the len function works properly on strings
 """
 # Flytest:start
 msg = "hello world!"
-len_msg = len(msg)
 print(len(msg) == 12)
+msg2 = ""
+print(len(msg2) == 1)
+print(len(msg2) == 0)
 # Flytest:end
+
+
