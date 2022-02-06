@@ -10,6 +10,7 @@ import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
 import flyable.parse.op as parse_op
 from flyable.code_gen import debug
+from flyable.parse import build_in
 
 if TYPE_CHECKING:
     from flyable.parse.parser_visitor import ParserVisitor
@@ -141,9 +142,9 @@ def bin_op(
             result = builder.div(value_left, value_right)
             return lang_type.get_int_type(), result
         elif type_left.is_dec() or type_right.is_dec():
-            # cast in case it's not double
+            # cast in case it'second_value not double
             value_right = builder.float_cast(value_right, code_type.get_double())
-            # cast in case it's not double
+            # cast in case it'second_value not double
             value_left = builder.float_cast(value_left, code_type.get_double())
             result = builder.div(value_left, value_right)
             result = builder.int_cast(result, code_type.get_int64())
@@ -278,30 +279,36 @@ def handle_op_cond_special_cases(
     if op_type is ast.NotIn:
         """Inversion of the values and types to call __contains__ properly"""
         # TODO inverse the result of not in
-        raise NotImplementedError("Sorry, the NotIn operation is not currently working...")
-        iresult_type, result = caller.call_obj(
-            visitor,
-            "__contains__",
-            second_value,
-            type_right,
-            [first_value],
-            [type_left],
+        raise NotImplementedError(
+            "Sorry, the NotIn operation is not currently working..."
         )
+        # iresult_type, result = caller.call_obj(
+        #     visitor,
+        #     "__contains__",
+        #     second_value,
+        #     type_right,
+        #     [first_value],
+        #     [type_left],
+        # )
 
-        #result = builder.eq(
+        # result = builder.eq(
         #    a,
         #    builder.int_to_ptr(builder.const_int1(False), iresult_type.to_code_type(code_gen))
-        #)
+        # )
 
     elif op_type in {ast.Is, ast.IsNot}:
-        # TODO implement the Is and IsNot
-        raise NotImplementedError("Sorry, the Is and IsNot operations are not currently working...")
-        result = builder.eq(
-            first_value,
-            second_value,
-        )
+        result = builder.eq(first_value, second_value)
         if op_type is ast.IsNot:
             result = builder._not(result)
+
+        # result = builder.int_cast(result, code_type.get_int64())
+        result = builder.mul(result, builder.const_int1(True))
+        # result = builder._not(result)
+
+        # builder.neg(result)
+        # builder.int_cast(result, code_type.get_int1())
+        # result_type = lang_type.get_int_type()
+        builder.print_value_type(result)
 
     return result_type, result
 

@@ -30,11 +30,14 @@ def parse_compare(visitor: ParserVisitor, node: Compare):
 
     ref_counter.ref_decr_incr(visitor, first_type, first_value)
 
+    # debug.flyable_debug_print_int64(visitor.get_code_gen(), visitor.get_builder(),
+    #                                 visitor.get_builder().int_cast(compare_values[0], code_type.get_int64()))
+
     first_value = compare_values[0]
     first_type = compare_types[0]
 
     if len(node.ops) == 1:
-        return compare_types[0], compare_values[0]
+        return first_type, first_value
 
     builder = visitor.get_builder()
 
