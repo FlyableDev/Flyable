@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum, auto
 from subprocess import PIPE, Popen
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, Any
 from flyable import constants
 import flyable.compiler as com
 import os
@@ -39,6 +39,7 @@ class BodyTestState(Enum):
 @dataclass
 class BodyTest:
     file_name: str
+    mode: Literal["compile", "runtime", "both"] = "runtime"
     infos: dict[str, str] = field(default_factory=dict)
     lines: list[str] = field(default_factory=list)
 
@@ -109,25 +110,38 @@ class BodyTest:
 
 
 # ********************** tag functions **********************
-def tag_new(args: list[str], test: BodyTestParser) -> BodyTestState:
+def tag_new(args: list[str], test: BodyTestParser) -> tuple[BodyTestState, Any]:
     if test.current_state is not BodyTestState.None_:
         raise ValueError("You must end a test before starting a new one")
-    return BodyTestState.New
+    if len(args) > 1:
+        raise AttributeError(f"To many arguments passed to the tag new (passed {len(args)})")
+
+    result = None
+    if args:
+        if args[0] in ("compile", "runtime", "both"):
+            result = args[0]
+        else:
+            raise NameError(f"Unknown argument for the new tag ({args[0]})")
+    return BodyTestState.New, result
 
 
-def tag_start(args: list[str], test: BodyTestParser) -> BodyTestState:
+def tag_start(args: list[str], test: BodyTestParser) -> tuple[BodyTestState, Any]:
     if test.current_state is BodyTestState.None_:
         raise ValueError("You must create a test before defining its body")
-    return BodyTestState.Body
+    if args:
+        raise AttributeError(f"To many arguments passed to the tag new (passed {len(args)})")
+    return BodyTestState.Body, None
 
 
-def tag_end(args: list[str], test: BodyTestParser) -> BodyTestState:
+def tag_end(args: list[str], test: BodyTestParser) -> tuple[BodyTestState, Any]:
     if test.current_state is not BodyTestState.Body:
         raise ValueError("You must create a test before defining its body")
-    return BodyTestState.End
+    if args:
+        raise AttributeError(f"To many arguments passed to the tag new (passed {len(args)})")
+    return BodyTestState.End, None
 
 
-TAGS: dict[str, Callable[[list[str], BodyTestParser], BodyTestState]] = {
+TAGS: dict[str, Callable[[list[str], BodyTestParser], tuple[BodyTestState, Any]]] = {
     "new": tag_new,
     "start": tag_start,
     "end": tag_end,

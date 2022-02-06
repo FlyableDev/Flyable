@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from os import path
 import re
+from typing import Any
 
 from tests.unit_tests.utils.utils import (
     TAG_START,
@@ -16,6 +17,7 @@ class BodyTestParser:
     file_name: str
     current_state: BodyTestState = BodyTestState.None_
     parsed_tests: list[BodyTest] = field(default_factory=list)
+    current_value: Any = None
 
     @property
     def current_test(self):
@@ -24,14 +26,18 @@ class BodyTestParser:
     def change_state(self, tag: str, tag_arg: list[str]):
         if tag not in TAGS:
             raise NameError(f"Invalid tag ({tag}) for FlyTest")
-        self.current_state = TAGS[tag](tag_arg, self)
+        self.current_state, self.current_value = TAGS[tag](tag_arg, self)
 
     def parse_line(self, line: str):
         if self.current_state is BodyTestState.None_:
             return
 
         elif self.current_state is BodyTestState.New:
-            self.parsed_tests.append(BodyTest(self.file_name))
+            self.parsed_tests.append(
+                BodyTest(self.file_name)
+                if self.current_value is None
+                else BodyTest(self.file_name, self.current_value)
+            )
             self.current_state = BodyTestState.Infos
 
         elif self.current_state is BodyTestState.End:

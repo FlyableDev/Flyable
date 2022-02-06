@@ -6,7 +6,7 @@ from typing import Callable
 import pytest
 from _pytest.fixtures import SubRequest
 from tests.unit_tests.utils.body_test_parser import parse_body_test_file
-from tests.unit_tests.utils.utils import StdOut
+from tests.unit_tests.utils.utils import StdOut, BodyTest
 
 
 def flytest(func: Callable):
@@ -20,10 +20,26 @@ def flytest(func: Callable):
     return inner
 
 
+def flytest_runtimes(_: Callable):
+    def test_flytest_runtimes(body_test: dict[str, BodyTest], stdout: StdOut):
+        for test in body_test.values():
+            if test.mode not in ("runtime", "both"):
+                continue
+            assert test.py_exec(stdout) == test.fly_exec(stdout), (
+                f"Failed test '{test.name}':\n{''.join(test.lines)}"
+            )
+
+    return test_flytest_runtimes
+
+
 def get_body_of_tests(dir_name: str, current_file_path: str) -> dict:
-    current_file_name = path.basename(current_file_path)[:-3]  # removes the extension .py
+    current_file_name = path.basename(current_file_path)[
+                        :-3
+                        ]  # removes the extension .py
     test_body_file_name = "body_" + current_file_name.split("_", 1)[1] + ".py"
-    test_body_file_path = dir_name + "/" + path.dirname(current_file_path) + test_body_file_name
+    test_body_file_path = (
+            dir_name + "/" + path.dirname(current_file_path) + test_body_file_name
+    )
     parsed_tests = parse_body_test_file(test_body_file_path)
 
     return parsed_tests
@@ -31,7 +47,9 @@ def get_body_of_tests(dir_name: str, current_file_path: str) -> dict:
 
 @pytest.fixture(scope="module", name="body_test")
 def body_test(request: SubRequest):
-    return get_body_of_tests(request.fspath.dirname, os.getenv('PYTEST_CURRENT_TEST').split("::")[0])
+    return get_body_of_tests(
+        request.fspath.dirname, os.getenv("PYTEST_CURRENT_TEST").split("::")[0]
+    )
 
 
 @pytest.fixture
@@ -42,6 +60,6 @@ def stdout(monkeypatch):
         buffer.content += s
         buffer.write_calls += 1
 
-    monkeypatch.setattr(sys.stdout, 'write', fake_write)
+    monkeypatch.setattr(sys.stdout, "write", fake_write)
     yield buffer
     buffer.clear()
