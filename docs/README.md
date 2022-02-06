@@ -4,7 +4,7 @@ Flyable is the tool that will make your Python code run faster. As a developer t
 
 ## How is the documentation structured
 
-Here you will find instructions on [how to get access](get-started.md#_1-install) to Flyable and answers to [frequently asked questions](faq.md). Additionnal details on a plethora of subjects are coming! Don't forget to take a look at the [tutorials](http://flyabledev.com/tutorial.html), we are constantly putting new tutorials to help you get a better idea of what Flyable can do and how you can use Flyable.
+Here you will find instructions on [how to get access](get-started.md#_1-install) to Flyable and answers to [frequently asked questions](faq.md). Additionnal details on a plethora of subjects are coming!
 
 ## Community
 

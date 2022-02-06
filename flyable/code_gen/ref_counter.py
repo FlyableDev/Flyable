@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from flyable.parse.parser import ParserVisitor
 
 
-
 def is_ref_counting_type(value_type: LangType):
     return not value_type.is_primitive() and not value_type.is_none() and not value_type.is_unknown()
 
@@ -92,10 +91,12 @@ def ref_decr(visitor: ParserVisitor, value_type: LangType, value: int):
     builder.cond_br(need_to_dealloc, dealloc_block, decrement_block)
 
     builder.set_insert_block(dealloc_block)
+    if value_type.is_python_obj():  # Python objects sometime check to make sure that the ref count is zero
+        builder.store(builder.const_int64(0), ref_ptr)
+
     if value_type.is_obj():
         caller.call_obj(visitor, "__del__", value, value_type, [], [], True)
         runtime.free_call(code_gen, builder, value)
-
     elif value_type.is_list() or value_type.is_tuple():
         # Might be a bit slow to rely on dealloc call when we know that it's a list...
         obj_type = fly_obj.get_py_obj_type(visitor.get_builder(), value)

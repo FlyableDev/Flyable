@@ -176,7 +176,6 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             if not hint.is_incremented_type(self.__assign_type):
                 ref_counter.ref_incr(self.__builder, self.__assign_type, self.__assign_value)
             hint.remove_hint_type(self.__assign_type, hint.TypeHintRefIncr)
-
             self.__reset_last()
             self.__last_type, self.__last_value = self.__visit_node(node.targets)
         else:  # Mult assign
@@ -336,27 +335,42 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             # Args don't live inside an alloca so they don't need to be loaded
             if not found_var.is_arg():
                 if isinstance(node.ctx, Store):
-                    # Decrement the old content
-                    old_content = self.__builder.load(self.__last_value)
-                    ref_counter.ref_decr_nullable(self, found_var.get_type(), old_content)
+                    # If it tries to assign a global variable in a local context without the global keyword,
+                    # instead declare a new local variable in the function context
+                    if found_var.is_global() and found_var.get_context() != self.__func.get_context():
+                        found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
+                        alloca_value = self.generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen), True)
+                        found_var.set_code_gen_value(alloca_value)
+                        self.__builder.store(self.__assign_value, alloca_value)
+                        self.__last_value = found_var.get_code_gen_value()
+                        self.__last_type = copy.copy(found_var.get_type())
+                        self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
+                    # Else assign new value to variable
+                    else:
+                        # Decrement the old content
+                        old_content = self.__builder.load(self.__last_value)
+                        ref_counter.ref_decr_nullable(self, found_var.get_type(), old_content)
 
-                    # The variable might have a new type
-                    var_type = lang_type.get_most_common_type(self.__data, found_var.get_type(), self.__assign_type)
-                    if found_var.get_type() != var_type:
-                        found_var.set_type(var_type)
-                        if found_var.is_global():
-                            self.__data.set_changed(True)
-                        else:
-                            self.__reset_visit = True
+                        # The variable might have a new type
+                        var_type = lang_type.get_most_common_type(self.__data, found_var.get_type(), self.__assign_type)
+                        if found_var.get_type() != var_type:
+                            found_var.set_type(var_type)
+                            if found_var.is_global():
+                                self.__data.set_changed(True)
+                            else:
+                                self.__reset_visit = True
 
-                    # Store the new content
-                    value_assign = self.__assign_value
-                    if self.__last_type.is_python_obj():
-                        _, value_assign = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_assign,
-                                                                 self.__assign_type)
-                    self.__builder.store(value_assign, self.__last_value)
-                    self.__last_become_assign()
+                        # Store the new content
+                        value_assign = self.__assign_value
+                        if self.__last_type.is_python_obj():
+                            _, value_assign = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_assign,
+                                                                    self.__assign_type)
+                        hint.remove_hint_type(self.__last_type, hint.TypeHintConstInt)
+                        self.__builder.store(value_assign, self.__last_value)
+                        self.__last_become_assign()
                 else:
+                    #if found_var.is_global() and found_var.get_context() != self.__func.get_context():
+                    #    self.__parser.throw_error("Not found variable '" + node.id + "'", node.lineno, node.col_offset)
                     self.__last_value = self.__builder.load(self.__last_value)
                     self.__last_type = copy.copy(found_var.get_type())
                     self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))

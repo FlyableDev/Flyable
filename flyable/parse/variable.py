@@ -6,6 +6,7 @@ import flyable.data.type_hint as hint
 
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import GlobalVar
+    from flyable.parse.context import Context
 
 
 class Variable:
@@ -19,9 +20,16 @@ class Variable:
         self.__code_gen_value = None
         self.__is_arg: bool = False
         self.__global: bool = False
+        self.__context: Context | None = None
 
     def get_id(self):
         return self.__id
+
+    def get_context(self):
+        return self.__context
+
+    def set_context(self, context: Context):
+        self.__context = context
 
     def set_name(self, name: str):
         self.__name = name
