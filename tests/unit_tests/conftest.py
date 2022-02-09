@@ -6,7 +6,7 @@ from typing import Callable
 import pytest
 from _pytest.fixtures import SubRequest
 from tests.unit_tests.utils.body_test_parser import parse_body_test_file
-from tests.unit_tests.utils.utils import StdOut, BodyTest
+from tests.unit_tests.utils.utils import StdOut, BodyTest, CompilationError
 
 
 def flytest(func: Callable):
@@ -20,14 +20,34 @@ def flytest(func: Callable):
     return inner
 
 
-def flytest_runtimes(_: Callable):
+def flytest_runtimes(
+        func: Callable = None, include: list[str] = None, exclude: list[str] = None
+):
+    if include is not None and exclude is not None:
+        raise AttributeError("You cannot include and exclude at the same time")
+
     def test_flytest_runtimes(body_test: dict[str, BodyTest], stdout: StdOut):
+        failed: list = []
         for test in body_test.values():
-            if test.mode not in ("runtime", "both"):
+            if (
+                    test.mode not in ("runtime", "both")
+                    or (exclude and test.name in exclude)
+                    or (include and test.name not in include)
+            ):
                 continue
-            assert test.py_exec(stdout) == test.fly_exec(stdout), (
-                f"Failed test '{test.name}':\n{''.join(test.lines)}"
-            )
+            try:
+                if test.py_exec(stdout) != test.fly_exec(stdout):
+                    failed.append(f"Failed test '{test.name}':\n{''.join(test.lines)}")
+            except CompilationError as e:
+                failed.append(f"Failed test '{test.name}' (while compiling: {e}):\n{''.join(test.lines)}")
+
+        assert not failed, "\n".join(failed)
+
+    if func is None:
+        def wrap(_: Callable):
+            return test_flytest_runtimes
+
+        return wrap
 
     return test_flytest_runtimes
 

@@ -40,9 +40,6 @@ class BodyTestParser:
             )
             self.current_state = BodyTestState.Infos
 
-        elif self.current_state is BodyTestState.End:
-            self.current_state = BodyTestState.None_
-
         elif self.current_state is BodyTestState.Body:
             self.current_test.lines.append(line)
 

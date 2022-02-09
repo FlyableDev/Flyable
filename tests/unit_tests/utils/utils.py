@@ -32,7 +32,6 @@ class BodyTestState(Enum):
     New = auto()
     Infos = auto()
     Body = auto()
-    End = auto()
     None_ = auto()
 
 
@@ -138,7 +137,7 @@ def tag_end(args: list[str], test: BodyTestParser) -> tuple[BodyTestState, Any]:
         raise ValueError("You must create a test before defining its body")
     if args:
         raise AttributeError(f"To many arguments passed to the tag new (passed {len(args)})")
-    return BodyTestState.End, None
+    return BodyTestState.None_, None
 
 
 TAGS: dict[str, Callable[[list[str], BodyTestParser], tuple[BodyTestState, Any]]] = {
