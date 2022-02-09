@@ -1289,10 +1289,10 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                 # module already imported
                 return
 
-            file = self.__data.get_file(e.name)
+            file = self.__data.get_file(import_name)
             if file is None:  # Python module
                 module_type = lang_type.get_python_obj_type()  # A Python module
-                content = gen_module.import_py_module(self.__code_gen, self.__builder, e.name)
+                content = gen_module.import_py_module(self.__code_gen, self.__builder, import_name)
             else:  # Flyable module
                 module_type = lang_type.get_module_type(file.get_id())
                 content = self.__builder.const_int32(file.get_id())
