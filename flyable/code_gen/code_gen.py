@@ -4,6 +4,8 @@ import enum
 import platform
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, TypeAlias, Optional
+
+from sympy import true
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_writer as _writer
 import flyable.code_gen.library_loader as loader
@@ -82,12 +84,13 @@ class GlobalVar:
     Represent a low-level const address variable
     """
 
-    def __init__(self, name: str, type: CodeType, linkage: Linkage = Linkage.INTERNAL):
+    def __init__(self, name: str, type: CodeType, linkage: Linkage = Linkage.INTERNAL, containing_module=''):
         self.__id = -1
         self.__name = name
         self.__type = type
         self.__initializer = None
         self.__linking = linkage
+        self.__containing_module = containing_module
 
     def set_id(self, id: int):
         self.__id = id
@@ -97,6 +100,12 @@ class GlobalVar:
 
     def get_name(self):
         return self.__name
+
+    def get_containing_module_name(self):
+        return self.__containing_module
+
+    def belongs_to_module(self):
+        return bool(self.__containing_module)
 
     def get_type(self):
         return self.__type
@@ -280,7 +289,7 @@ class CodeFunc:
 class CodeGen:
 
     def __init__(self, comp_data: CompData):
-        self.__global_vars: list[GlobalVar] = []
+        self.__global_vars: dict[str, GlobalVar] = {}
         self.__structs: list[StructType] = []
         self.__funcs: OrderedDict[str, CodeFunc] = OrderedDict()
         self.__data = comp_data
@@ -407,7 +416,7 @@ class CodeGen:
         if str in self.__strings:
             return self.__strings[str]
         new_str = GlobalVar("@flyable@str@" + str, CodeType(CodeType.CodePrimitive.INT8).get_ptr_to(), Linkage.INTERNAL)
-        self.__global_vars.append(new_str)
+        self.__global_vars[str] = new_str
         self.__strings[str] = new_str
 
     def get_true(self):
@@ -545,9 +554,12 @@ class CodeGen:
 
     def add_global_var(self, var: GlobalVar):
         var.set_id(len(self.__global_vars))
-        self.__global_vars.append(var)
+        self.__global_vars[var.get_name()] = var
         return var
 
+    def get_global_var(self, variable_name: str) -> GlobalVar:
+        return self.__global_vars.get(variable_name, None)
+           
     def gen_struct(self, _class: LangClass):
         """
         Create a structure from a class and creates the global variable that will hold the type instance of that class
@@ -645,7 +657,7 @@ class CodeGen:
 
         # Add global var
         writer.add_int32(len(self.__global_vars))
-        for e in self.__global_vars:
+        for e in self.__global_vars.values():
             e.write_to_code(writer)
 
         # Add funcs
