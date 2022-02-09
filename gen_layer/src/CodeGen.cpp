@@ -30,9 +30,12 @@ void CodeGen::init()
 
     std::string error;
     std::string targetTriple = "";
-    targetTriple ="x86_64-unknown-windows-c";//llvm::sys::getDefaultTargetTriple();
-    //targetTriple ="x86_64-apple-macosx10.7.0-c";//llvm::sys::getDefaultTargetTriple();
-    //targetTriple = "wasm32-unknown-unknown";
+
+    #ifdef _WIN32
+        targetTriple ="x86_64-unknown-windows-c";
+    #elif __APPLE__
+        targetTriple ="arm64-apple-darwin-macho";
+    #endif
 
     mTarget = llvm::TargetRegistry::lookupTarget(targetTriple, error);
 
