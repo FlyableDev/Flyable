@@ -21,8 +21,8 @@ def load():
     QuailTag(
         tag_name="raises", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_raises
     )
-    QuailTag(tag_name="is", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_eq)
     QuailTag(tag_name="eq", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_eq)
+    QuailTag(tag_name="==", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_eq)
     QuailTag(
         tag_name="True", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_eq_True
     )
