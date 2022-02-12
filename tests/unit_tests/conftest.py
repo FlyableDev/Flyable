@@ -5,8 +5,9 @@ from typing import Callable
 
 import pytest
 from _pytest.fixtures import SubRequest
-from tests.unit_tests.utils.body_test_parser import parse_body_test_file
-from tests.unit_tests.utils.utils import StdOut, BodyTest, CompilationError
+from tests.quail.parser.parser import parse_body_test_file
+from tests.quail.quail_test import QuailTest
+from tests.quail.utils.utils import StdOut, CompilationError
 
 
 def flytest(func: Callable):
@@ -26,7 +27,22 @@ def flytest_runtimes(
     if include is not None and exclude is not None:
         raise AttributeError("You cannot include and exclude at the same time")
 
-    def test_flytest_runtimes(body_test: dict[str, BodyTest], stdout: StdOut):
+    def get_error_msg(test, py_result, fly_result):
+        return (
+                f"python  => {py_result}\n"
+                f"flyable => {fly_result}\n"
+                + "-" * 15
+                + "tested code"
+                + "-" * 15
+                + f"\n{''.join(test.lines)}\n"
+                + (
+                    "-" * 15 + "original code" + "-" * 15 + f"\n{''.join(test.original_lines)}"
+                    if test.original_lines != test.lines
+                    else ""
+                )
+        )
+
+    def test_flytest_runtimes(body_test: dict[str, QuailTest], stdout: StdOut):
         failed: list = []
         for test in body_test.values():
             if (
@@ -35,11 +51,20 @@ def flytest_runtimes(
                     or (include and test.name not in include)
             ):
                 continue
+
+            py_result = test.py_exec(stdout).split("\n")
             try:
-                if test.py_exec(stdout) != test.fly_exec(stdout):
-                    failed.append(f"Failed test '{test.name}':\n{''.join(test.lines)}")
+                fly_result = test.fly_exec(stdout).split("\n")
+                if py_result != fly_result:
+                    failed.append(
+                        f"Failed test '{test.name}':\n"
+                        + get_error_msg(test, py_result, fly_result)
+                    )
             except CompilationError as e:
-                failed.append(f"Failed test '{test.name}' (while compiling: {e}):\n{''.join(test.lines)}")
+                failed.append(
+                    f"Failed test '{test.name}' (while compiling: {e}):\n"
+                    + get_error_msg(test, py_result, "ERROR")
+                )
 
         assert not failed, "\n".join(failed)
 
@@ -53,9 +78,8 @@ def flytest_runtimes(
 
 
 def get_body_of_tests(dir_name: str, current_file_path: str) -> dict:
-    current_file_name = path.basename(current_file_path)[
-                        :-3
-                        ]  # removes the extension .py
+    # removes the extension .py
+    current_file_name = path.basename(current_file_path)[:-3]
     test_body_file_name = "body_" + current_file_name.split("_", 1)[1] + ".py"
     test_body_file_path = (
             dir_name + "/" + path.dirname(current_file_path) + test_body_file_name

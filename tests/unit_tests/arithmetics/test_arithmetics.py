@@ -1,5 +1,5 @@
 from tests.unit_tests.conftest import flytest
-from tests.unit_tests.utils.utils import BodyTest, StdOut
+from tests.unit_tests.tools.utils import BodyTest, StdOut
 
 
 @flytest
