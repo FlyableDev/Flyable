@@ -40,10 +40,9 @@ def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
         body.write(
             trim(
                 """
-                from tests.unit_tests.conftest import flytest_runtimes
-                
-                
-                @flytest_runtimes
+                from tests.unit_tests.conftest import quail_runtimes_tester
+
+                @quail_runtimes_tester
                 def test_runtimes():
                     pass
                 """
