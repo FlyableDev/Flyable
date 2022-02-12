@@ -12,7 +12,7 @@ So cute 🥺
 
 ## What are Quail Tests?
 
-Quail Tests are the meat and bones of the Quail unit testing utility. They represent
+Quail Tests are the meat and bones of the Quail unit testing utility.
 
 ## How do they work
 
@@ -124,6 +124,12 @@ to remove boilerplate code and make the test more readable. In our example, it's
 
 To see every Quail-assert tag and its effect, see [The list of Quail-assert tags](Quail-assert_tags.md)
 
+## Where are Quail tests?
+
+They are in _Flyable/tests/unit_tests_  
+Quail tests are in the quailt_<x>.py files (quailt stands for quail test)  
+In the same folder as this file must be a test_<x>.py file from which the tests will be ran
+
 ## How can I make my own?
 
 Let's say I want to write a new test suite to test how _Flyable_ handles **lists** with Quail.
@@ -140,7 +146,7 @@ There are two ways of doing this, one automatically and one manually
    > add_place_holder_test = True   
    > |Quail> y  
    > Done!
-3. I go to the folder _Flyable/tests/unit_tests/liste/body_liste.py_ to write my Quail tests
+3. I go to the folder _Flyable/tests/unit_tests/liste/quailt_liste.py_ to write my Quail tests
 4. I go to the folder _Flyable/tests/unit_tests/liste/test_liste.py_ to run the Quail test I wrote using pytest
 
 

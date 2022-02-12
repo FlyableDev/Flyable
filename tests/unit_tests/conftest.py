@@ -5,17 +5,35 @@ from typing import Callable
 
 import pytest
 from _pytest.fixtures import SubRequest
-from tests.quail.parser.parser import parse_body_test_file
+from tests.quail.parser.parser import parse_quailt_file
 from tests.quail.quail_test import QuailTest
 from tests.quail.utils.utils import StdOut, CompilationError
+
+
+def _get_error_msg(test, py_result, fly_result):
+    return (
+            f"python  => {py_result}\n"
+            f"flyable => {fly_result}\n"
+            + "-" * 15
+            + "tested code"
+            + "-" * 15
+            + f"\n{''.join(test.lines)}\n"
+            + (
+                "-" * 15 + "original code" + "-" * 15 + f"\n{''.join(test.original_lines)}"
+                if test.original_lines != test.lines
+                else ""
+            )
+    )
 
 
 def flytest(func: Callable):
     @wraps(func)
     def inner(*args, **kwargs):
-        body_name = func.__name__.split("test_", 1)[1]
-        if "body_test" in kwargs:
-            kwargs["body_test"] = kwargs["body_test"][body_name]
+        quail_test_name = func.__name__.split("test_", 1)[1]
+        if "quail_test" in kwargs:
+            if quail_test_name not in kwargs["quail_test"]:
+                raise NameError(f"There are no Quail test with name '{quail_test_name}'")
+            kwargs["quail_test"] = kwargs["quail_test"][quail_test_name]
         return func(*args, **kwargs)
 
     return inner
@@ -27,24 +45,9 @@ def flytest_runtimes(
     if include is not None and exclude is not None:
         raise AttributeError("You cannot include and exclude at the same time")
 
-    def get_error_msg(test, py_result, fly_result):
-        return (
-                f"python  => {py_result}\n"
-                f"flyable => {fly_result}\n"
-                + "-" * 15
-                + "tested code"
-                + "-" * 15
-                + f"\n{''.join(test.lines)}\n"
-                + (
-                    "-" * 15 + "original code" + "-" * 15 + f"\n{''.join(test.original_lines)}"
-                    if test.original_lines != test.lines
-                    else ""
-                )
-        )
-
-    def test_flytest_runtimes(body_test: dict[str, QuailTest], stdout: StdOut):
+    def test_flytest_runtimes(quail_test: dict[str, QuailTest], stdout: StdOut):
         failed: list = []
-        for test in body_test.values():
+        for test in quail_test.values():
             if (
                     test.mode not in ("runtime", "both")
                     or (exclude and test.name in exclude)
@@ -58,12 +61,12 @@ def flytest_runtimes(
                 if py_result != fly_result:
                     failed.append(
                         f"Failed test '{test.name}':\n"
-                        + get_error_msg(test, py_result, fly_result)
+                        + _get_error_msg(test, py_result, fly_result)
                     )
             except CompilationError as e:
                 failed.append(
                     f"Failed test '{test.name}' (while compiling: {e}):\n"
-                    + get_error_msg(test, py_result, "ERROR")
+                    + _get_error_msg(test, py_result, "ERROR")
                 )
 
         assert not failed, "\n".join(failed)
@@ -77,21 +80,21 @@ def flytest_runtimes(
     return test_flytest_runtimes
 
 
-def get_body_of_tests(dir_name: str, current_file_path: str) -> dict:
+def get_quail_tests(dir_name: str, current_file_path: str) -> dict:
     # removes the extension .py
     current_file_name = path.basename(current_file_path)[:-3]
-    test_body_file_name = "body_" + current_file_name.split("_", 1)[1] + ".py"
-    test_body_file_path = (
-            dir_name + "/" + path.dirname(current_file_path) + test_body_file_name
+    test_quailt_file_name = "quailt_" + current_file_name.split("_", 1)[1] + ".py"
+    test_quailt_file_path = (
+            dir_name + "/" + path.dirname(current_file_path) + test_quailt_file_name
     )
-    parsed_tests = parse_body_test_file(test_body_file_path)
+    parsed_tests = parse_quailt_file(test_quailt_file_path)
 
     return parsed_tests
 
 
-@pytest.fixture(scope="module", name="body_test")
-def body_test(request: SubRequest):
-    return get_body_of_tests(
+@pytest.fixture(scope="module")
+def quail_test(request: SubRequest):
+    return get_quail_tests(
         request.fspath.dirname, os.getenv("PYTEST_CURRENT_TEST").split("::")[0]
     )
 

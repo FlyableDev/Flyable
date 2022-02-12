@@ -16,7 +16,7 @@ def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
             f"use the 'add' command"
         )
         return
-    with open(f"{path}/body_{name}.py", "w+") as body:
+    with open(f"{path}/quailt_{name}.py", "w+") as body:
         if add_place_holder_test:
             body.write(
                 trim(

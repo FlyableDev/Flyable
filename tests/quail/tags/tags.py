@@ -18,11 +18,17 @@ def load():
     QuailTag(tag_name="end", quail_tag_type=QuailTagType.TEST, apply=tag_end)
 
     QuailTag(tag_name="-", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_empty)
-    QuailTag(tag_name="raises", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_raises)
+    QuailTag(
+        tag_name="raises", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_raises
+    )
     QuailTag(tag_name="is", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_eq)
     QuailTag(tag_name="eq", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_eq)
-    QuailTag(tag_name="True", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_eq_True)
-    QuailTag(tag_name="False", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_eq_False)
+    QuailTag(
+        tag_name="True", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_eq_True
+    )
+    QuailTag(
+        tag_name="False", quail_tag_type=QuailTagType.ASSERT, apply=assert_tag_eq_False
+    )
 
 
 # ********************** start test tag functions **********************
@@ -76,41 +82,53 @@ def tag_end(match: re.Match, test: QuailTestParser) -> tuple[QuailTestState, Any
 
 # ********************** start assert tag functions **********************
 
+
+def get_indent(line: str):
+    return line[: line.index(line.strip()[0])]
+
+
 def assert_tag_empty(match: re.Match, test: QuailTestParser) -> str:
-    line = match.group(1).strip()
-    return f"print(({line}))\n"
+    line = match.group(1)
+    indent = get_indent(line)
+    return indent + f"print(({line.strip()}))\n"
 
 
 def assert_tag_eq(match: re.Match, test: QuailTestParser) -> str:
-    line = match.group(1).strip()
+    line = match.group(1)
+    indent = get_indent(line)
     value = match.group(5).strip()
-    return f"print(({line}) == ({value}))\n"
+    return indent + f"print(({line.strip()}) == ({value}))\n"
 
 
 def assert_tag_eq_True(match: re.Match, test: QuailTestParser) -> str:
-    line = match.group(1).strip()
-    value = match.group(5).strip()
-    return f"print(({line}) == True)\n"
+    line = match.group(1)
+    indent = get_indent(line)
+    return indent + f"print(({line.strip()}) == True)\n"
 
 
 def assert_tag_eq_False(match: re.Match, test: QuailTestParser) -> str:
-    line = match.group(1).strip()
-    return f"print(({line}) == False)\n"
+    line = match.group(1)
+    indent = get_indent(line)
+    return indent + f"print(({line.strip()}) == False)\n"
 
 
 def assert_tag_raises(match: re.Match, test: QuailTestParser) -> str:
-    line = match.group(1).strip()
+    line = match.group(1)
+    indent = get_indent(line)
     value = match.group(5).strip()
 
-    return trim(
-        f"""
-    try:
-        {line}
-    except {value or ""}:
-        print(True)
-    else:
-        print(False)
-    """
-    ) + "\n"
+    return (
+            trim(
+                f"""
+                {indent}try:
+                {indent}    {line.strip()}
+                {indent}except {value or ""}:
+                {indent}    print(True)
+                {indent}else:
+                {indent}    print(False)
+                {indent}"""
+            )
+            + "\n"
+    )
 
 # ********************** end assert tag functions **********************

@@ -3,9 +3,7 @@ from os import path
 from tests.quail.parser.quail_test_parser import QuailTestParser
 
 
-
-
-def parse_body_test_file(file_path: str):
+def parse_quailt_file(file_path: str):
     test_parser = QuailTestParser(path.basename(file_path))
 
     with open(file_path, "r") as f:
