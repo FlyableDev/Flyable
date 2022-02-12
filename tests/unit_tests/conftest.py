@@ -26,26 +26,32 @@ def _get_error_msg(test, py_result, fly_result):
     )
 
 
-def flytest(func: Callable):
+def quail_tester(func: Callable):
     @wraps(func)
     def inner(*args, **kwargs):
         quail_test_name = func.__name__.split("test_", 1)[1]
         if "quail_test" in kwargs:
             if quail_test_name not in kwargs["quail_test"]:
-                raise NameError(f"There are no Quail test with name '{quail_test_name}'")
+                raise NameError(
+                    f"There are no Quail test with name '{quail_test_name}'"
+                )
             kwargs["quail_test"] = kwargs["quail_test"][quail_test_name]
         return func(*args, **kwargs)
 
     return inner
 
 
-def flytest_runtimes(
+def quail_runtimes_tester(
         func: Callable = None, include: list[str] = None, exclude: list[str] = None
 ):
+    """
+    This method wraps an empty method and will test the execution of every quail test found
+    in the quailt_<x>.py file not marked with the "compiler" argument for the "Quail-test:new" tag
+    """
     if include is not None and exclude is not None:
         raise AttributeError("You cannot include and exclude at the same time")
 
-    def test_flytest_runtimes(quail_test: dict[str, QuailTest], stdout: StdOut):
+    def test_quail_test_runtimes(quail_test: dict[str, QuailTest], stdout: StdOut):
         failed: list = []
         for test in quail_test.values():
             if (
@@ -73,11 +79,11 @@ def flytest_runtimes(
 
     if func is None:
         def wrap(_: Callable):
-            return test_flytest_runtimes
+            return test_quail_test_runtimes
 
         return wrap
 
-    return test_flytest_runtimes
+    return test_quail_test_runtimes
 
 
 def get_quail_tests(dir_name: str, current_file_path: str) -> dict:

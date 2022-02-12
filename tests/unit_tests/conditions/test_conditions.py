@@ -1,7 +1,7 @@
-from tests.unit_tests.conftest import flytest_runtimes
+from tests.unit_tests.conftest import quail_runtimes_tester
 
 
-@flytest_runtimes
+@quail_runtimes_tester
 def test_runtimes():
     pass
 
