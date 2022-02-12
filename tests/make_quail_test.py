@@ -34,7 +34,6 @@ def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
                 )
                 + "\n"
             )
-    print("Done!")
 
     with open(f"{path}/test_{name}.py", "w+") as body:
         body.write(
@@ -49,6 +48,7 @@ def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
             )
             + "\n"
         )
+    print(u"Done! 🥳")
 
 
 def create_new_quail_test():
@@ -90,33 +90,35 @@ def cli():
     command_args: list[str]
 
     res = input('|Quail> ')
-    if len(res) > 0:
-        command, *command_args = input("|Quail> ").split()
-        command = command.lower()
+    if not res:
+        print("You must enter a command!")
+        return
+    command, *command_args = res.split()
+    command = command.lower()
 
-        if command == "new":
-            result = handle_new(command_args)
-            if result is None:
-                print("Creation of Quail test suite interrupted")
-                return
-            print("New Quail test suite description:")
-            print("\n".join(f"- {name} = {value}" for name, value in result.items()))
-            choice = input(
-                "Do you want to proceed to create Quail test suite with those informations ([Y], N): "
-            )
-            if choice.lower() != "n":
-                create_new_quail_test_suite(**result)
-                return
+    if command == "new":
+        result = handle_new(command_args)
+        if result is None:
             print("Creation of Quail test suite interrupted")
+            return
+        print("New Quail test suite description:")
+        print("\n".join(f"- {name} = {value}" for name, value in result.items()))
+        choice = input(
+            "Do you want to proceed to create Quail test suite with those informations ([Y], N): "
+        )
+        if choice.lower() != "n":
+            create_new_quail_test_suite(**result)
+            return
+        print("Creation of Quail test suite interrupted")
 
-        elif command == "add":
-            pass
+    elif command == "add":
+        pass
 
-        elif command == "quit":
-            exit()
+    elif command == "quit":
+        exit()
 
-        else:
-            print(f"Command '{command}' unknown, try again!")
+    else:
+        print(f"Command '{command}' unknown, try again!")
 
 
 def main():
