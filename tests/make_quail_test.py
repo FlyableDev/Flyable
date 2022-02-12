@@ -90,7 +90,7 @@ def cli():
     command_args: list[str]
 
     res = input('|Quail> ')
-    if not res:
+    if not res.strip():
         print("You must enter a command!")
         return
     command, *command_args = res.split()
