@@ -58,7 +58,7 @@ class QuailTest:
             p = Popen(linker_args, cwd=temp_working_dir)
             p.wait()
             if p.returncode != 0:
-                raise Exception("Linking error")
+                raise CompilationError("Linking error")
 
             p2 = Popen(
                 [temp_working_dir + f"/a.exe"],
@@ -67,6 +67,8 @@ class QuailTest:
                 text=True
             )
             return p2
+
+        raise CompilationError(compiler.get_errors())
 
     def fly_exec(self, stdout: StdOut):
         p = self.fly_compile()
