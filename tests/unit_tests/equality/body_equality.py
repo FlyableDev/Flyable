@@ -29,10 +29,10 @@ Flyable-version: v0.1a1
 Description: Test the equality between two boolean
 """
 # Quail-test:start
-False == False # Quail-assert: True
-True == True   # Quail-assert: True
-False == True  # Quail-assert: False
-True == False  # Quail-assert: False
+False == False  # Quail-assert: True
+True == True    # Quail-assert: True
+False == True   # Quail-assert: False
+True == False   # Quail-assert: False
 # Quail-test:end
 
 
