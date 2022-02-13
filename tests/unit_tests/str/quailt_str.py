@@ -9,7 +9,7 @@ Description: Test that the result of "" equals the result of calling str()
 # Quail-test:start
 litteral_str = ""
 litteral_str_by_method = str()
-print(litteral_str == litteral_str_by_method)
+litteral_str == litteral_str_by_method  # Quail-assert: True
 # print(litteral_str == litteral_str_by_method)
 # Quail-test:end
 
@@ -22,8 +22,10 @@ Description: Test that the len function works properly on strings
 """
 # Quail-test:start
 msg = "hello world!"
-print(len(msg))
+len(msg) == 12  # Quail-assert: True
 msg2 = ""
+len(msg2) == 1  # Quail-assert: False
+len(msg2) == 0  # Quail-assert: True
 print(len(msg))
 print(len(msg2))
 # Quail-test:end
@@ -58,5 +60,3 @@ Description: Test that the len function works properly on strings
 # Quail-test:start
 
 # Quail-test:end
-
-

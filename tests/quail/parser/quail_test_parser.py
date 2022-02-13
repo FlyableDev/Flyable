@@ -11,6 +11,7 @@ _QUAIL_VALID_INFOS: list[str] = ["Name", "Flyable-version", "Description"]
 class QuailTestState(Enum):
     New = auto()
     Infos = auto()
+    Start = auto()
     Body = auto()
     None_ = auto()
 
@@ -27,7 +28,7 @@ class QuailTestParser:
         return self.parsed_tests[-1]
 
     def parse_line(self, line: str):
-        if QuailTag.line_has_tag(line, QuailTagType.TEST):
+        if QuailTag.get_tag_match(line, QuailTagType.TEST):
             self.__change_state(line)
 
         match self.current_state:  # type: ignore
@@ -35,6 +36,9 @@ class QuailTestParser:
                 return
             case QuailTestState.New:
                 self.__new_quail_test()
+            case QuailTestState.Start:
+                self.current_state = QuailTestState.Body
+                return
             case QuailTestState.Body:
                 self.__add_line_to_current_quail_test(line)
             case QuailTestState.Infos:
@@ -50,7 +54,7 @@ class QuailTestParser:
         self.current_state = QuailTestState.Infos
 
     def __change_state(self, line: str):
-        if QuailTag.tag_exists(line, QuailTagType.TEST):
+        if not QuailTag.tag_exists(line, QuailTagType.TEST):
             raise NameError(f"Invalid tag ({line}) for QuailTest")
         self.current_state, self.current_value = QuailTag.apply_first_match(
             self, line, QuailTagType.TEST
@@ -58,7 +62,7 @@ class QuailTestParser:
 
     def __add_line_to_current_quail_test(self, line: str):
         self.current_test.original_lines.append(line)
-        if not QuailTag.line_has_tag(line, QuailTagType.ASSERT):
+        if not QuailTag.get_tag_match(line, QuailTagType.ASSERT):
             self.current_test.lines.append(line)
             return
 

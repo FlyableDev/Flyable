@@ -83,6 +83,9 @@ class QuailTest:
         exec(self.py_compile(), {}, {})
         result = stdout.content
         stdout.clear()
+        if not all(x == "True" for x in result.split("\n") if x):
+            raise Warning(result)
+
         return result
 
     @property

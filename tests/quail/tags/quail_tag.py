@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Callable, Any
-
-from tests.quail.utils.trim import trim
+from typing import TYPE_CHECKING, Callable, Any, Optional
 
 if TYPE_CHECKING:
     from tests.quail.parser.parser import QuailTestParser
@@ -45,32 +43,41 @@ class QuailTag:
     }
 
     @classmethod
-    def tag_exists(cls, tag: str, quail_tag_type: QuailTagType = None):
+    def get_tag_match(
+            cls, line: str, quail_tag_type: QuailTagType = None
+    ) -> Optional[re.Match]:
+        match = re.match(_QUAIL_TAG, line)
+        return (
+            match
+            if match
+               and (quail_tag_type is None or match.group(3) == quail_tag_type.tag_type)
+            else None
+        )
+
+    @classmethod
+    def tag_exists(cls, line: str, quail_tag_type: QuailTagType = None) -> bool:
+        tag = cls.get_tag_match(line, quail_tag_type)
+        if tag is None:
+            return False
+        tag = tag.group(4)
         if quail_tag_type is None:
             return any(tag in quail_tag for quail_tag in cls.__quail_tags.values())
         return tag in cls.__quail_tags[quail_tag_type]
-
-    @classmethod
-    def line_has_tag(cls, line: str, quail_tag_type: QuailTagType = None):
-        match = re.match(_QUAIL_TAG, line)
-        if match and (
-                quail_tag_type is None or match.group(3) == quail_tag_type.tag_type
-        ):
-            return match
-        return None
 
     @classmethod
     def apply_first_match(
             cls, quail_test_parser: QuailTestParser, line: str, quail_tag_type: QuailTagType
     ):
         quail_tags: list[QuailTag] = [*cls.__quail_tags[quail_tag_type].values()]
-        match = cls.line_has_tag(line)
+        match = cls.get_tag_match(line)
         if not match:
             raise ValueError("Line has no tag")
         for quail_tag in quail_tags:
             if quail_tag.tag_matches(line):
                 return quail_tag.apply(match, quail_test_parser)
-        raise NameError(f"Invalid tag ({match.group(4)}) for Fly")
+        raise NameError(
+            f"There are no Quail tag named {match.group(4)}) in type {quail_tag_type.name}"
+        )
 
     def __init__(
             self,
@@ -84,7 +91,7 @@ class QuailTag:
         self.apply = apply
 
     def tag_matches(self, line: str):
-        match = self.line_has_tag(line)
+        match = self.get_tag_match(line)
         return (
                 match
                 and match.group(3) == self.quail_tag_type.tag_type

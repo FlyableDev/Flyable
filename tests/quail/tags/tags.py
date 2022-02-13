@@ -62,7 +62,7 @@ def tag_start(match: re.Match, test: QuailTestParser) -> tuple[QuailTestState, A
         raise AttributeError(
             f"Too many arguments passed to the tag new (passed {len(args)})"
         )
-    return quailtest.QuailTestState.Body, None
+    return quailtest.QuailTestState.Start, None
 
 
 def tag_end(match: re.Match, test: QuailTestParser) -> tuple[QuailTestState, Any]:

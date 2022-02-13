@@ -26,6 +26,15 @@ def _get_error_msg(test, py_result, fly_result):
     )
 
 
+def _get_warning_msg(warnings: list[tuple[str, list[str]]]):
+    warning = "\n".join(f"- {test_name} (outputs => {py_result})" for test_name, py_result in warnings)
+    return (
+            "\n\nThe following tests had some values evaluated to False when executed with python:\n"
+            + warning + "\n"
+            + "-" * 15
+    )
+
+
 def quail_tester(func: Callable):
     @wraps(func)
     def inner(*args, **kwargs):
@@ -42,7 +51,7 @@ def quail_tester(func: Callable):
 
 
 def quail_runtimes_tester(
-        func: Callable = None, include: list[str] = None, exclude: list[str] = None
+        func: Callable = None, include: list[str] = None, exclude: list[str] = None, strict: bool = False
 ):
     """
     This method wraps an empty method and will test the execution of every quail test found
@@ -52,7 +61,8 @@ def quail_runtimes_tester(
         raise AttributeError("You cannot include and exclude at the same time")
 
     def test_quail_test_runtimes(quail_test: dict[str, QuailTest], stdout: StdOut):
-        failed: list = []
+        failed: list[str] = []
+        warnings: list[tuple[str, list[str]]] = []
         for test in quail_test.values():
             if (
                     test.mode not in ("runtime", "both")
@@ -60,10 +70,14 @@ def quail_runtimes_tester(
                     or (include and test.name not in include)
             ):
                 continue
-
-            py_result = test.py_exec(stdout).split("\n")
             try:
-                fly_result = test.fly_exec(stdout).split("\n")
+                py_result = test.py_exec(stdout).split("\n")[:-1]
+            except Warning as e:
+                py_result = e.args[0].split("\n")[:-1]
+                warnings.append((test.name, py_result))
+
+            try:
+                fly_result = test.fly_exec(stdout).split("\n")[:-1]
                 if py_result != fly_result:
                     failed.append(
                         f"Failed test '{test.name}':\n"
@@ -75,7 +89,11 @@ def quail_runtimes_tester(
                     + _get_error_msg(test, py_result, "ERROR")
                 )
 
-        assert not failed, "\n".join(failed)
+        # if strict mode enabled and there are warnings
+        assert not strict or not warnings, _get_warning_msg(warnings)
+
+        # if some tests failed
+        assert not failed, "\n" + "\n".join(failed)
 
     if func is None:
         def wrap(_: Callable):
