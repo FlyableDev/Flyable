@@ -26,8 +26,6 @@ len(msg) == 12  # Quail-assert: True
 msg2 = ""
 len(msg2) == 1  # Quail-assert: False
 len(msg2) == 0  # Quail-assert: True
-print(len(msg))
-print(len(msg2))
 # Quail-test:end
 
 
@@ -39,24 +37,8 @@ Description: Test the string concatenation functions
 """
 # Quail-test:start
 world = "World!"
-print("Hello " + world + " " + str(42))
-print('Hello {} {}'.format(world, 42))
-print(f"Hello {world} ")
-print("%s %s %s" % ('Hello', world, 22))
-
-from string import Template
-new = Template('Hello $world $number')
-print(new.substitute(world=world, number=22))
-
-# Quail-test:end
-
-
-# Quail-test:new
-"""
-Name: len_str
-Flyable-version: v0.1a1
-Description: Test that the len function works properly on strings
-"""
-# Quail-test:start
-
+"Hello " + world + " " + str(42)  # Quail-assert: eq 'Hello World! 42'
+'Hello {} {}'.format(world, 42)  # Quail-assert: eq 'Hello World! 42'
+f"Hello {world} "  # Quail-assert: eq 'Hello World! '
+"%s %s %s" % ('Hello', world, 22)  # Quail-assert: eq 'Hello World! 22'
 # Quail-test:end

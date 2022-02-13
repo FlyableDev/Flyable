@@ -93,7 +93,7 @@ def quail_runtimes_tester(
         assert not strict or not warnings, _get_warning_msg(warnings)
 
         # if some tests failed
-        assert not failed, "\n" + "\n".join(failed)
+        assert not failed, "\n" + ("\n" + "~" * 30 + "\n\n").join(failed)
 
     if func is None:
         def wrap(_: Callable):
