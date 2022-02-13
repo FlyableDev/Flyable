@@ -49,8 +49,7 @@ class QuailTag:
         match = re.match(_QUAIL_TAG, line)
         return (
             match
-            if match
-               and (quail_tag_type is None or match.group(3) == quail_tag_type.tag_type)
+            if match and (quail_tag_type is None or match.group(3) == quail_tag_type.tag_type)
             else None
         )
 

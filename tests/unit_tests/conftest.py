@@ -27,10 +27,13 @@ def _get_error_msg(test, py_result, fly_result):
 
 
 def _get_warning_msg(warnings: list[tuple[str, list[str]]]):
-    warning = "\n".join(f"- {test_name} (outputs => {py_result})" for test_name, py_result in warnings)
+    warning = "\n".join(
+        f"- {test_name} (outputs => {py_result})" for test_name, py_result in warnings
+    )
     return (
             "\n\nThe following tests had some values evaluated to False when executed with python:\n"
-            + warning + "\n"
+            + warning
+            + "\n"
             + "-" * 15
     )
 
@@ -51,7 +54,11 @@ def quail_tester(func: Callable):
 
 
 def quail_runtimes_tester(
-        func: Callable = None, include: list[str] = None, exclude: list[str] = None, strict: bool = False
+        func: Callable = None,
+        include: list[str] = None,
+        exclude: list[str] = None,
+        strict: bool = False,
+        mode: str = ""
 ):
     """
     This method wraps an empty method and will test the execution of every quail test found
@@ -71,13 +78,17 @@ def quail_runtimes_tester(
             ):
                 continue
             try:
-                py_result = test.py_exec(stdout).split("\n")[:-1]
+                py_result = test.py_exec(stdout).split("\n")
             except Warning as e:
-                py_result = e.args[0].split("\n")[:-1]
+                py_result = e.args[0].split("\n")
                 warnings.append((test.name, py_result))
 
             try:
-                fly_result = test.fly_exec(stdout).split("\n")[:-1]
+                fly_result = test.fly_exec(stdout).split("\n")
+                if fly_result[-1] == "" and py_result[-1] == "":
+                    fly_result = fly_result[:-1]
+                    py_result = py_result[:-1]
+
                 if py_result != fly_result:
                     failed.append(
                         f"Failed test '{test.name}':\n"
