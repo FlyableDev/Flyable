@@ -94,7 +94,7 @@ def end_step(step_name: str = None):
     step and step.end()
 
 
-# ###################################### list utils ###################################### #
+# ###################################### list tools ###################################### #
 
 
 def find_first(predicate: Callable[[Any], bool], iterable: Iterable):
