@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 AstSubclass = TypeVar('AstSubclass', bound=AST)
 
-AstSubclassOrList = AstSubclass | list[AstSubclass]
+AstSubclassOrList = Union[AstSubclass, list[AstSubclass]]
 
 
 class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
@@ -321,6 +321,13 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         # Is it a declared variable ?
         found_var = self.__find_active_var(node.id)
         if found_var is not None:
+
+            # Args don't live inside an alloca so they don't need to be loaded
+            if found_var.is_arg():
+                self.__last_value = found_var.get_code_gen_value()
+                self.__last_type = found_var.get_type()
+                return
+
             if found_var.get_code_gen_value().belongs_to_module():
                 # Imported module, retrieve stored global reference
                 variable_reference = self.__builder.global_var(found_var.get_code_gen_value())
@@ -332,68 +339,73 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     self.__last_type = lang_type.get_python_obj_type()
                     self.__last_type.add_hint(hint.TypeHintRefIncr())
                     self.__last_value = fly_obj.py_obj_get_attr(self, self.__last_value, found_var.get_name())
+                return
+
+            self.__last_type = found_var.get_type()
+            if found_var.is_global():
+                self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
             else:
-                self.__last_type = found_var.get_type()
-                if found_var.is_global():
-                    self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
-                else:
-                    if found_var.get_code_gen_value() is None:
-                        if not found_var.is_global():
-                            found_var.set_code_gen_value(
-                                self.generate_entry_block_var(found_var.get_type().to_code_type(self.__code_gen), True))
+                if found_var.get_code_gen_value() is None and not found_var.is_global():
+                    found_var.set_code_gen_value(
+                        self.generate_entry_block_var(
+                            found_var.get_type().to_code_type(self.__code_gen),
+                            True
+                        )
+                    )
+                self.__last_value = found_var.get_code_gen_value()
 
+
+            if isinstance(node.ctx, Store):
+                # If it tries to assign a global variable in a local context without the global keyword,
+                # instead declare a new local variable in the function context
+                if found_var.is_global() and found_var.get_context() != self.__func.get_context():
+                    found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
+                    alloca_value = self.generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen),
+                                                                 True)
+                    found_var.set_code_gen_value(alloca_value)
+                    self.__builder.store(self.__assign_value, alloca_value)
                     self.__last_value = found_var.get_code_gen_value()
+                    self.__last_type = copy.copy(found_var.get_type())
+                    self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
+                    return
 
-                # Args don't live inside an alloca so they don't need to be loaded
-                if not found_var.is_arg():
-                    if isinstance(node.ctx, Store):
-                        # If it tries to assign a global variable in a local context without the global keyword,
-                        # instead declare a new local variable in the function context
-                        if found_var.is_global() and found_var.get_context() != self.__func.get_context():
-                            found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
-                            alloca_value = self.generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen), True)
-                            found_var.set_code_gen_value(alloca_value)
-                            self.__builder.store(self.__assign_value, alloca_value)
-                            self.__last_value = found_var.get_code_gen_value()
-                            self.__last_type = copy.copy(found_var.get_type())
-                            self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
-                        # Else assign new value to variable
-                        else:
-                            # Decrement the old content
-                            old_content = self.__builder.load(self.__last_value)
-                            ref_counter.ref_decr_nullable(self, found_var.get_type(), old_content)
+                # Else assign new value to variable
+                # Decrement the old content
+                old_content = self.__builder.load(self.__last_value)
+                ref_counter.ref_decr_nullable(self, found_var.get_type(), old_content)
 
-                            # The variable might have a new type
-                            var_type = lang_type.get_most_common_type(self.__data, found_var.get_type(), self.__assign_type)
-                            if found_var.get_type() != var_type:
-                                found_var.set_type(var_type)
-                                if found_var.is_global():
-                                    self.__data.set_changed(True)
-                                else:
-                                    self.__reset_visit = True
-
-                            # Store the new content
-                            value_assign = self.__assign_value
-                            if self.__last_type.is_python_obj():
-                                _, value_assign = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_assign,
-                                                                        self.__assign_type)
-                            hint.remove_hint_type(self.__last_type, hint.TypeHintConstInt)
-                            self.__builder.store(value_assign, self.__last_value)
-                            self.__last_become_assign()
+                # The variable might have a new type
+                var_type = lang_type.get_most_common_type(self.__data, found_var.get_type(), self.__assign_type)
+                if found_var.get_type() != var_type:
+                    found_var.set_type(var_type)
+                    if found_var.is_global():
+                        self.__data.set_changed(True)
                     else:
-                        #if found_var.is_global() and found_var.get_context() != self.__func.get_context():
-                        #    self.__parser.throw_error("Not found variable '" + node.id + "'", node.lineno, node.col_offset)
-                        self.__last_value = self.__builder.load(self.__last_value)
-                        self.__last_type = copy.copy(found_var.get_type())
-                        self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
-                else:
-                    self.__last_value = found_var.get_code_gen_value()
-                    self.__last_type = found_var.get_type()
+                        self.__reset_visit = True
+
+                # Store the new content
+                value_assign = self.__assign_value
+                if self.__last_type.is_python_obj():
+                    _, value_assign = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_assign,
+                                                             self.__assign_type)
+                hint.remove_hint_type(self.__last_type, hint.TypeHintConstInt)
+                self.__builder.store(value_assign, self.__last_value)
+                self.__last_become_assign()
+                return
+
+            # if found_var.is_global() and found_var.get_context() != self.__func.get_context():
+            #    self.__parser.throw_error("Not found variable '" + node.id + "'", node.lineno, node.col_offset)
+            self.__last_value = self.__builder.load(self.__last_value)
+            self.__last_type = copy.copy(found_var.get_type())
+            self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
+            return
+
         elif build.get_build_in_name(node.id) is not None:  # An element in the build-in module
             self.__last_type = lang_type.get_python_obj_type()
             module = self.__builder.global_var(self.__code_gen.get_build_in_module())
             module = self.__builder.load(module)
             self.__last_value = fly_obj.py_obj_get_attr(self, module, node.id)
+
         elif isinstance(node.ctx, Store):  # not found so declaring a variable
             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
             if self.__func.get_parent_func().is_global():
@@ -411,6 +423,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                 self.__last_value = found_var.get_code_gen_value()
             self.__last_type = copy.copy(found_var.get_type())
             self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
+
         else:
             self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
 
@@ -452,7 +465,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             #   recursively check for an imported module for attribute access
             module_name = module_lookup
             for range_idx in range(len(attributes)):
-                module_name = '.'.join(attributes[:range_idx-1])
+                module_name = '.'.join(attributes[:range_idx - 1])
                 module_lookup = module_prefix + module_name
                 module = self.__code_gen.get_global_var(module_lookup)
                 node_copy.id = module_name
@@ -462,7 +475,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             if not module:
                 # Access is not from an imported module, visit node value
                 self.__last_type, self.__last_value = self.__visit_node(node.value)
-                
+
         str_value = node.attr
         if self.__last_type.is_python_obj():  # Python obj attribute. Type is unknown
             self.__last_type = lang_type.get_python_obj_type()
@@ -740,7 +753,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         # If return is void, assumes a return type of None (which python does)
         if node.value is None:
             return_type, return_value = lang_type.get_none_type(), self.__builder.const_int32(0)
-        else: 
+        else:
             return_type, return_value = self.__visit_node(node.value)
 
         if not hint.is_incremented_type(return_type):  # Need to increment if we return to be consistent to CPython
@@ -1330,7 +1343,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
             new_var = self.__func.get_context().add_var(import_name, module_type)
             if self.__func.get_parent_func().is_global():
-                new_global_var = gen.GlobalVar("@flyable@global@module@" + import_name, module_code_type, containing_module=module_name)
+                new_global_var = gen.GlobalVar("@flyable@global@module@" + import_name, module_code_type,
+                                               containing_module=module_name)
                 new_var.set_global(True)
                 new_var.set_code_gen_value(new_global_var)
                 self.__code_gen.add_global_var(new_global_var)

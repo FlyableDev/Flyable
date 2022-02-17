@@ -52,6 +52,9 @@ class LangFunc:
     def get_impl(self, index: int):
         return self.__impls[index]
 
+    def get_impl_iter(self):
+        return iter(self.__impls)
+
     def set_file(self, file: lang_file.LangFile):
         self.__file = file
 

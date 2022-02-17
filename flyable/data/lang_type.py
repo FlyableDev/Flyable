@@ -278,8 +278,8 @@ class LangType:
             to_str = "None type"
         elif self.is_obj():
             to_str = comp_data.get_class(self.__id).get_name()
-        elif self.is_python_obj():
-            to_str = "Python object"
+        elif self.is_str():
+            to_str = "str"
         elif self.is_dict():
             to_str = "dict"
         elif self.is_list():
@@ -288,6 +288,8 @@ class LangType:
             to_str = "set"
         elif self.is_tuple():
             to_str = "tuple"
+        elif self.is_python_obj():
+            to_str = "Python object"
         else:
             to_str = "Flyable type"
         return to_str

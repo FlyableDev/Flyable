@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, Callable, Any, Iterable
+from typing import Literal, Callable, Any, Iterable, TypeVar
 
 # ###################################### Step ###################################### #
 _current_step: list[Step] = []
@@ -96,8 +96,8 @@ def end_step(step_name: str = None):
 
 # ###################################### list tools ###################################### #
 
-
-def find_first(predicate: Callable[[Any], bool], iterable: Iterable):
+_T = TypeVar("_T")
+def find_first(predicate: Callable[[_T], bool], iterable: Iterable[_T]):
     """Returns the first value that matches in the iterable"""
     for value in iterable:
         if predicate(value):
@@ -105,7 +105,7 @@ def find_first(predicate: Callable[[Any], bool], iterable: Iterable):
     return None
 
 
-def find_last(predicate: Callable[[Any], bool], iterable: Iterable):
+def find_last(predicate: Callable[[_T], bool], iterable: Iterable[_T]):
     """Returns the first value that matches in the iterable"""
     last_match = None
     for value in iterable:
@@ -114,7 +114,7 @@ def find_last(predicate: Callable[[Any], bool], iterable: Iterable):
     return last_match
 
 
-def find_first_idx(predicate: Callable[[Any], bool], iterable: Iterable):
+def find_first_idx(predicate: Callable[[_T], bool], iterable: Iterable[_T]):
     """Returns the index of the first value that matches in the iterable"""
     for idx, value in enumerate(iterable):
         if predicate(value):
@@ -122,7 +122,7 @@ def find_first_idx(predicate: Callable[[Any], bool], iterable: Iterable):
     return None
 
 
-def find_last_idx(predicate: Callable[[Any], bool], iterable: Iterable):
+def find_last_idx(predicate: Callable[[_T], bool], iterable: Iterable[_T]):
     """Returns the first value that matches in the iterable"""
     last_idx = None
     for idx, value in enumerate(iterable):

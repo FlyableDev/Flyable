@@ -17,10 +17,11 @@ def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
         )
         return
     with open(f"{path}/quailt_{name}.py", "w+") as body:
+        msg = f"'''Module {name}'''\n\n"
         if add_place_holder_test:
-            body.write(
-                trim(
-                    f'''
+            msg += (
+                    trim(
+                        f'''
                     # Quail-test:new
                     """
                     Name: YOUR_NAME
@@ -31,9 +32,10 @@ def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
                     "hello world!" == "hello world!"  # Quail-assert: True
                     # Quail-test:end
                     '''
-                )
-                + "\n"
+                    )
+                    + "\n"
             )
+        body.write(msg)
 
     with open(f"{path}/test_{name}.py", "w+") as body:
         body.write(

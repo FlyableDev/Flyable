@@ -1,7 +1,7 @@
 import sys, os
 from functools import wraps
 from os import path
-from typing import Callable
+from typing import Callable, Optional
 
 import pytest
 from _pytest.fixtures import SubRequest
@@ -42,12 +42,19 @@ def quail_tester(func: Callable):
     @wraps(func)
     def inner(*args, **kwargs):
         quail_test_name = func.__name__.split("test_", 1)[1]
-        if "quail_test" in kwargs:
-            if quail_test_name not in kwargs["quail_test"]:
+
+        def quail_test_in(category: str):
+            if quail_test_name not in kwargs[category]:
                 raise NameError(
                     f"There are no Quail test with name '{quail_test_name}'"
                 )
+            return True
+
+        if "quail_test" in kwargs and quail_test_in("quail_test"):
             kwargs["quail_test"] = kwargs["quail_test"][quail_test_name]
+
+        if "quail_results" in kwargs and quail_test_in("quail_results"):
+            kwargs["quail_results"] = kwargs["quail_results"][quail_test_name].fly_compile(save_results=True).results
         return func(*args, **kwargs)
 
     return inner
@@ -129,6 +136,19 @@ def get_quail_tests(dir_name: str, current_file_path: str) -> dict:
 
 @pytest.fixture(scope="module")
 def quail_test(request: SubRequest):
+    return get_quail_tests(
+        request.fspath.dirname, os.getenv("PYTEST_CURRENT_TEST").split("::")[0]
+    )
+
+
+@pytest.fixture(scope="module")
+def quail_results(request: SubRequest):
+    """
+    Must be combined with the decorator @quail_tester
+
+    :returns the result of the compiler as a _CompilerResult
+
+    """
     return get_quail_tests(
         request.fspath.dirname, os.getenv("PYTEST_CURRENT_TEST").split("::")[0]
     )
