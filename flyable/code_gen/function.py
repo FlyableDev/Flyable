@@ -5,6 +5,7 @@ import flyable.code_gen.exception as excp
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.tuple as tuple_call
+import flyable.code_gen.dict as dict_call
 import flyable.code_gen.type as gen_type
 import flyable.code_gen.debug as debug
 import flyable.code_gen.ref_counter as ref_counter
@@ -66,17 +67,22 @@ def call_py_func_vec_call(visitor: ParserVisitor, obj: int, func_to_call: int, a
     return result
 
 
-def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, args: list[int]):
+def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, args: list[int], kwargs: dict[int, int]):
     """
     Call a python function using the tp_call convention
     """
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
     arg_list = tuple_call.python_tuple_new_alloca(visitor, len(args))
+    kwargs_list = builder.const_null(code_type.get_py_obj_ptr(code_gen))
+
     for i, e in enumerate(args):
         tuple_call.python_tuple_set_unsafe(visitor, arg_list, i, e)
 
-    kwargs = builder.const_null(code_type.get_py_obj_ptr(code_gen))  # Null kwargs
+    if kwargs:
+        kwargs_list = dict_call.python_dict_new(visitor)
+        for k, v in kwargs.items():
+            dict_call.python_dict_set_item(visitor, kwargs_list, k, v)
 
     func_to_call_type = fly_obj.get_py_obj_type(visitor.get_builder(), func_to_call)
 
@@ -86,7 +92,7 @@ def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, ar
     ty_call_ptr = builder.ptr_cast(tp_call_ptr,
                                    code_type.get_func(code_type.get_py_obj_ptr(code_gen), args_types).get_ptr_to())
 
-    tp_args = [func_to_call, arg_list, kwargs]
+    tp_args = [func_to_call, arg_list, kwargs_list]
 
     result = builder.call_ptr(ty_call_ptr, tp_args)
 

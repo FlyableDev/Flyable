@@ -321,7 +321,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         # Is it a declared variable ?
         found_var = self.__find_active_var(node.id)
         if found_var is not None:
-            if found_var.get_code_gen_value().belongs_to_module():
+            if isinstance(found_var, gen.GlobalVar) and found_var.get_code_gen_value().belongs_to_module():
                 # Imported module, retrieve stored global reference
                 variable_reference = self.__builder.global_var(found_var.get_code_gen_value())
                 self.__last_value = self.__builder.load(variable_reference)
@@ -533,6 +533,18 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         type_buffer = self.__last_type
         args_types = []
         args = []
+        kwargs = {}
+
+        for kw in node.keywords:
+            self.__reset_last()
+            key = ast.Constant()
+            key.value = kw.arg
+
+            _, key_value = self.__visit_node(key)
+            _, value = self.__visit_node(kw.value)
+
+            kwargs[key_value] = value
+
         for e in node.args:
             self.__reset_last()
             type, arg = self.__visit_node(e)
@@ -554,7 +566,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         module_prefix = "@flyable@global@module@"
         module_global_func_name = module_prefix + name_call
-        module_global_func_refernce = self.__code_gen.get_global_var(module_global_func_name)
+        module_global_func_reference = self.__code_gen.get_global_var(module_global_func_name)
 
         if self.__last_type is None or self.__last_type.is_module():
             build_in_func = build.get_build_in(name_call)
@@ -575,15 +587,15 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     module = self.__builder.load(module)
                     self.__last_type, self.__last_value = caller.call_obj(self, name_call, module,
                                                                           lang_type.get_python_obj_type(), args,
-                                                                          args_types)
-            elif module_global_func_refernce:
+                                                                          args_types, kwargs)
+            elif module_global_func_reference:
                 # global module function
                 node.func.id = name_call
                 self.__last_type, self.__last_value = self.__visit_node(node.func)
                 if self.__last_type.is_python_obj():
                     self.__last_type, self.__last_value = caller.call_obj(self, '__call__', self.__last_value,
                                                                           self.__last_type,
-                                                                          args, args_types)
+                                                                          args, args_types, kwargs)
             else:
                 if self.__last_type is None:
                     file = self.__func.get_parent_func().get_file()
@@ -602,7 +614,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     self.__last_value = fly_obj.allocate_flyable_instance(self, content)
 
                     # Call the constructor
-                    caller.call_obj(self, "__init__", self.__last_value, self.__last_type, args, args_types, True)
+                    caller.call_obj(self, "__init__", self.__last_value, self.__last_type, args, args_types, kwargs, True)
 
                 elif isinstance(content, lang_func.LangFunc):
                     # Func call
@@ -630,7 +642,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
                     if func_to_call is not None:
                         self.__last_type, self.__last_value = caller.call_obj(self, method_name, self.__last_value,
-                                                                              self.__last_type, args, args_types)
+                                                                              self.__last_type, args, args_types, kwargs)
                         if self.__last_type.is_unknown():
                             self.__last_type = lang_type.get_none_type()
                             self.__last_value = self.__builder.const_int32(0)
@@ -641,7 +653,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     self.__parser.throw_error("'" + name_call + "' unrecognized", node.lineno, node.end_col_offset)
         elif self.__last_type.is_python_obj() or self.__last_type.is_collection():  # Python call object
             self.__last_type, self.__last_value = caller.call_obj(self, name_call, self.__last_value, self.__last_type,
-                                                                  args, args_types)
+                                                                  args, args_types, kwargs)
         elif self.__last_type.is_obj():
             _class = self.__data.get_class(self.__last_type.get_id())
             func_to_call = _class.get_func(name_call)
@@ -650,7 +662,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                 self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
             else:
                 self.__last_type, self.__last_value = caller.call_obj(self, name_call, self.__last_value,
-                                                                      self.__last_type, args, args_types)
+                                                                      self.__last_type, args, args_types, kwargs)
                 if self.__last_type.is_unknown():
                     self.__last_type = lang_type.get_none_type()
                     self.__last_value = self.__builder.const_int32(0)
