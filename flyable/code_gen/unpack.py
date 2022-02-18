@@ -33,7 +33,7 @@ def unpack_assignation(visitor: ParserVisitor, targets, value_type, value, node)
         index_value = builder.const_int64(i)
         args_types = [index_type]
         args = [index_value]
-        value_type_i, value_i = caller.call_obj(visitor, "__getitem__", value, value_type, args, args_types)
+        value_type_i, value_i = caller.call_obj(visitor, "__getitem__", value, value_type, args, args_types, {})
         if not hint.is_incremented_type(value_type_i):
             ref_counter.ref_incr(builder, value_type_i, value_i)
         if isinstance(target, ast.Tuple) or isinstance(target, ast.List):

@@ -20,7 +20,7 @@ from flyable.parse.parser_visitor import ParserVisitor
 
 
 def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int],
-             args_type: list[lang_type.LangType], kwargs: dict[int, int]=None, optional=False,
+             args_type: list[lang_type.LangType], kwargs: dict[int, int], optional=False,
              protocol=True, shortcuts=True) -> tuple[lang_type.LangType | None, int | None]:
     """
     Call a method independent from the called type.
@@ -183,7 +183,7 @@ def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args:
     builder.cond_br(can_vec, vector_call_block, tp_call_block)
 
     builder.set_insert_block(vector_call_block)
-    vec_result = function.call_py_func_vec_call(visitor, obj, func_to_call, args, vector_call_ptr)
+    vec_result = function.call_py_func_vec_call(visitor, obj, func_to_call, args, kwargs, vector_call_ptr)
     builder.store(vec_result, call_result_var)
     continue_block = builder.create_block("After Call")
     builder.br(continue_block)

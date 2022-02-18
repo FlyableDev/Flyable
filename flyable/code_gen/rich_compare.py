@@ -73,7 +73,7 @@ def call_rich_compare_protocol(visitor: ParserVisitor, func_name: str, obj_type:
 
     builder.set_insert_block(basic_call_block)
     basic_call_type, basic_call_value = caller.call_obj(visitor, func_name, obj, obj_type, num_call_args,
-                                                        num_call_args_types, False, False)
+                                                        num_call_args_types, {}, False, False)
     builder.store(basic_call_value, protocol_result)
     builder.br(continue_block)
 

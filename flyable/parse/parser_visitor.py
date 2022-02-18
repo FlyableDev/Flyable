@@ -712,7 +712,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         if value_type.is_primitive():
             self.__parser.throw_error("'[]' can't be used on a primitive type", node.lineno, node.end_col_offset)
         else:
-            self.__last_type, self.__last_value = caller.call_obj(self, func_name, value, value_type, args, args_types)
+            self.__last_type, self.__last_value = caller.call_obj(self, func_name, value, value_type, args, args_types, {})
 
         ref_counter.ref_decr_multiple_incr(self, args_types, args)
 
@@ -946,10 +946,10 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
                 # def __exit__(self, exc_type, exc_value, traceback)
                 exit_args_type = [type] + ([lang_type.get_python_obj_type()] * 3)
-                caller.call_obj(self, "__enter__", value, type, [value], [type])
+                caller.call_obj(self, "__enter__", value, type, [value], [type], {})
 
                 exit_values = [value] + ([self.__builder.const_null(code_type.get_int8_ptr())] * 3)
-                caller.call_obj(self, "__exit__", value, type, exit_values, exit_args_type)
+                caller.call_obj(self, "__exit__", value, type, exit_values, exit_args_type, {})
             else:
                 self.__parser.throw_error("Type " + type.to_str(self.__data) +
                                           " can't be used in a with statement", node.lineno, node.end_col_offset)
@@ -967,7 +967,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
         target_var.set_code_gen_value(alloca_value)
         self.__last_type, self.__last_value = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
-                                                              [iter_type])
+                                                              [iter_type], {})
 
     def visit_ListComp(self, node: ListComp) -> Any:
         result_array = gen_list.instanciate_python_list(self.__code_gen, self.__builder, self.__builder.const_int64(0))
@@ -977,13 +977,13 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         for i, e in enumerate(node.generators):
             iter_type, iter_value = self.__visit_node(e.iter)
-            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [])
+            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [], {})
 
             block_for = self.__builder.create_block()
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
-            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
+            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [], {})
 
             null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
             excp.py_runtime_clear_error(self.__code_gen, self.__builder)
@@ -1095,13 +1095,13 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         for i, e in enumerate(node.generators):
             iter_type, iter_value = self.__visit_node(e.iter)
-            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [])
+            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [], {})
 
             block_for = self.__builder.create_block()
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
-            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
+            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [], {})
 
             null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
             excp.py_runtime_clear_error(self.__code_gen, self.__builder)
@@ -1171,13 +1171,13 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         for i, e in enumerate(node.generators):
             iter_type, iter_value = self.__visit_node(e.iter)
 
-            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [])
+            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [], {})
 
             block_for = self.__builder.create_block()
             self.__builder.br(block_for)
             self.__builder.set_insert_block(block_for)
 
-            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [])
+            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [], {})
 
             null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
             excp.py_runtime_clear_error(self.__code_gen, self.__builder)
