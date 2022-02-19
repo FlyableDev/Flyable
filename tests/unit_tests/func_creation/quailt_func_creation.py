@@ -7,13 +7,9 @@ Flyable-version: v0.1a1
 Description: test to see if flyable can create functions
 """
 # Quail-test:start
-def gt2(param: int, param2):
-    return param > 2
-
-def abc(param1: int):
+def abc(param1: bool):
     return param1 > 2
 
-
-# abc(2)
-# gt2([1, 2], 12)
+def gt2(param: int, param2):
+    return param > 2
 # Quail-test:end

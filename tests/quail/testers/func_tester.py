@@ -44,20 +44,40 @@ class FunctionTester:
 
     def matches_args_format(self, *args_format: tuple[str, str] | tuple[str]):
         """
+        Asserts that the function's arguments match the *args_format.
+        To do so, you can specify two things in the args_format.
+
+        - The name of the parameter as the first element of the tuple [Required]
+
+        - The type annotation of the function parameter as the second element of the tuple [Optional]
+
+        *If the type annotation is not specified, it is ignored*
+
+        Ex:
+
+        >>> def calculate_taxes(price: float, tax_rate: float): ...
+
+        >>> quail_results.assert_func("calculate_taxes").matches_args_format(("price", "float"), ("tax_rate", "float")) # Valid
+
+        >>> quail_results.assert_func("calculate_taxes").matches_args_format(("price", ), ("tax_rate", "float")) # Valid
+
+        >>> quail_results.assert_func("calculate_taxes").matches_args_format(("price", None), ("tax_rate", "float")) # Invalid
+
+        >>> quail_results.assert_func("calculate_taxes").matches_args_format(("price", "float")) # Invalid
+
         :param args_format: a varargs of tuples of form (arg_name,) or (arg_name, arg_annotation)
-        :return:
         """
         actual_args_format = self.func.args_format()
 
         def show_diff():
             name = self.func.get_name()
             return (
-                f"Expected format of function {name!r}:\n"
-                f"{name}({','.join(f'{expected[0]}: {expected[1]}' if len(expected) == 2 else expected[0] for expected in args_format)})\n"
-                + ("-" * 30)
-                + "\n"
-                + f"Actual format of function {name!r}\n"
-                + f"{name}({','.join(f'{arg_name}: {arg_annotation}' if arg_annotation else arg_name for (arg_name, arg_annotation) in actual_args_format)})"
+                    f"Expected format of function {name!r}:\n"
+                    f"{name}({','.join(f'{expected[0]}: {expected[1]}' if len(expected) == 2 else expected[0] for expected in args_format)})\n"
+                    + ("-" * 30)
+                    + "\n"
+                    + f"Actual format of function {name!r}\n"
+                    + f"{name}({','.join(f'{arg_name}: {arg_annotation}' if arg_annotation else arg_name for (arg_name, arg_annotation) in actual_args_format)})"
             )
 
         error_msg = (
@@ -67,7 +87,7 @@ class FunctionTester:
         assert len(actual_args_format) == len(args_format), error_msg
 
         for (arg_name, arg_annotation), expected_format in zip(
-            actual_args_format, args_format, strict=True
+                actual_args_format, args_format, strict=True
         ):
             assert arg_name == expected_format[0], error_msg
             if len(expected_format) == 2:
@@ -86,14 +106,14 @@ class FunctionTester:
     def supports_tp_calls(self):
         """"""
         assert (
-            self.func.get_tp_call_impl() is not None
+                self.func.get_tp_call_impl() is not None
         ), f"{self.__msg_err} doesn't support the tp call protocol"
         return self
 
     def supports_vec_calls(self):
         """"""
         assert (
-            self.func.get_vec_call_impl() is not None
+                self.func.get_vec_call_impl() is not None
         ), f"{self.__msg_err} doesn't support the vector call protocol"
         return self
 
@@ -109,7 +129,7 @@ class FunctionTester:
     def in_class(self, class_name: str):
         cls = self.func.get_class()
         assert (
-            cls is not None
+                cls is not None
         ), f"{self.__msg_err} is not defined in class {class_name!r}"
         assert cls.get_name() == class_name, (
             f"{self.__msg_err} is not defined in class {class_name!r}"

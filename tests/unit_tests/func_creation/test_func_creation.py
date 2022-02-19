@@ -11,5 +11,9 @@ def test_runtimes():
 
 @quail_tester
 def test_func_creation(quail_results: CompilerResult):
-    quail_results.assert_func("abc").matches_args_format(("param1", "int"))
-
+    quail_results.assert_func("abc")\
+        .matches_args_format(("param1", ))\
+        .supports_vec_calls()
+    quail_results.assert_func("gt2") \
+        .supports_tp_calls() \
+        .matches_args_format(("param", "int"), ("param2", ))
