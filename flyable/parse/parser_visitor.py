@@ -550,7 +550,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         elif isinstance(node.func, ast.Name):
             name_call = node.func.id
         else:
-            NotImplementedError("Call func node not supported")
+            raise NotImplementedError("Call func node not supported")
 
         module_prefix = "@flyable@global@module@"
         module_global_func_name = module_prefix + name_call

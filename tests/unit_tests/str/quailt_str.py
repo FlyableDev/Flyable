@@ -40,5 +40,5 @@ world = "World!"
 "Hello " + world + " " + str(42)  # Quail-assert: eq 'Hello World! 42'
 'Hello {} {}'.format(world, 42)  # Quail-assert: eq 'Hello World! 42'
 f"Hello {world} "  # Quail-assert: eq 'Hello World! '
-"%s %s %s" % ('Hello', world, 22)  # Quail-assert: eq 'Hello World! 22'
+"%s %s %s" % ('Hello', world, 42)  # Quail-assert: eq 'Hello World! 22'
 # Quail-test:end

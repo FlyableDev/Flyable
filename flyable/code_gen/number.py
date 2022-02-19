@@ -136,6 +136,7 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
     elif is_number_ternary_func(func_name):
         return builder.load(protocol_result)
     else:
+        print("DWwad")
         raise NotImplementedError("Unsupported call protocol")
 
 

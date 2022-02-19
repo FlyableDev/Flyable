@@ -187,7 +187,6 @@ def cond_op(
     type_left, first_value, type_right, second_value = __convert_type_to_match(
         visitor, op, type_left, first_value, type_right, second_value
     )
-
     if (
             type_left.is_obj()
             or type_left.is_python_obj()
