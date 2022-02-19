@@ -11,5 +11,5 @@ def test_runtimes():
 
 @quail_tester
 def test_func_creation(quail_results: CompilerResult):
-    quail_results.assert_func("abc").has_impl(int)
-    quail_results.assert_func("gt2").has_impl(int, int)
+    quail_results.assert_func("abc").matches_args_format(("param1", "int"))
+

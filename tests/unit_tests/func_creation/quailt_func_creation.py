@@ -10,10 +10,10 @@ Description: test to see if flyable can create functions
 def gt2(param: int, param2):
     return param > 2
 
-def abc(param: int):
-    return param > 2
+def abc(param1: int):
+    return param1 > 2
 
 
-abc(2)
-gt2([1, 2], 12)
+# abc(2)
+# gt2([1, 2], 12)
 # Quail-test:end

@@ -97,8 +97,10 @@ def end_step(step_name: str = None):
 # ###################################### list tools ###################################### #
 
 _T = TypeVar("_T")
+
+
 def find_first(predicate: Callable[[_T], bool], iterable: Iterable[_T]):
-    """Returns the first value that matches in the iterable"""
+    """Returns the first value that matches in the iterable, or None if there was no match"""
     for value in iterable:
         if predicate(value):
             return value
@@ -106,7 +108,7 @@ def find_first(predicate: Callable[[_T], bool], iterable: Iterable[_T]):
 
 
 def find_last(predicate: Callable[[_T], bool], iterable: Iterable[_T]):
-    """Returns the first value that matches in the iterable"""
+    """Returns the first value that matches in the iterable, or None if there was no match"""
     last_match = None
     for value in iterable:
         if predicate(value):
