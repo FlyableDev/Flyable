@@ -79,14 +79,17 @@ Flyable-version: v0.1a1
 Description: Test the divide operator
 """
 # Quail-test:start
-0 / 5 # Quail-assert: eq 0.0
-1 / 10 # Quail-assert: eq 0.1
+0 / 5 # quail-assert: eq 0.0
+-0 / 5 # quail-assert: eq 0.0
 1 / 10.0 # Quail-assert: eq 0.1
 50 / 50 # Quail-assert: eq 1.0
 50.0 / 50 # Quail-assert: eq 1.0
 50 / -50 # Quail-assert: eq -1.0
 -50 / -50 # Quail-assert: eq 1.0
 226 / 25.3 # Quail-assert: eq 8.932806324110672
+
+# Current fails:
+1 / 10 # Quail-assert: eq 0.1
 226 / 25 # Quail-assert: eq 9.04
 # Quail-test:end
 
@@ -124,13 +127,15 @@ Flyable-version: v0.1a1
 Description: Test the modulo operator
 """
 # Quail-test:start
-print(0 % 2)
-print(42 % 2)
-print(3 % 2)
-print(8 % 6)
-print(8 % -6)
-print(-8 % 6)
-print(-8 % -6)
+0 % 2 # Quail-assert: eq 0
+42 % 2 # Quail-assert: eq 0
+3 % 2 # Quail-assert: eq 1
+8 % 6 # Quail-assert: eq 2
+-8 % -6 # Quail-assert: eq -2
+
+# Current fails
+8 % -6 # Quail-assert: eq -4
+-8 % 6 # Quail-assert: eq 4
 # Quail-test:end
 
 
@@ -141,13 +146,13 @@ Flyable-version: v0.1a1
 Description: Test the pow operator
 """
 # Quail-test:start
-print(1 ** 0)
-print(16 ** 0)
-print(-16 ** 0)
-print(2 ** 8)
-print(2 ** -8)
-print(-2 ** 8)
-print(-2 ** -8)
+1 ** 0 # Quail-assert: eq 1
+16 ** 0 # Quail-assert: eq 1
+-16 ** 0 # Quail-assert: eq -1
+2 ** 8 # Quail-assert: eq 256
+-2 ** 8 # Quail-assert: eq -256
+2 ** -8 # Quail-assert: eq 0.00390625
+-2 ** -8 # Quail-assert: eq -0.00390625
 # Quail-test:end
 
 
@@ -158,12 +163,16 @@ Flyable-version: v0.1a1
 Description: Test the pow operator
 """
 # Quail-test:start
-print(0 // 5)
-print(1 // 10)
-print(1 // 10.0)
-print(50 // 50)
-print(40.0 // 50)
-print(40.0 // 50.0)
-print(40 // -50)
-print(-40 // -50)
+0 // 5  # Quail-assert: eq 0
+1 // 10 # Quail-assert: eq 0
+1 // 10.0 # Quail-assert: eq 0.0
+50 // 50 # Quail-assert: eq 1
+40.0 // 50 # Quail-assert: eq 0.0
+40.0 // 50.0 # Quail-assert: eq 0.0
+-40 // -50 # Quail-assert: eq 0
+50.0 // 12.0 # Quail-assert: eq 4.0
+
+# Current fails:
+40 // -50 # Quail-assert: eq -1
+50.0 // -12.0 # Quail-assert: eq -5.0
 # Quail-test:end
