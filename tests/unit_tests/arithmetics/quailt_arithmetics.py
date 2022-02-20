@@ -79,8 +79,8 @@ Flyable-version: v0.1a1
 Description: Test the divide operator
 """
 # Quail-test:start
-0 / 5 # quail-assert: eq 0.0
--0 / 5 # quail-assert: eq 0.0
+0 / 5 # Quail-assert: eq 0.0
+-0 / 5 # Quail-assert: eq 0.0
 1 / 10.0 # Quail-assert: eq 0.1
 50 / 50 # Quail-assert: eq 1.0
 50.0 / 50 # Quail-assert: eq 1.0
