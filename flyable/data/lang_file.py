@@ -22,7 +22,7 @@ class LangFile:
         self.__ast: Union[Module, None] = None
 
     def read_from_path(self, path: str):
-        with open(path) as f:
+        with open(path, 'r', encoding='utf-8') as f:
             self.__path = os.path.abspath(path)
             self.__text = f.read()
 

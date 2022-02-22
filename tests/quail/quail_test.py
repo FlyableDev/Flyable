@@ -35,7 +35,7 @@ class QuailTest:
         if not os.path.exists(temp_working_dir):
             os.makedirs(temp_working_dir)
         function_file_temp_path = f"{temp_working_dir}/{self.file_name}"
-        with open(function_file_temp_path, "w+") as python_file:
+        with open(function_file_temp_path, "w+", encoding="utf-8") as python_file:
             python_file.write("".join(self.lines))
 
         compiler = Compiler()
