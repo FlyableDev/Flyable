@@ -33,11 +33,11 @@ class QuailTest:
     def py_compile(self):
         return compile("".join(self.lines), self.file_name, "exec")
 
-    def fly_compile(self, save_results: bool = False):
+    def fly_compile(self, test_name: str, save_results: bool = False):
         temp_working_dir = self.temp_working_dir
         if not os.path.exists(temp_working_dir):
             os.makedirs(temp_working_dir)
-        function_file_temp_path = f"{temp_working_dir}/{self.file_name}"
+        function_file_temp_path = f"{temp_working_dir}/{test_name}.py"
         with open(function_file_temp_path, "w+") as python_file:
             python_file.write("".join(self.lines))
 
@@ -55,8 +55,8 @@ class QuailTest:
 
         raise CompilationError(compiler.get_errors())
 
-    def fly_exec(self, stdout: StdOut):
-        self.fly_compile()
+    def fly_exec(self, stdout: StdOut, test_name: str):
+        self.fly_compile(test_name)
         linker_args = [
             "gcc",
             "-flto",
