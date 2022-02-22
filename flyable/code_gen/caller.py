@@ -20,7 +20,7 @@ from flyable.parse.parser_visitor import ParserVisitor
 
 
 def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int],
-             args_type: list[lang_type.LangType], optional=False,
+             args_type: list[lang_type.LangType], kwargs: dict[int, int], optional=False,
              protocol=True, shortcuts=True) -> tuple[lang_type.LangType | None, int | None]:
     """
     Call a method independent from the called type.
@@ -64,7 +64,7 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
                 visitor.get_code_gen(), visitor.get_builder(), obj, obj_type
             )
         # the args for the different handlers
-        handlers_args = [visitor, func_name, obj, obj_type, args, args_type]
+        handlers_args = [visitor, func_name, obj, obj_type, args, args_type, kwargs]
         nb_args = len(args)
 
         # Maybe there is a shortcut available to skip the python call
@@ -139,7 +139,7 @@ def _handle_ternary_number_protocol(visitor: ParserVisitor, func_name: str, obj:
     )
 
 
-def _handle_default(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType]):
+def _handle_default(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType], kwargs: dict[int, int]):
     py_args = copy.copy(args)
     args_type = copy.copy(args_type)
 
@@ -150,13 +150,13 @@ def _handle_default(visitor: ParserVisitor, func_name: str, obj: int, obj_type: 
 
     return_type = lang_type.get_python_obj_type()
     return_type.add_hint(hint.TypeHintRefIncr())
-    result = return_type, generate_python_call(visitor, obj, func_name, py_args)
+    result = return_type, generate_python_call(visitor, obj, func_name, py_args, kwargs)
     ref_counter.ref_decr_multiple_incr(visitor, args_type, py_args)
     return result
 
 
 # https://docs.python.org/3/c-api/method.html
-def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args: list[int]):
+def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args: list[int], kwargs: dict[int, int]):
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
 
     # the found attribute is the callable function
@@ -183,13 +183,13 @@ def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args:
     builder.cond_br(can_vec, vector_call_block, tp_call_block)
 
     builder.set_insert_block(vector_call_block)
-    vec_result = function.call_py_func_vec_call(visitor, obj, func_to_call, args, vector_call_ptr)
+    vec_result = function.call_py_func_vec_call(visitor, obj, func_to_call, args, kwargs, vector_call_ptr)
     builder.store(vec_result, call_result_var)
     continue_block = builder.create_block("After Call")
     builder.br(continue_block)
 
     builder.set_insert_block(tp_call_block)
-    tp_result = function.call_py_func_tp_call(visitor, obj, func_to_call, args)
+    tp_result = function.call_py_func_tp_call(visitor, obj, func_to_call, args, kwargs)
     builder.store(tp_result, call_result_var)
     builder.br(continue_block)
 
@@ -198,8 +198,8 @@ def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args:
     result = builder.load(call_result_var)
     ref_counter.ref_decr(visitor, lang_type.get_python_obj_type(), func_to_call)
 
-    #excp.py_runtime_print_error(code_gen, builder)
-    #excp.check_excp(visitor, result)
+    excp.py_runtime_print_error(code_gen, builder)
+    excp.check_excp(visitor, result)
 
     return result
 
