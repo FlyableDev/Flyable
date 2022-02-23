@@ -817,6 +817,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             self.__last_value = self.__builder.load(self.__last_value)
         elif isinstance(node.value, bytes):
             self.__last_type = lang_type.get_python_obj_type()
+            self.__last_type.add_hint(hint.TypeHintRefIncr())
             self.__last_value = flyable.code_gen.runtime.create_bytes_object(self.__code_gen, self.__builder, node.value)
         elif node.value is None:
             self.__last_type = lang_type.get_none_type()
