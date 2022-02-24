@@ -32,10 +32,14 @@ Const value hints
 """
 
 
-def is_const_type(lang_type: LangType, const_type: type):
+def is_const_type(lang_type: LangType, const_type: type | str):
     found_hint = get_lang_type_contained_hint_type(lang_type, TypeHintConstValue)
     if found_hint is not None:
-        return isinstance(found_hint.get_value(), const_type)
+        if isinstance(const_type, type):
+            return isinstance(found_hint.get_value(), const_type)
+        else:
+            cls = found_hint.get_value().__class__
+            return f"{cls.__module__}.{cls.__name__}" == const_type
     return False
 
 

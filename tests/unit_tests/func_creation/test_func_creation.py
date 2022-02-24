@@ -22,4 +22,4 @@ def test_func_creation(quail_results: CompilerResult):
 @quail_tester
 def test_variable(quail_results: CompilerResult):
     """variable"""
-    quail_results.assert_var("b").is_of_type(int)
+    quail_results.assert_var("b").is_of_type(list)

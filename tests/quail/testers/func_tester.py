@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 from flyable.data import lang_type
 from flyable.data.comp_data import CompData
@@ -112,8 +113,10 @@ class FunctionTester:
         )
         return self
 
-    def in_class(self, class_name: str):
+    def in_class(self, class_name: Optional[str]):
         cls = self.func.get_class()
+        if class_name is None and cls is None:
+            return self
         assert (
                 cls is not None
         ), f"{self.__msg_err} is not defined in class {class_name!r}"

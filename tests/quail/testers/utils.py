@@ -15,10 +15,11 @@ _primitive_types = {
 }
 
 
-def into_lang_type(arg_type: type):
-    if arg_type.__name__ not in _primitive_types:
-        return lang_type.get_python_obj_type(hint.TypeHintPythonType(arg_type.__name__))
-    return _primitive_types[arg_type.__name__]
+def into_lang_type(arg_type: type | str):
+    name = arg_type.__name__ if isinstance(arg_type, type) else arg_type
+    if name not in _primitive_types:
+        return lang_type.get_python_obj_type(hint.TypeHintPythonType(name))
+    return _primitive_types[name]
 
 
 def into_type(arg_type: LangType):

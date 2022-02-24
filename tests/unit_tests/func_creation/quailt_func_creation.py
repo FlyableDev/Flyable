@@ -18,7 +18,7 @@ def gt2(param: int, param2):
 # Quail-test:end
 
 
-# Quail-test:new compile
+# Quail-test:new
 """
 Name: variable
 Flyable-version: v0.1a1
@@ -26,6 +26,6 @@ Description: test vars
 """
 # Quail-test:start
 
-b = 12
+b = ["123"]
 
 # Quail-test:end
