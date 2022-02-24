@@ -7,7 +7,7 @@ Flyable-version: v0.1a1
 Description: Test the equality between two integers
 """
 # Quail-test:start
-print(15 == 15)
+15 == 15  # Quail-assert:True
 # Quail-test:end
 
 

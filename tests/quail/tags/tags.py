@@ -94,7 +94,7 @@ def __indented(func):
     def inner(match: re.Match, test: QuailTestParser):
         indent = get_indent(match.group(1))
         line = func(match, test)
-        return "\n".join(indent + line for line in line.split("\n")[:-1])
+        return "\n".join(indent + line for line in line.split("\n"))
 
     return inner
 
