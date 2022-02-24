@@ -397,7 +397,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         elif isinstance(node.ctx, Store):  # not found so declaring a variable
             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
             if self.__func.get_parent_func().is_global():
-                var_name = "@global@var" + self.__func.get_parent_func().get_file().get_path()
+                var_name = f"@global@var@{found_var.get_name()}@{self.__func.get_parent_func().get_file().get_path()}"
                 new_global_var = gen.GlobalVar(var_name, self.__assign_type.to_code_type(self.__code_gen))
                 found_var.set_code_gen_value(new_global_var)
                 found_var.set_global(True)
