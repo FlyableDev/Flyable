@@ -5,7 +5,6 @@ import platform
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, TypeAlias, Optional
 
-from sympy import true
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_writer as _writer
 import flyable.code_gen.library_loader as loader

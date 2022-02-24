@@ -118,28 +118,32 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
         )
 
 
-def _handle_binary_number_protocol(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType]):
+def _handle_binary_number_protocol(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType,
+                                   args: list[int], args_type: list[lang_type.LangType]):
     instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
     return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), num.call_number_protocol(
         visitor, func_name, obj_type, obj, instance_type, args_type, args
     )
 
 
-def _handle_inquiry_number_protocol(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType]):
+def _handle_inquiry_number_protocol(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType,
+                                    args: list[int], args_type: list[lang_type.LangType]):
     instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
     return lang_type.get_bool_type(), num.call_number_protocol(
         visitor, func_name, obj_type, obj, instance_type, args_type, args
     )
 
 
-def _handle_ternary_number_protocol(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType]):
+def _handle_ternary_number_protocol(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType,
+                                    args: list[int], args_type: list[lang_type.LangType]):
     instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
     return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), num.call_number_protocol(
         visitor, func_name, obj_type, obj, instance_type, args_type, args
     )
 
 
-def _handle_default(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int], args_type: list[lang_type.LangType], kwargs: dict[int, int]):
+def _handle_default(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int],
+                    args_type: list[lang_type.LangType], kwargs: dict[int, int]):
     py_args = copy.copy(args)
     args_type = copy.copy(args_type)
 
@@ -169,7 +173,8 @@ def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args:
     tp_flag = function.py_obj_type_get_tp_flag_ptr(visitor, callable_type)
     tp_flag = builder.load(tp_flag)
 
-    has_vector_call_tpflag = builder._and(tp_flag, builder.const_int32(2048))  # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
+    has_vector_call_tpflag = builder._and(tp_flag, builder.const_int32(
+        2048))  # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
 
     can_vec_based_on_flag = builder.ne(has_vector_call_tpflag, builder.const_int32(0))
     vector_call_ptr = function.get_vector_call_ptr(visitor, callable_type)
@@ -198,8 +203,7 @@ def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args:
     result = builder.load(call_result_var)
     ref_counter.ref_decr(visitor, lang_type.get_python_obj_type(), func_to_call)
 
-    excp.py_runtime_print_error(code_gen, builder)
+    # excp.py_runtime_print_error(code_gen, builder)
     excp.check_excp(visitor, result)
 
     return result
-

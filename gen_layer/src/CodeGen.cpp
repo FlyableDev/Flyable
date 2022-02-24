@@ -717,7 +717,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                             if(func->getReturnType() == llvm::Type::getVoidTy(mContext))
                                 mBuilder.CreateRetVoid();
                             else
-                                mBuilder.CreateRet(getNull(func->getType()));
+                                mBuilder.CreateRet(getNull(func->getReturnType()));
                         }
                         break;
 
