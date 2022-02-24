@@ -92,6 +92,7 @@ def ref_decr(visitor: ParserVisitor, value_type: LangType, value: int):
 
     builder.set_insert_block(dealloc_block)
     if value_type.is_python_obj():  # Python objects sometime check to make sure that the ref count is zero
+        # So we put it to zero to avoid generate an error
         builder.store(builder.const_int64(0), ref_ptr)
 
     if value_type.is_obj():

@@ -927,8 +927,10 @@ llvm::CallingConv::ID CodeGen::readConv(FormatReader& reader)
     int conv = reader.readInt32();
     if(conv == 1)
         return llvm::CallingConv::C;
-    else
+    else if(conv == 2)
         return llvm::CallingConv::Fast;
+    else
+        return llvm::CallingConv::X86_VectorCall;
 }
 
 llvm::GlobalValue::LinkageTypes CodeGen::readLinkage(FormatReader& reader)
