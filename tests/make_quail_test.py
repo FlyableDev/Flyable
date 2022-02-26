@@ -5,6 +5,9 @@ from tests.quail.utils.trim import trim
 from flyable import FLYABLE_VERSION
 
 
+
+
+
 def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
     """Creates a new folder with a body_<x>.py and a test_<x>.py file for Quail"""
     path = f"./unit_tests/{name}"
@@ -53,6 +56,10 @@ def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
     print(u"Done! 🥳")
 
 
+def add_test_to_test_suite(test_suite_name: str, test_name: str):
+    pass
+
+
 def create_new_quail_test():
     """
     In an already existing Quail test suite, creates a new Quail test in body_<x>.py
@@ -87,6 +94,10 @@ def handle_new(command_args: list[str]) -> Optional[dict]:
     return {"name": name, "add_place_holder_test": add_place_holder_test}
 
 
+def handle_add(command_args: list[str]):
+    """"""
+
+
 def cli():
     command: str
     command_args: list[str]
@@ -105,9 +116,11 @@ def cli():
             return
         print("New Quail test suite description:")
         print("\n".join(f"- {name} = {value}" for name, value in result.items()))
-        choice = input(
-            "Do you want to proceed to create Quail test suite with those informations ([Y], N): "
-        )
+        while choice := input(
+                "Do you want to proceed to create Quail test suite with those informations ([Y], N): "
+        ).lower() not in ("y", "n"):
+            print(f"Invalid choice {choice}")
+            choice = input()
         if choice.lower() != "n":
             create_new_quail_test_suite(**result)
             return
