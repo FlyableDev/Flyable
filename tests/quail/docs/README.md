@@ -132,23 +132,28 @@ In the same folder as this file must be a test_<x>.py file from which the tests 
 
 ## How can I make my own?
 
-Let's say I want to write a new test suite to test how _Flyable_ handles **lists** with Quail.
+Let's say I want to write a new test suite to test how _Flyable_ handles **lists** with Quail.  
+First, we will see how to add a new quail test suite  
+Second, we will see how to add a new quail test to a quail test suite
 
-There are two ways of doing this, one automatically and one manually
+### Adding a New Quail Test Suite
 
-### Automatically
+1. Open your terminal and enter the command `venv\Scripts\activate.bat` if you have a Windows
+   and `venv/Scripts/activate` if you have a Mac or a Linux distro
+2. In the same terminal, enter the command `pip install --editable .`
+3. If all went well, you should now be able to use the Quail cli from your terminal
+4. To go back to my example, I'm gonna make a new quail test suite nammed 'list' by typing `Quail new list`
+5. I answer the prompts Quail shows me (you can also directly put your values in the command, see `Quail new --help`)
+6. Done! 🥳
 
-1. I go to the folder _Flyable/tests/_ and run the _make_quail_test.py_ file
-2. I use the Quail cli
-   > |Quail> new liste  
-   > Do you want to proceed to create Quail test suite with those informations ([Y], N)  
-   > name = liste  
-   > add_place_holder_test = True   
-   > |Quail> y  
-   > Done!
-3. I go to the folder _Flyable/tests/unit_tests/liste/quailt_liste.py_ to write my Quail tests
-4. I go to the folder _Flyable/tests/unit_tests/liste/test_liste.py_ to run the Quail test I wrote using pytest
+#### Adding a Test to an Existing Quail Test Suite
 
+1. If you haven't done so already, do the steps 1 and 2 from
+   [adding a new quail test suite](#adding-a-test-to-an-existing-quail-test-suite)
+2. To go back to my example, I'm gonna add a new test called 'creating_lists' by
+   typing `Quail add list --test_name creating_lists`
+3. I answer the prompts Quail shows me (you can also directly put your values in the command, see `Quail add --help`)
+4. Done! 🥳
 
 
 
