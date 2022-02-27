@@ -54,7 +54,7 @@ def quail_tester(func: Callable):
             kwargs["quail_test"] = kwargs["quail_test"][quail_test_name]
 
         if "quail_results" in kwargs and quail_test_in("quail_results"):
-            kwargs["quail_results"] = kwargs["quail_results"][quail_test_name].fly_compile(quail_test_name, save_results=True).results
+            kwargs["quail_results"] = kwargs["quail_results"][quail_test_name].fly_compile(save_results=True).results
         return func(*args, **kwargs)
 
     return inner
@@ -91,7 +91,7 @@ def quail_runtimes_tester(
                 warnings.append((test.name, py_result))
 
             try:
-                fly_result = test.fly_exec(stdout, test.name).split("\n")
+                fly_result = test.fly_exec(stdout).split("\n")
                 if fly_result[-1] == "" and py_result[-1] == "":
                     fly_result = fly_result[:-1]
                     py_result = py_result[:-1]
@@ -127,7 +127,7 @@ def get_quail_tests(dir_name: str, current_file_path: str) -> dict:
     current_file_name = path.basename(current_file_path)[:-3]
     test_quailt_file_name = "quailt_" + current_file_name.split("_", 1)[1] + ".py"
     test_quailt_file_path = (
-            dir_name + "/" + path.dirname(current_file_path) + test_quailt_file_name
+            dir_name + "/" + test_quailt_file_name
     )
     parsed_tests = parse_quailt_file(test_quailt_file_path)
 
