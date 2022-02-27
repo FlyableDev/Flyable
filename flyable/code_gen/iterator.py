@@ -51,7 +51,7 @@ def call_iter_next(visitor: ParserVisitor, obj: int):
     builder.br(continue_block)
 
     builder.set_insert_block(normal_call_block)
-    builder.store(caller.call_obj(visitor, "__next__", obj, lang_type.get_python_obj_type(), [], [], False, False)[1],
+    builder.store(caller.call_obj(visitor, "__next__", obj, lang_type.get_python_obj_type(), [], [], {}, False, False)[1],
                   result)
     builder.br(continue_block)
 
@@ -87,7 +87,7 @@ def call_iter_iter(visitor: ParserVisitor, obj: int):
 
     builder.set_insert_block(normal_call_block)
     builder.store(
-        caller.call_obj(visitor, "__iter__", obj, lang_type.get_python_obj_type(), [], [], False, False)[1], result)
+        caller.call_obj(visitor, "__iter__", obj, lang_type.get_python_obj_type(), [], [], {}, False, False)[1], result)
     builder.br(continue_block)
     builder.set_insert_block(continue_block)
     return builder.load(result)

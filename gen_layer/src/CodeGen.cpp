@@ -717,7 +717,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                             if(func->getReturnType() == llvm::Type::getVoidTy(mContext))
                                 mBuilder.CreateRetVoid();
                             else
-                                mBuilder.CreateRet(getNull(func->getType()));
+                                mBuilder.CreateRet(getNull(func->getReturnType()));
                         }
                         break;
 
@@ -927,8 +927,10 @@ llvm::CallingConv::ID CodeGen::readConv(FormatReader& reader)
     int conv = reader.readInt32();
     if(conv == 1)
         return llvm::CallingConv::C;
-    else
+    else if(conv == 2)
         return llvm::CallingConv::Fast;
+    else
+        return llvm::CallingConv::X86_VectorCall;
 }
 
 llvm::GlobalValue::LinkageTypes CodeGen::readLinkage(FormatReader& reader)

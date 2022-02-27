@@ -101,6 +101,7 @@ def bin_op(
             type_left,
             args,
             args_types,
+            {}
         )
         return result
 
@@ -224,6 +225,7 @@ def cond_op(
             type_left,
             args,
             args_types,
+            {}
         )
 
     # the binary conditionnal operator we want to apply
@@ -318,7 +320,7 @@ def unary_op(visitor: ParserVisitor, type, value, node):
         args_types = [type]
         args = [value]
         return caller.call_obj(
-            visitor, parse_op.get_op_func_call(node.op), value, type, args, args_types
+            visitor, parse_op.get_op_func_call(node.op), value, type, args, args_types, {}
         )
     if isinstance(node.op, ast.Not):
         return unary_op_not(visitor, type, value)
@@ -334,7 +336,7 @@ def unary_op_not(visitor, type, value):
     if type.is_obj() or type.is_python_obj() or type.is_collection():
         args_types = [type]
         args = [value]
-        return caller.call_obj(visitor, "__not__", value, type, args, args_types)
+        return caller.call_obj(visitor, "__not__", value, type, args, args_types, {})
 
     builder = visitor.get_builder()
     bool_type = lang_type.get_bool_type()
@@ -356,7 +358,7 @@ def unary_op_invert(visitor, type, value, node):
     if type.is_obj() or type.is_python_obj() or type.is_collection():
         args_types = [type]
         args = [value]
-        return caller.call_obj(visitor, "__not__", value, type, args, args_types)
+        return caller.call_obj(visitor, "__not__", value, type, args, args_types, {})
     elif type.is_int():
         one_value = visitor.get_builder().const_int64(1)
         one_type = lang_type.get_int_type()
@@ -395,7 +397,7 @@ def unary_op_uadd(visitor, type, value):
     if type.is_obj() or type.is_python_obj() or type.is_collection():
         args_types = [type]
         args = [value]
-        return caller.call_obj(visitor, "__pos__", value, type, args, args_types)
+        return caller.call_obj(visitor, "__pos__", value, type, args, args_types, {})
     elif type.is_int():
         return type, value
     elif type.is_dec():
@@ -409,7 +411,7 @@ def unary_op_usub(visitor, type, value):
     if type.is_obj() or type.is_python_obj() or type.is_collection():
         args_types = [type]
         args = [value]
-        return caller.call_obj(visitor, "__neg__", value, type, args, args_types)
+        return caller.call_obj(visitor, "__neg__", value, type, args, args_types, {})
     elif type.is_int():
         return lang_type.get_int_type(), visitor.get_builder().neg(value)
     elif type.is_dec():
@@ -434,7 +436,7 @@ def bool_op_and(visitor, left_type, left_value, right_type, right_value):
         args_types = [right_type]
         args = [right_value]
         return caller.call_obj(
-            visitor, "__and__", left_value, left_type, args, args_types
+            visitor, "__and__", left_value, left_type, args, args_types, {}
         )
     elif left_type.is_primitive():
         return lang_type.get_bool_type(), visitor.get_builder()._and(
@@ -448,7 +450,7 @@ def bool_op_and(visitor, left_type, left_value, right_type, right_value):
     ):
         types = [right_type]
         values = [right_value]
-        return caller.call_obj(visitor, "__and__", left_value, left_type, values, types)
+        return caller.call_obj(visitor, "__and__", left_value, left_type, values, types, {})
     else:
         raise NotImplementedError()
 
@@ -458,7 +460,7 @@ def bool_op_or(visitor, left_type, left_value, right_type, right_value):
         args_types = [right_type]
         args = [right_value]
         return caller.call_obj(
-            visitor, "__or__", left_value, left_type, args, args_types
+            visitor, "__or__", left_value, left_type, args, args_types, {}
         )
     elif left_type.is_primitive():
         return lang_type.get_bool_type(), visitor.get_builder()._or(
@@ -472,6 +474,6 @@ def bool_op_or(visitor, left_type, left_value, right_type, right_value):
     ):
         types = [right_type]
         values = [right_value]
-        return caller.call_obj(visitor, "__or__", left_value, left_type, values, types)
+        return caller.call_obj(visitor, "__or__", left_value, left_type, values, types, {})
     else:
         raise NotImplementedError()

@@ -6,7 +6,7 @@ from tests.quail.parser.quail_test_parser import QuailTestParser
 def parse_quailt_file(file_path: str):
     test_parser = QuailTestParser(path.basename(file_path))
 
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
     for line in lines:

@@ -69,7 +69,7 @@ def test_obj_true(visitor: ParserVisitor, value_type: lang_type.LangType, value:
 
     builder.set_insert_block(test_true_with_call_block)
 
-    cond_type, cond_value = caller.call_obj(visitor, "__bool__", value, value_type, [], [])
+    cond_type, cond_value = caller.call_obj(visitor, "__bool__", value, value_type, [], [], {})
     if cond_type is None or cond_value is None: 
         raise Exception("Could not test object thruthy value")
 

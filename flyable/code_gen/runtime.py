@@ -19,12 +19,22 @@ Module to call runtimes functions
 """
 
 
+def create_bytes_object(code_gen: CodeGen, builder: CodeBuilder, byte_str: bytes):
+    str_ptr = builder.ptr_cast(builder.global_str(byte_str.decode('utf-8')), code_type.get_int8_ptr())
+    pybytes_from_object = code_gen.get_or_create_func("PyBytes_FromString",
+                                                      code_type.get_py_obj_ptr(code_gen),
+                                                      [CodeType(CodeType.CodePrimitive.INT8).get_ptr_to()],
+                                                      _code_gen.Linkage.EXTERNAL)
+    return builder.call(pybytes_from_object, [str_ptr])
+
+
 def create_unicode(code_gen: CodeGen, builder: CodeBuilder, str: int):
     """
     Generate an external call to the python function to create a string
     """
-    from_string = code_gen.get_or_create_func("PyUnicode_FromString", CodeType(CodeType.CodePrimitive.INT8).get_ptr_to(),
-    [CodeType(CodeType.CodePrimitive.INT8).get_ptr_to()])
+    from_string = code_gen.get_or_create_func("PyUnicode_FromString",
+                                              CodeType(CodeType.CodePrimitive.INT8).get_ptr_to(),
+                                              [CodeType(CodeType.CodePrimitive.INT8).get_ptr_to()])
     return builder.call(from_string, [str])
 
 
@@ -61,6 +71,7 @@ def py_runtime_object_print(code_gen: CodeGen, builder: CodeBuilder, obj: int):
     print_func = code_gen.get_or_create_func("__flyable__print", code_type.get_int32(),
                                              [code_type.get_py_obj_ptr(code_gen)], _code_gen.Linkage.EXTERNAL)
     return builder.call(print_func, [obj])
+
 
 def value_to_pyobj(code_gen: CodeGen, builder: CodeBuilder, value: int, value_type: LangType):
     result_type = lang_type.get_python_obj_type()

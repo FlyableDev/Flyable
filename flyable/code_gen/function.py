@@ -5,6 +5,7 @@ import flyable.code_gen.exception as excp
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.tuple as tuple_call
+import flyable.code_gen.dict as dict_call
 import flyable.code_gen.type as gen_type
 import flyable.code_gen.debug as debug
 import flyable.code_gen.ref_counter as ref_counter
@@ -38,13 +39,14 @@ def get_vector_call_ptr(visitor: ParserVisitor, python_callable: int):
     return builder.load(vector_call_ptr)
 
 
-def call_py_func_vec_call(visitor: ParserVisitor, obj: int, func_to_call: int, args: list[int], vector_call_ptr: int):
+def call_py_func_vec_call(visitor: ParserVisitor, obj: int, func_to_call: int, args: list[int], kwargs: dict[int, int],
+                          vector_call_ptr: int):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
     # Allocate memory for the args on the stack so it's much faster
     args_stack_memory = visitor.generate_entry_block_var(
-        code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), len(args) + 1))
+        code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), len(args) + len(kwargs) + 1))
     builder.store(obj, builder.gep(args_stack_memory, builder.const_int32(0), builder.const_int32(0)))
     # Python docs recommend the use of the offset for more efficient call
     args_stack_memory = builder.gep(args_stack_memory, builder.const_int32(0), builder.const_int32(1))
@@ -54,29 +56,47 @@ def call_py_func_vec_call(visitor: ParserVisitor, obj: int, func_to_call: int, a
         arg_gep = builder.gep2(args_stack_memory, code_type.get_py_obj_ptr(code_gen), [builder.const_int32(i)])
         builder.store(arg, arg_gep)
 
+    for i, kwarg in enumerate(kwargs.values()):
+        kwarg_gep = builder.gep2(args_stack_memory, code_type.get_py_obj_ptr(code_gen), [builder.const_int32(i + len(args))])
+        builder.store(kwarg, kwarg_gep)
+
     # Cast the stack memory to simplify the type
     args_stack_memory = builder.ptr_cast(args_stack_memory, code_type.get_py_obj_ptr(code_gen).get_ptr_to())
 
     # nargs is the size of the arguments with the PY_VECTORCALL_ARGUMENTS_OFFSET
     arguments_offset = builder.const_int64(-9223372036854775808)
     nargs = builder._or(builder.const_int64(len(args)), arguments_offset)
-    vec_args = [func_to_call, args_stack_memory, nargs, builder.const_null(code_type.get_py_obj_ptr(code_gen))]
+
+    if kwargs:
+        kw_names = tuple_call.python_tuple_new_alloca(visitor, len(kwargs))
+        for i, key in enumerate(kwargs.keys()):
+            tuple_call.python_tuple_set_unsafe(visitor, kw_names, i, key)
+    else:
+        kw_names = builder.const_null(code_type.get_py_obj_ptr(code_gen))
+
+    vec_args = [func_to_call, args_stack_memory, nargs, kw_names]
 
     result = builder.call_ptr(vector_call_ptr, vec_args)
+
     return result
 
 
-def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, args: list[int]):
+def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, args: list[int], kwargs: dict[int, int]):
     """
     Call a python function using the tp_call convention
     """
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
     arg_list = tuple_call.python_tuple_new_alloca(visitor, len(args))
+    kwargs_list = builder.const_null(code_type.get_py_obj_ptr(code_gen))
+
     for i, e in enumerate(args):
         tuple_call.python_tuple_set_unsafe(visitor, arg_list, i, e)
 
-    kwargs = builder.const_null(code_type.get_py_obj_ptr(code_gen))  # Null kwargs
+    if kwargs:
+        kwargs_list = dict_call.python_dict_new(visitor)
+        for k, v in kwargs.items():
+            dict_call.python_dict_set_item(visitor, kwargs_list, k, v)
 
     func_to_call_type = fly_obj.get_py_obj_type(visitor.get_builder(), func_to_call)
 
@@ -86,7 +106,7 @@ def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, ar
     ty_call_ptr = builder.ptr_cast(tp_call_ptr,
                                    code_type.get_func(code_type.get_py_obj_ptr(code_gen), args_types).get_ptr_to())
 
-    tp_args = [func_to_call, arg_list, kwargs]
+    tp_args = [func_to_call, arg_list, kwargs_list]
 
     result = builder.call_ptr(ty_call_ptr, tp_args)
 

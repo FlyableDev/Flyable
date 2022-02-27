@@ -103,7 +103,7 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
         builder.store(builder.const_int32(0), protocol_result)
     elif is_number_ternary_func_valid(func_name, args_size):
         basic_call_type, basic_call_value = caller.call_obj(visitor, func_name, obj, obj_type, num_call_args,
-                                                            num_call_args_types, False, False, False)
+                                                            num_call_args_types, {}, False, False, False)
         if basic_call_value is None: 
             raise Exception("Could not call pow protocol")
         builder.store(basic_call_value, protocol_result)
@@ -115,6 +115,7 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
             obj_type,
             num_call_args,
             num_call_args_types,
+            {},
             False,
             False,
         )
@@ -136,6 +137,7 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
     elif is_number_ternary_func(func_name):
         return builder.load(protocol_result)
     else:
+        print("DWwad")
         raise NotImplementedError("Unsupported call protocol")
 
 

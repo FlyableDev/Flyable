@@ -119,7 +119,7 @@ class CodeBuilder:
     def _and(self, v1: int, v2: int):
         return self.__make_op(12, v1, v2)
 
-    def _or(self, v1, v2):
+    def _or(self, v1: int, v2: int):
         """
         Or operator
         """

@@ -33,7 +33,7 @@ def parse_for_loop(node, visitor):
             # Call the range object from the builtins module
             builtins_module = builder.load(builder.global_var(code_gen.get_build_in_module()))
             iter_type, iter_value = caller.call_obj(visitor, "range", builtins_module, lang_type.get_python_obj_type(),
-                                                    args_values, args_types)
+                                                    args_values, args_types, {})
             __for_loop_with_iterators(node, visitor, iter_type, iter_value)
     else:
         iter_type, iter_value = visitor.visit_node(node.iter)
@@ -124,12 +124,12 @@ def __for_loop_with_iterators(node, visitor, iter_type, iter_value):
         new_var = visitor.get_func().get_context().add_var(name, iter_type)
         alloca_value = visitor.generate_entry_block_var(iter_type.to_code_type(code_gen))
         new_var.set_code_gen_value(alloca_value)
-    iterable_type, iterator = caller.call_obj(visitor, "__iter__", iter_value, iter_type, [], [])
+    iterable_type, iterator = caller.call_obj(visitor, "__iter__", iter_value, iter_type, [], [], {})
 
     builder.br(block_for)
     builder.set_insert_block(block_for)
 
-    next_type, next_value = caller.call_obj(visitor, "__next__", iterator, iterable_type, [], [])
+    next_type, next_value = caller.call_obj(visitor, "__next__", iterator, iterable_type, [], [], {})
 
     if not hint.is_incremented_type(next_type):
         ref_counter.ref_incr(builder, next_type, next_value)

@@ -7,7 +7,10 @@ Flyable-version: v0.1a1
 Description: Test the equality between two integers
 """
 # Quail-test:start
-print(15 == 15)
+15 == 15 # Quail-assert: eq True
+10 == 15 # Quail-assert: eq False
+0 == 1 # Quail-assert: eq False
+1 == -1 # Quail-assert: eq False
 # Quail-test:end
 
 
@@ -21,30 +24,32 @@ Description: Test the addition operator
 0 + 0  # Quail-assert: eq 0
 0 + 1  # Quail-assert: eq 1
 1 + 1  # Quail-assert: eq 2
-import sys
+from sys import maxsize
 
-MAX_INT = sys.maxsize
-MAX_INT + 0  # Quail-assert: eq MAX_INT
-10000000000000 + 10000000000000   # Quail-assert: -
+maxsize + 0  # Quail-assert: eq maxsize
+0 + maxsize  # Quail-assert: eq maxsize
+10000000000000 + 10000000000000   # Quail-assert: eq 20000000000000
 # Quail-test:end
 
 
 # Quail-test:new
 """
-Name: substraction
+Name: subtraction
 Flyable-version: v0.1a1
 Description: Test the subtraction operator
 """
 # Quail-test:start
-print(0 - 0)
-print(0 - 1)
-print(1 - 0)
-print(1 - 1)
-import sys
+0 - 0 # Quail-assert: eq 0
+0 - 1 # Quail-assert: eq -1
+1 - 0 # Quail-assert: eq 1
+1 - 1 # Quail-assert: eq 0
+1 - -1 # Quail-assert: eq 2
+1 - +1 # Quail-assert: eq 0
+-1 - -1 # Quail-assert: eq 0
+-1 - +1 # Quail-assert: eq -2
++1 - +1 # Quail-assert: eq 0
 
-MAX_INT = sys.maxsize
-print(0 - MAX_INT)
-print(51004 - 2414423)
+51004 - 2414423 # Quail-assert: eq -2363419
 # Quail-test:end
 
 
@@ -56,11 +61,14 @@ Description: Test the multiplication operator
 """
 # Quail-test:start
 
-print(0 * 0)
-print(5 * 0)
-print(120 * 32)
-print(50 * -50)
-print(-50 * -50)
+0 * 0 # Quail-assert: eq 0
+5 * 0 # Quail-assert: eq 0
+1 * -1 # Quail-assert: eq -1
+-1 * 1 # Quail-assert: eq -1
+-1 * -1 # Quail-assert: eq 1
+120 * 32 # Quail-assert: eq 3840
+50 * -50 # Quail-assert: eq -2500
+-50 * -50 # Quail-assert: eq 2500
 # Quail-test:end
 
 
@@ -71,14 +79,18 @@ Flyable-version: v0.1a1
 Description: Test the divide operator
 """
 # Quail-test:start
-print(0 / 5)
-print(1 / 10)
-print(1 / 10.0)
-print(50 / 50)
-print(50.0 / 50)
-print(50.0 / 50.0)
-print(50 / -50)
-print(-50 / -50)
+0 / 5 # Quail-assert: eq 0.0
+-0 / 5 # Quail-assert: eq 0.0
+1 / 10.0 # Quail-assert: eq 0.1
+50 / 50 # Quail-assert: eq 1.0
+50.0 / 50 # Quail-assert: eq 1.0
+50 / -50 # Quail-assert: eq -1.0
+-50 / -50 # Quail-assert: eq 1.0
+226 / 25.3 # Quail-assert: eq 8.932806324110672
+
+# Current fails:
+1 / 10 # Quail-assert: eq 0.1
+226 / 25 # Quail-assert: eq 9.04
 # Quail-test:end
 
 
@@ -115,13 +127,15 @@ Flyable-version: v0.1a1
 Description: Test the modulo operator
 """
 # Quail-test:start
-print(0 % 2)
-print(42 % 2)
-print(3 % 2)
-print(8 % 6)
-print(8 % -6)
-print(-8 % 6)
-print(-8 % -6)
+0 % 2 # Quail-assert: eq 0
+42 % 2 # Quail-assert: eq 0
+3 % 2 # Quail-assert: eq 1
+8 % 6 # Quail-assert: eq 2
+-8 % -6 # Quail-assert: eq -2
+
+# Current fails
+8 % -6 # Quail-assert: eq -4
+-8 % 6 # Quail-assert: eq 4
 # Quail-test:end
 
 
@@ -132,13 +146,13 @@ Flyable-version: v0.1a1
 Description: Test the pow operator
 """
 # Quail-test:start
-print(1 ** 0)
-print(16 ** 0)
-print(-16 ** 0)
-print(2 ** 8)
-print(2 ** -8)
-print(-2 ** 8)
-print(-2 ** -8)
+1 ** 0 # Quail-assert: eq 1
+16 ** 0 # Quail-assert: eq 1
+-16 ** 0 # Quail-assert: eq -1
+2 ** 8 # Quail-assert: eq 256
+-2 ** 8 # Quail-assert: eq -256
+2 ** -8 # Quail-assert: eq 0.00390625
+-2 ** -8 # Quail-assert: eq -0.00390625
 # Quail-test:end
 
 
@@ -149,12 +163,16 @@ Flyable-version: v0.1a1
 Description: Test the pow operator
 """
 # Quail-test:start
-print(0 // 5)
-print(1 // 10)
-print(1 // 10.0)
-print(50 // 50)
-print(40.0 // 50)
-print(40.0 // 50.0)
-print(40 // -50)
-print(-40 // -50)
+0 // 5  # Quail-assert: eq 0
+1 // 10 # Quail-assert: eq 0
+1 // 10.0 # Quail-assert: eq 0.0
+50 // 50 # Quail-assert: eq 1
+40.0 // 50 # Quail-assert: eq 0.0
+40.0 // 50.0 # Quail-assert: eq 0.0
+-40 // -50 # Quail-assert: eq 0
+50.0 // 12.0 # Quail-assert: eq 4.0
+
+# Current fails:
+40 // -50 # Quail-assert: eq -1
+50.0 // -12.0 # Quail-assert: eq -5.0
 # Quail-test:end
