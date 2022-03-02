@@ -3,7 +3,7 @@ import os
 from tests.quail.utils.trim import trim
 from flyable import FLYABLE_VERSION
 import click
-
+from subprocess import Popen
 
 HELP = "Welcome to the Quail maker helper!"
 
@@ -52,9 +52,20 @@ def cli():
 @cli.command(name="new")
 @click.argument("name")
 @click.option(
-    "--blank", is_flag=True, help="Doesn't add a placeholder test in the test suite."
+    "--blank",
+    is_flag=True,
+    help="Doesn't add a placeholder test in the test suite.",
+    prompt="Do you want to add a placeholder test?",
+    default=True,
 )
-def create_new_quail_test_suite(name: str, blank: bool):
+@click.option(
+    "--git-add",
+    is_flag=True,
+    help="Adds the files created to git",
+    prompt="Do you want to add the file created to git?",
+    default=True,
+)
+def create_new_quail_test_suite(name: str, blank: bool, git_add: bool):
     """
     For more information, write `Quail new --help`\n
     Creates a new Quail test suite <x> containing a folder with a quailt_<x>.py file and a test_<x>.py file.
@@ -69,11 +80,11 @@ def create_new_quail_test_suite(name: str, blank: bool):
         )
         return
     with open(f"{path}/quailt_{name}.py", "w+") as body:
-        msg = f"'''Module {name}'''\n\n"
+        msg = f'"""Module {name}"""\n\n'
         if blank:
             msg += (
-                trim(
-                    f'''
+                    trim(
+                        f'''
                     # Quail-test:new
                     """
                     Name: YOUR_NAME
@@ -84,8 +95,8 @@ def create_new_quail_test_suite(name: str, blank: bool):
                     "hello world!" == "hello world!"  # Quail-assert: True
                     # Quail-test:end
                     '''
-                )
-                + "\n"
+                    )
+                    + "\n"
             )
         body.write(msg)
 
@@ -102,31 +113,49 @@ def create_new_quail_test_suite(name: str, blank: bool):
             )
             + "\n"
         )
-    click.echo(f"Quail test suite {name!r} created successfully!🥳")
+    if git_add:
+        Popen(f"git add ./{path}")
+    click.echo(f"Quail test suite {name!r} created successfully!{u'🥳'}")
+
+
+is_compile = False
+
+
+def get_is_compile():
+    return is_compile
+
+
+def set_is_compile(_ctx, _self, choice):
+    global is_compile
+    if choice is None:
+        return
+    is_compile = choice == "compile"
+    print(is_compile)
 
 
 @cli.command(name="add")
-@click.argument("test_suite_name", type=QuailSuiteTestNameType())
+@click.argument("test-suite-name", type=QuailSuiteTestNameType())
 @click.option(
-    "--test_name", prompt="Enter the name of your test", type=QuailTestNameType()
+    "--test-name", prompt="Enter the name of your test", type=QuailTestNameType()
 )
 @click.option(
     "--mode",
     prompt="Enter the mode",
     default="runtime",
     type=click.Choice(["runtime", "compile", "both"]),
+    callback=set_is_compile,
 )
 @click.option(
-    "--add_tester",
+    "--add-tester",
     is_flag=True,
-    confirmation_prompt="Add a quail tester?",
-    default=False,
+    prompt="Add a quail tester?",
+    default=get_is_compile,
 )
 def add_test_to_test_suite(
-    test_suite_name: str,
-    test_name: str,
-    mode: str = None,
-    add_tester: bool = False,
+        test_suite_name: str,
+        test_name: str,
+        mode: str = None,
+        add_tester: bool = False,
 ):
     """
     For more information, write `Quail add --help`\n
@@ -148,8 +177,8 @@ def add_test_to_test_suite(
 
     with open(f"{path}/quailt_{test_suite_name}.py", "a+") as body:
         msg = (
-            trim(
-                f'''
+                trim(
+                    f'''
                 \n\n
                 # Quail-test:new {mode if mode != "runtime" else ""}
                 """
@@ -161,8 +190,8 @@ def add_test_to_test_suite(
                 
                 # Quail-test:end
                 '''
-            )
-            + "\n"
+                )
+                + "\n"
         )
         body.write(msg)
 
@@ -185,5 +214,5 @@ def add_test_to_test_suite(
                 + "\n"
             )
     click.echo(
-        f"Quail test {test_name!r} created successfully in {test_suite_name!r}!🥳"
+        f"Quail test {test_name!r} created successfully in {test_suite_name!r}!{u'🥳'}"
     )
