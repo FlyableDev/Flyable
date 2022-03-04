@@ -116,6 +116,9 @@ class CodeType:
         self.__array_type = None
         self.__array_size = 0
 
+    def get_type(self):
+        return self.__type
+
     def get_ptr_to(self):
         result = copy.copy(self)
         result.__ptr_level += 1
