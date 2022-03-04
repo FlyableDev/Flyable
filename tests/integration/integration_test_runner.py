@@ -1,11 +1,14 @@
 from tests.integration.integration_test import IntegrationTest
+from tests.integration.output.test_output import TestOuput
 
 
 class IntegrationTestRunner:
   
   def __init__(self):
     self.__current_test: IntegrationTest | None = None
+    self.__test_index: int = 0
     self.__tests: dict[str, IntegrationTest] = {}
+    self.__test_output: TestOuput = TestOuput(self)
 
   def run_all_tests(self):
     for test in self.__tests.values():
@@ -13,13 +16,15 @@ class IntegrationTestRunner:
 
   def run_test(self, test: IntegrationTest):
     self.__current_test = test
+    self.__test_index += 1
 
-    print(f"-------- Running test {self.__current_test.name} --------")
+    self.__test_output.test_start()
 
     res = self.__current_test.fly_exec()
-    print(f"[Output of test {self.__current_test.name}]")
-    print(res)
-    print(f"-------- Success running test {self.__current_test.name} --------")
+
+    self.__test_output.test_res(res)
+    self.__test_output.test_success()
+    
 
   def add_test(self, test: IntegrationTest):
     if test.name in self.__tests:
@@ -29,6 +34,15 @@ class IntegrationTestRunner:
 
   def get_test(self, name: str):
     return self.__tests.get(name, None)
+
+  def get_current_test(self):
+    return self.__current_test
+
+  def get_current_test_index(self):
+    return self.__test_index
+
+  def get_nb_tests(self):
+    return len(self.__tests)
 
 
 

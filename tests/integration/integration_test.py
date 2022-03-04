@@ -12,14 +12,19 @@ import tests.integration.constants as const
 
 @dataclass
 class IntegrationTest:
-  name: str;
-  desc: str;
-  main: str;
-  dir_path: str;
+  name: str
+  desc: str
+  main: str
+  dir_path: str
 
   __lines: list[str] | None = field(default=None, init=False)
-  __main_path: str | None = field(default=None, init=False)
-  __output_dir: str | None = field(default=None, init=False)
+  __main_path: str = field(init=False)
+  __output_dir: str = field(init=False)
+
+  def __post_init__(self):
+
+    self.__output_dir = self.dir_path + "/build"
+    self.__main_path = f"{self.dir_path}/src/{self.main if self.main.endswith('.py') else self.main + '.py'}"
 
   def py_compile(self):
     return compile("".join(self.lines), self.dir_path, "exec")
@@ -32,22 +37,11 @@ class IntegrationTest:
     
     return self.__lines
 
-  @property 
-  def main_path(self):
-    if not self.__main_path:
-      self.__main_path = f"{self.dir_path}/{self.main if self.main.endswith('.py') else self.main + '.py'}"
-    return self.__main_path
-  
-  @property 
-  def output_dir(self):
-    if not self.__output_dir:
-      self.__output_dir = self.dir_path + "/build"
-    return self.__output_dir
 
   def fly_compile(self, save_results: bool = False):
     compiler = Compiler()
-    compiler.add_file(self.main_path)
-    compiler.set_output_path(f"{self.output_dir}/output.o")
+    compiler.add_file(self.__main_path)
+    compiler.set_output_path(f"{self.__output_dir}/output.o")
 
     try:
       compiler.compile()
@@ -68,14 +62,14 @@ class IntegrationTest:
         constants.LIB_FLYABLE_RUNTIME_PATH,
         constants.PYTHON_3_10_PATH,
     ]
-    p0 = Popen(linker_args, cwd=self.output_dir)
+    p0 = Popen(linker_args, cwd=self.__output_dir)
     p0.wait()
     if p0.returncode != 0:
         raise CompilationError("Linking error")
 
     p = Popen(
-      [self.output_dir + "/a.exe"],
-      cwd=self.output_dir,
+      [self.__output_dir + "/a.exe"],
+      cwd=self.__output_dir,
       stdout=PIPE,
       text=True
     )
@@ -102,7 +96,7 @@ def load_integration_tests(base_dir: str):
       if os.path.isdir(file):
         continue
 
-      if file == const.test_config_file_name:
+      if file == const.quail_config_file_name:
         with open(f"{test_folder}/{file}", 'r') as f:
           config_content = json.loads("".join(f.readlines()))
 

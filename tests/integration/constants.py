@@ -1,2 +1,2 @@
-test_config_file_name = "test_config.json"
+quail_config_file_name = "quail.config.json"
 required_keys = ['name', 'description', 'main']
