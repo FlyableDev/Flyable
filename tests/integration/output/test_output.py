@@ -22,16 +22,22 @@ class TestOuput:
 		"""
 		Generated output before running a specific test
 		"""
-		style_print(f"&7-------- Running test {self.__runner.get_current_test_index()}/{self.__runner.get_nb_tests()} --------")
+		style_print(f"&6-------- Running test {self.__runner.get_current_test_index()}/{self.__runner.get_nb_tests()} --------")
 
-	def test_res(self, res: str):
-		print(f"[Output of test {self.test.name}]")
-		print(res)
+	def test_fly_res(self, fly_res: str):
+		style_print(f"&7[FLYABLE - Output of test {self.test.name}]")
+		print(fly_res, end="")
+		style_print(f"&7[FLYABLE - End of output of test {self.test.name}]")
+	
+	def test_py_res(self, py_res: str):
+		style_print(f"&7[PYTHON - Output of test {self.test.name}]")
+		print(py_res, end="")
+		style_print(f"&7[PYTHON - End of output of test {self.test.name}]")
 
 	def test_success(self):
-		style_print(f"&a-------- Success running test {self.test.name} --------")
+		style_print(f"&a-------- Success running test {self.test.name} --------\n")
 	
 	def test_failure(self):
-		style_print(f"&c-------- Failure running test {self.test.name} --------")
+		style_print(f"&c-------- Failure running test {self.test.name} --------\n")
 
 

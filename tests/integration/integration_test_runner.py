@@ -20,10 +20,19 @@ class IntegrationTestRunner:
 
     self.__test_output.test_start()
 
-    res = self.__current_test.fly_exec()
+    fly_res = self.__current_test.fly_exec()
+    self.__test_output.test_fly_res(fly_res)
 
-    self.__test_output.test_res(res)
-    self.__test_output.test_success()
+    print()
+
+    py_res = self.__current_test.py_exec()
+    self.__test_output.test_py_res(py_res)
+
+    if fly_res == py_res:
+      self.__test_output.test_success()
+    else:
+      self.__test_output.test_failure()
+
     
 
   def add_test(self, test: IntegrationTest):

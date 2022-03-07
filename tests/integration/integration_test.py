@@ -1,6 +1,9 @@
 import json, os
 from dataclasses import dataclass, field
 from subprocess import Popen, PIPE
+from io import StringIO
+from contextlib import redirect_stdout
+
 
 from flyable.compiler import Compiler
 from flyable import constants
@@ -32,7 +35,7 @@ class IntegrationTest:
   @property
   def lines(self):
     if self.__lines is None:
-      with open(self.dir_path, 'r') as f:
+      with open(self.__main_path, 'r') as f:
         self.__lines = f.readlines()
     
     return self.__lines
@@ -81,8 +84,11 @@ class IntegrationTest:
     return result
 
   def py_exec(self):
-      exec(self.py_compile(), {}, {})
-      return "Not implemented"
+    f = StringIO()
+    with redirect_stdout(f):
+      exec(self.py_compile(), {})
+    s = f.getvalue()
+    return s
 
 
 def load_integration_tests(base_dir: str):
