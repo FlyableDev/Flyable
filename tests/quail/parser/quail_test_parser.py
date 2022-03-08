@@ -5,7 +5,7 @@ from typing import Any
 from tests.quail.quail_test import QuailTest
 from tests.quail.tags.quail_tag import QuailTag, QuailTagType
 
-_QUAIL_VALID_INFOS: list[str] = ["Name", "Flyable-version", "Description"]
+_QUAIL_VALID_INFOS: list[str] = ["Name", "Flyable-version", "Description", "Dependencies"]
 
 
 class QuailTestState(Enum):
