@@ -11,6 +11,7 @@ def test_runtimes():
 
 
 @quail_tester
+@pytest.mark.depends_on("substraction", "division")
 def test_bool_equality(quail_test: QuailTest, stdout: StdOut):
     """bool_equality"""
     assert quail_test.fly_exec(stdout) == quail_test.py_exec(stdout)

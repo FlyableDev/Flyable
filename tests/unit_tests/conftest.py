@@ -26,7 +26,7 @@ from tests.quail.utils.utils import StdOut, CompilationError
 def _get_error_msg(test, py_result, fly_result, dependencies=None):
     return (
         (
-            f"\n/!\\ This test might have failed be because of one of the dependencies "
+            f"\n/!\\ This test might have failed because of one of the dependencies "
             f"{tuple(dependencies.replace(' ', '').split(','))!r} /!\\.\n\n"
             if dependencies is not None
             else ""
@@ -220,7 +220,7 @@ def pytest_exception_interact(
 ):
     dependencies = get_dependencies(node)
     if report.failed and dependencies is not None:
-        msg = f"\n\n/!\\ This test might have failed be because of one of the dependencies {tuple(dependencies)!r} /!\\."
+        msg = f"\n\n/!\\ This test might have failed because of one of the dependencies {tuple(dependencies)!r} /!\\."
         print(msg, file=sys.stderr)
 
 
