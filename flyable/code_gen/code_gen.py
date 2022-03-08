@@ -381,11 +381,11 @@ class CodeGen:
         self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_vectorcall
 
         self.__true_var = self.add_global_var(
-            GlobalVar("@Flyable@_True", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
+            GlobalVar("@flyable@_True", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__false_var = self.add_global_var(
-            GlobalVar("@Flyable@_False", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
+            GlobalVar("@flyable@_False", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__none_var = self.add_global_var(
-            GlobalVar("@Flyable@_None", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
+            GlobalVar("@flyable@_None", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__py_func_type_var = self.add_global_var(
             GlobalVar("PyFunction_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
         self.__method_type = self.add_global_var(
