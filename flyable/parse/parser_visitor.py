@@ -31,6 +31,7 @@ import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as hint
 import flyable.parse.adapter as adapter
 import flyable.parse.build_in as build
+from flyable.parse.variable import Variable
 import flyable.parse.op as op
 from flyable.data.lang_type import LangType, code_type, get_none_type
 from flyable.code_gen.code_builder import CodeBuilder
@@ -349,7 +350,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     if isinstance(node.ctx, Store):
                         # If it tries to assign a global variable in a local context without the global keyword,
                         # instead declare a new local variable in the function context
-                        if found_var.is_global() and found_var.get_context() != self.__func.get_context():
+                        if not found_var.is_global():
                             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
                             alloca_value = self.generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen), True)
                             found_var.set_code_gen_value(alloca_value)
@@ -778,14 +779,13 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
     # TODO: fix issues #39 & #41 and then complete the visitor
     def visit_Global(self, node: Global) -> Any:
         file = self.__func.get_parent_func().get_file()
-        if file is None:
-            raise Exception("Function of function implementationt has no file. Was the file set before parsing?")
-        global_func = file.get_global_func()
-        if global_func is None:
-            raise Exception("File has no global function. Was the function set before parsing?")
-        impl = global_func.get_impl(3)
         for name in node.names:
-            result = impl.get_context().find_active_var(name)
+            global_var = self.__code_gen.get_global_var(f"@global@var@{name}@{file.get_path()}")
+            _type = lang_type.from_code_type(global_var.get_type())
+            local_var = self.__func.get_context().add_var(name, _type)
+            local_var.set_code_gen_value(global_var)
+            local_var.set_global(True)
+            local_var.set_type(_type)
 
     # TODO: fix issues #39 & #41 and then complete the visitor
     def visit_Nonlocal(self, node: Nonlocal) -> Any:
@@ -1442,11 +1442,11 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
     def __find_active_var(self, name: str):
         result = self.__func.get_context().find_active_var(name)
-        if result is None:
+        if isinstance(result, Variable) and result.is_global():
             parent_func = self.__func.get_parent_func().get_file().get_global_func()
             if parent_func is not None:
                 impl = parent_func.get_impl(4)
-                result = impl.get_context().find_active_var(name)
+                return impl.get_context().find_active_var(name)
         return result
 
     def __get_code_func(self):
