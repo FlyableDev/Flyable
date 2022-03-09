@@ -4,11 +4,15 @@ from tests.integration.output.test_output import TestOuput
 
 class IntegrationTestRunner:
   
-  def __init__(self):
+  def __init__(self, logging: bool = False):
     self.__current_test: IntegrationTest | None = None
     self.__test_index: int = 0
     self.__tests: dict[str, IntegrationTest] = {}
     self.__test_output: TestOuput = TestOuput(self)
+    self.__logging = logging
+  
+  def logging(self):
+    return self.__logging
 
   def run_all_tests(self):
     for test in self.__tests.values():

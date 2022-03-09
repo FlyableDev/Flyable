@@ -10,6 +10,7 @@ from flyable import constants
 
 from tests.quail.utils.utils import CompilationError
 import tests.integration.constants as const
+from tests.integration.output.logs import create_log
 
 
 
@@ -23,14 +24,19 @@ class IntegrationTest:
   __lines: list[str] | None = field(default=None, init=False)
   __main_path: str = field(init=False)
   __output_dir: str = field(init=False)
+  __logging: bool = field(default=False)
 
   def __post_init__(self):
-
     self.__output_dir = self.dir_path + "/build"
     self.__main_path = f"{self.dir_path}/src/{self.main if self.main.endswith('.py') else self.main + '.py'}"
+    if self.logging(): 
+      create_log(self)
 
   def py_compile(self):
     return compile("".join(self.lines), self.dir_path, "exec")
+
+  def logging(self):
+    return self.__logging
 
   @property
   def lines(self):
@@ -109,7 +115,8 @@ def load_integration_tests(base_dir: str):
         if not valid_config(config_content):
           raise Exception(f"Invalid test config in {test_folder} test")
         
-        tests.append(IntegrationTest(config_content['name'], config_content['description'], config_content['main'], test_folder))
+        logging = config_content.get('logging', False)
+        tests.append(IntegrationTest(config_content['name'], config_content['description'], config_content['main'], test_folder, logging))
 
   return tests
 
