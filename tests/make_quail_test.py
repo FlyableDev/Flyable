@@ -1,3 +1,4 @@
+import json
 import os
 
 from tests.quail.utils.trim import trim
@@ -65,7 +66,7 @@ def cli():
     prompt="Do you want to add the file created to git?",
     default=True,
 )
-def create_new_quail_test_suite(name: str, blank: bool, git_add: bool):
+def create_new_quail_integration_test(name: str, blank: bool, git_add: bool):
     """
     For more information, write `Quail new --help`\n
     Creates a new Quail test suite <x> containing a folder with a quailt_<x>.py file and a test_<x>.py file.
@@ -216,3 +217,56 @@ def add_test_to_test_suite(
     click.echo(
         f"Quail test {test_name!r} created successfully in {test_suite_name!r}!{u'🥳'}"
     )
+
+@cli.command(name="integration")
+@click.argument("name")
+@click.option(
+    "--conf",
+    is_flag=True,
+    help="Puts nothing in the default quail.config.json",
+    prompt="Do you want to create a default config file?",
+    default=True,
+)
+@click.option(
+    "--git-add",
+    is_flag=True,
+    help="Adds the files created to git",
+    prompt="Do you want to add the file created to git?",
+    default=True,
+)
+def create_new_quail_integration_test(name: str, conf: bool, git_add: bool):
+    """
+    For more information, write `Quail integration --help`\n
+    Creates a new Quail integration test <x> containing a folder with a src folder, output folder and quail.config.json.
+    """
+    path = f"./tests/integration_tests/{name}"
+    try:
+        os.makedirs(path, exist_ok=False)
+    except OSError:
+        print(
+            f"The Quail Integration test '{name}' already exists"
+        )
+        return
+    
+    os.mkdir(f"{path}/src")
+    
+    with open(f"{path}/quail.config.json", "w+") as body:
+        if conf:
+            content = json.dumps({
+                'name': name,
+                'description': f"Quail Integration test '{name}' for the flyable compiler",
+                'main': 'main.py'
+            }, indent=4)
+        else:
+            content = "{}"
+        body.write(content)
+
+    with open(f"{path}/src/main.py", "w+") as body:
+        body.write('print("Hello World!")')
+    
+    os.mkdir(f"{path}/output")
+    os.mkdir(f"{path}/build")
+
+    if git_add:
+        Popen(f"git add ./{path}")
+    click.echo(f"Quail integration test {name!r} created successfully!{u'🥳'}")
