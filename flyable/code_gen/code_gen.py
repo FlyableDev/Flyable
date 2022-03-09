@@ -83,7 +83,7 @@ class GlobalVar:
     Represent a low-level const address variable
     """
 
-    def __init__(self, name: str, type: CodeType, linkage: Linkage = Linkage.INTERNAL, containing_module=''):
+    def __init__(self, name: str, type: CodeType, linkage: Linkage = Linkage.INTERNAL, containing_module: str = None):
         self.__id = -1
         self.__name = name
         self.__type = type
@@ -101,10 +101,10 @@ class GlobalVar:
         return self.__name
 
     def get_containing_module_name(self):
-        return self.__containing_module
+        return self.__containing_module or ""
 
     def belongs_to_module(self):
-        return bool(self.__containing_module)
+        return self.__containing_module is not None
 
     def get_type(self):
         return self.__type
@@ -558,7 +558,7 @@ class CodeGen:
 
     def get_global_var(self, variable_name: str) -> GlobalVar:
         return self.__global_vars.get(variable_name, None)
-           
+
     def gen_struct(self, _class: LangClass):
         """
         Create a structure from a class and creates the global variable that will hold the type instance of that class

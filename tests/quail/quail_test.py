@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flyable.compiler import Compiler
+from tests.quail.testers.compiler_tester import FlyCompilerTester
 
 if TYPE_CHECKING:
     from tests.quail.utils.utils import StdOut
@@ -23,6 +24,8 @@ class QuailTest:
     lines: list[str] = field(default_factory=list)
     original_lines: list[str] = field(default_factory=list)
 
+    temp_working_dir: str = field(default='generated_scripts', init=False)
+
     def is_valid_or_raise(self):
         if "Name" not in self.infos:
             raise AttributeError("Each test must have a Name")
@@ -30,48 +33,49 @@ class QuailTest:
     def py_compile(self):
         return compile("".join(self.lines), self.file_name, "exec")
 
-    def fly_compile(self):
-        temp_working_dir = f'generated_scripts'
+    def fly_compile(self, save_results: bool = False):
+        temp_working_dir = self.temp_working_dir
         if not os.path.exists(temp_working_dir):
             os.makedirs(temp_working_dir)
-        function_file_temp_path = f"{temp_working_dir}/{self.file_name}"
-        with open(function_file_temp_path, "w+", encoding="utf-8") as python_file:
+        function_file_temp_path = f"{temp_working_dir}/{self.name}.py"
+        with open(function_file_temp_path, "w+") as python_file:
             python_file.write("".join(self.lines))
 
-        compiler = Compiler()
+        compiler = Compiler() if not save_results else FlyCompilerTester()
         compiler.add_file(function_file_temp_path)
         compiler.set_output_path(f"{temp_working_dir}/output.o")
 
         try:
             compiler.compile()
         except Exception as e:
-            return f"COMPILATION_ERROR: {e}"
+            raise CompilationError(f"COMPILATION_ERROR: {e}")
 
         if not compiler.has_error():
-            linker_args = [
-                "gcc",
-                "-flto",
-                "output.o",
-                constants.LIB_FLYABLE_RUNTIME_PATH,
-                constants.PYTHON_3_10_PATH,
-            ]
-            p = Popen(linker_args, cwd=temp_working_dir)
-            p.wait()
-            if p.returncode != 0:
-                raise CompilationError("Linking error")
-
-            p2 = Popen(
-                [temp_working_dir + f"/a.exe"],
-                cwd=temp_working_dir,
-                stdout=PIPE,
-                text=True
-            )
-            return p2
+            return compiler
 
         raise CompilationError(compiler.get_errors())
 
     def fly_exec(self, stdout: StdOut):
-        p = self.fly_compile()
+        self.fly_compile()
+        linker_args = [
+            "gcc",
+            "-flto",
+            "output.o",
+            constants.LIB_FLYABLE_RUNTIME_PATH,
+            constants.PYTHON_3_10_PATH,
+        ]
+        p0 = Popen(linker_args, cwd=self.temp_working_dir)
+        p0.wait()
+        if p0.returncode != 0:
+            raise CompilationError("Linking error")
+
+        p = Popen(
+            [self.temp_working_dir + f"/a.exe"],
+            cwd=self.temp_working_dir,
+            stdout=PIPE,
+            text=True
+        )
+
         if isinstance(p, str):
             raise CompilationError(p)
         print(p.communicate()[0], end="")

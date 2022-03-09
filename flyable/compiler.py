@@ -1,3 +1,11 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from flyable.data.comp_data import CompData
+    from flyable.parse.parser import Parser
+    from flyable.data.lang_func_impl import LangFuncImpl
+
 import flyable.code_gen.code_gen as gen
 import flyable.data.lang_class as lang_class
 import flyable.parse.adapter as adapter
@@ -14,20 +22,20 @@ from flyable.tool.utils import add_step, end_step, wrap_in_step
 class Compiler(ErrorThrower):
     def __init__(self):
         super().__init__()
-        self.__data: comp_data.CompData = comp_data.CompData()
+        self._data: CompData = comp_data.CompData()
         self.set_output_path("output.o")
-        self.__code_gen: CodeGen = gen.CodeGen(self.__data)
-        self.__code_gen.setup()
-        self.__parser: par.Parser = par.Parser(self.__data, self.__code_gen)
-        self.__main_impl = None
+        self._code_gen: CodeGen = gen.CodeGen(self._data)
+        self._code_gen.setup()
+        self._parser: Parser = par.Parser(self._data, self._code_gen)
+        self._main_impl: Optional[LangFuncImpl] = None
 
     def add_file(self, path: str):
         new_file: lang_file.LangFile = lang_file.LangFile()
         new_file.read_from_path(path)
-        self.__data.add_file(new_file)
+        self._data.add_file(new_file)
 
     def set_output_path(self, path):
-        self.__data.set_config("output", path)
+        self._data.set_config("output", path)
 
     def compile(self):
         if flag_is_valid(FLAG_SHOW_STEP_LEVEL, lambda level: level >= 2):
@@ -41,62 +49,62 @@ class Compiler(ErrorThrower):
             else:
                 self.__parse()
 
-        self.throw_errors(self.__parser.get_errors())
+        self.throw_errors(self._parser.get_errors())
 
         for e in self.errors_iter():
             print(f"{e.message} [{e.line}, {e.row}]")
 
         if not self.has_error():
-            self.__code_gen.setup_struct()
-            self.__code_gen.generate_main(self.__main_impl)
-            self.__code_gen.write()
+            self._code_gen.setup_struct()
+            self._code_gen.generate_main(self._main_impl)
+            self._code_gen.write()
 
     def __pre_parse(self):
-        pre_parser = PreParser(self.__data, self.__code_gen)
-        pre_parser.parse(self.__data)
+        pre_parser = PreParser(self._data, self._code_gen)
+        pre_parser.parse(self._data)
         self.__resolve_inheritance()
         self.throw_errors(pre_parser.get_errors())
 
     def __parse(self):
-        code_gen = self.__code_gen
+        code_gen = self._code_gen
 
         # Parse the code until it the compiler stop finding new data
         while True:
-            self.__data.clear_info()
+            self._data.clear_info()
             code_gen.clear()
             code_gen.setup()
-            self.__data.set_changed(False)
+            self._data.set_changed(False)
 
             try:
 
                 # Create a specialization for the main module to execute
-                self.__main_impl = adapter.adapt_func(
-                    self.__data.get_file(0).get_global_func(),
+                self._main_impl = adapter.adapt_func(
+                    self._data.get_file(0).get_global_func(),
                     [],
-                    self.__data,
-                    self.__parser,
+                    self._data,
+                    self._parser,
                 )
 
                 # Then generate an implementation for all python methods / funcs
-                adapter.adapt_all_python_impl(self.__data, self.__parser)
+                adapter.adapt_all_python_impl(self._data, self._parser)
 
             except Exception as exception:
                 if (
-                        not self.__parser.has_error()
+                        not self._parser.has_error()
                 ):  # If there is no error we launch the exception as a failure
                     raise exception
                 break
 
             # If there is an error or no compiler data has been modifier we're confident that the generate code is valid
-            if self.__parser.has_error() or not self.__data.is_changed():
+            if self._parser.has_error() or not self._data.is_changed():
                 break
             else:
-                self.__data.increment_current_iteration()
+                self._data.increment_current_iteration()
 
-        self.throw_errors(self.__parser.get_errors())
+        self.throw_errors(self._parser.get_errors())
 
     def __resolve_inheritance(self):
-        for _class in self.__data.classes_iter():
+        for _class in self._data.classes_iter():
             node = _class.get_node()
             for e in node.bases:
                 file = _class.get_file()
@@ -105,7 +113,7 @@ class Compiler(ErrorThrower):
                     if isinstance(found_class, lang_class.LangClass):
                         _class.add_inherit(found_class)
                     else:
-                        self.__parser.throw_error(
+                        self._parser.throw_error(
                             str(e) + " not expected to inherits",
                             node.lineno,
                             node.end_col_offset,

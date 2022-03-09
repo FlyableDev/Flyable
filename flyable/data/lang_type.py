@@ -101,6 +101,10 @@ def get_none_type():
     return LangType(LangType.Type.NONE)
 
 
+def get_str_type():
+    return get_python_obj_type(hint.TypeHintPythonType("builtins.str"))
+
+
 def get_list_of_python_obj_type():
     return get_python_obj_type(hint.TypeHintPythonType("builtins.list"))
 
@@ -260,15 +264,14 @@ class LangType:
     def remove_hint(self, index: int):
         self.__hints.pop(index)
 
-    def get_hint(self, index: Union[int, PyType[hint.TypeHint]]):
+    def get_hint(self, index: int | PyType[hint.TypeHint]):
         if isinstance(index, int):
             return self.__hints[index]
-        else:
-            result: list[Union[hint.TypeHint, hint.TypeHintPythonType]] = []
-            for hint in self.__hints:
-                if isinstance(hint, index):
-                    result.append(hint)
-            return result
+        result: list[hint.TypeHint | hint.TypeHintPythonType] = []
+        for hint in self.__hints:
+            if isinstance(hint, index):
+                result.append(hint)
+        return result
 
     def get_hints(self):
         return copy.copy(self.__hints)
@@ -280,9 +283,7 @@ class LangType:
         self.__hints.clear()
 
     def __eq__(self, other: LangType):
-        if self.__type == other.__type:
-            return True
-        return False
+        return self.__type == other.__type
 
     def to_str(self, comp_data: CompData):
         to_str: str
@@ -292,8 +293,8 @@ class LangType:
             to_str = "None type"
         elif self.is_obj():
             to_str = comp_data.get_class(self.__id).get_name()
-        elif self.is_python_obj():
-            to_str = "Python object"
+        elif self.is_str():
+            to_str = "str"
         elif self.is_dict():
             to_str = "dict"
         elif self.is_list():
@@ -302,6 +303,8 @@ class LangType:
             to_str = "set"
         elif self.is_tuple():
             to_str = "tuple"
+        elif self.is_python_obj():
+            to_str = "Python object"
         else:
             to_str = "Flyable type"
         return to_str

@@ -15,13 +15,11 @@ import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.list as gen_list
 
+import builtins as built_in
+
 
 def get_build_in_name(name):
-    import builtins as built_in
-    try:
-        return getattr(built_in, name)
-    except AttributeError:
-        return None
+    return getattr(built_in, name, None)
 
 
 class BuildInFunc(ABC):

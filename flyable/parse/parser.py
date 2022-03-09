@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import ast
 from typing import TYPE_CHECKING, Any
-from flyable.data.comp_data import CompData
 
 from flyable.debug.debug_flags import DebugFlag, value_if_debug
 from flyable.debug.debug_flags_list import FLAG_SHOW_VISIT_AST
 
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeGen
+    from flyable.data.lang_func_impl import LangFuncImpl
+    from flyable.data.lang_func import LangFunc
+    from flyable.data.comp_data import CompData
 
 import flyable.data.lang_func_impl as impl
 from flyable.data.error_thrower import ErrorThrower
@@ -22,7 +24,7 @@ class Parser(ErrorThrower):
         self.__data = data
         self.__code_gen = code_gen
 
-    def parse_func(self, func):
+    def parse_func(self, func: LangFunc):
         """
         This function parse the "unknown" implementation.
         It's most use to detect parsing errors.
@@ -30,7 +32,7 @@ class Parser(ErrorThrower):
         func_impl = func.get_unknown_impl()
         self.parse_impl(func_impl)
 
-    def parse_impl(self, func_impl):
+    def parse_impl(self, func_impl: LangFuncImpl):
         if not func_impl.is_unknown():
             if (
                     func_impl.get_parse_status()
