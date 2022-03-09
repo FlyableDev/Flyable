@@ -27,6 +27,7 @@ print(15.12 == 15.12)
 Name: bool_equality
 Flyable-version: v0.1a1
 Description: Test the equality between two boolean
+Dependencies: substraction, division
 """
 # Quail-test:start
 False == False  # Quail-assert: True
