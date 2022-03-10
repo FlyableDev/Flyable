@@ -285,7 +285,7 @@ def handle_op_cond_special_cases(
         # raise NotImplementedError(
         #     "Sorry, the NotIn operation is not currently working..."
         # )
-        _, result = caller.call_obj(
+        result_type, result_val = caller.call_obj(
             visitor,
             "__contains__",
             second_value,
@@ -294,9 +294,16 @@ def handle_op_cond_special_cases(
             [type_left],
             {},
         )
+        builtins_module = builder.load(builder.global_var(visitor.get_code_gen().get_build_in_module()))
 
-        result = builder.eq(
-            result, builder.load(builder.global_var(code_gen.get_false()))
+        return caller.call_obj(
+            visitor,
+            "bool",
+            builtins_module,
+            lang_type.get_python_obj_type(),
+            [result_val],
+            [result_type],
+            {}
         )
 
     elif op_type in {ast.Is, ast.IsNot}:

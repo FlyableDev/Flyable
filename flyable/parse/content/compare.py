@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from ast import And, Compare, BitAnd
 from functools import reduce
 from itertools import pairwise, accumulate
@@ -20,10 +21,8 @@ import flyable.code_gen.ref_counter as ref_counter
 
 
 def parse_compare(visitor: ParserVisitor, node: Compare):
-    builder = visitor.get_builder()
-
     def compare(
-        current: tuple[LangType, int], comparison: tuple[LangType, int]
+            current: tuple[LangType, int], comparison: tuple[LangType, int]
     ) -> tuple[LangType, int]:
         left_type, left_val = current
         right_type, right_val = comparison
@@ -32,8 +31,6 @@ def parse_compare(visitor: ParserVisitor, node: Compare):
             visitor, BitAnd(), left_type, left_val, right_type, right_val
         )
         ref_counter.ref_decr_incr(visitor, right_type, right_val)
-        print(current)
-        print(comparison)
         return result
 
     def do_cond_op(prev: tuple[LangType, int] | None, current_args):
@@ -44,7 +41,7 @@ def parse_compare(visitor: ParserVisitor, node: Compare):
         result_type, result_val = op_call.cond_op(
             visitor, op, left_type, left_val, right_type, right_val
         )
-        # result_type.add_hint(hint.TypeHintRefIncr())
+        result_type.add_hint(hint.TypeHintRefIncr())
         ref_counter.ref_decr_incr(visitor, left_type, left_val)
         return (
             compare(prev, (result_type, result_val))
