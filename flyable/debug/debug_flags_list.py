@@ -57,3 +57,7 @@ def get_all_debug_flags() -> list[DebugFlag]:
 
 def get_flag(name: str, default=None) -> DebugFlag:
     return FLAGS.get(name, default)
+
+
+def get_flag_name(flag: DebugFlag):
+    return next((flag_name for flag_name, debug_flag in FLAGS.items() if flag is debug_flag), None)
