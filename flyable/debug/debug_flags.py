@@ -50,14 +50,6 @@ def disable_debug_flags(*debug_flags: DebugFlag[_T]):
         debug_flag.disable()
 
 
-def get_enabled_debug_flags() -> list[DebugFlag]:
-    return [flag for flag in _DEBUG_FLAGS_LIST if flag.is_enabled]
-
-
-def get_all_debug_flags() -> list[DebugFlag]:
-    return _DEBUG_FLAGS_LIST[:]
-
-
 def value_if_debug(
         normal_value,
         debug_value,
