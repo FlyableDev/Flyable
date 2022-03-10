@@ -34,3 +34,5 @@ FLAG_LOG_DEBUG: DebugFlag[str] = DebugFlag(default_value="./debug.log")
 """value: str (path of log file)"""
 
 FLAG_SHOW_STEP_LEVEL: DebugFlag[int] = DebugFlag(default_value=1)
+
+FLAGS = {flag_name: flag for flag_name, flag in locals().items() if flag_name.startswith("FLAG_")}

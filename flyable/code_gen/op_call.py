@@ -66,6 +66,7 @@ def __convert_type_to_match(
             value_right = visitor.get_builder().int_cast(
                 value_right, type_right.to_code_type(visitor.get_code_gen())
             )
+            value_right = visitor.get_builder().neg(value_right)
         value_left = visitor.get_builder().neg(value_left)
 
     return type_left, value_left, type_right, value_right
@@ -95,13 +96,7 @@ def bin_op(
         args = [value_right]
         func_name = parse_op.get_op_func_call(op)
         result = caller.call_obj(
-            visitor,
-            func_name,
-            value_left,
-            type_left,
-            args,
-            args_types,
-            {}
+            visitor, func_name, value_left, type_left, args, args_types, {}
         )
         return result
 
@@ -184,11 +179,6 @@ def cond_op(
 ):
     builder = visitor.get_builder()
 
-    # Check the primitive type conversion
-    type_left, first_value, type_right, second_value = __convert_type_to_match(
-        visitor, op, type_left, first_value, type_right, second_value
-    )
-
     if (
             type_left.is_obj()
             or type_left.is_python_obj()
@@ -217,37 +207,49 @@ def cond_op(
 
         args_types = [type_right]
         args = [second_value]
+        result_type, result_val = caller.call_obj(
+            visitor, func_name, first_value, type_left, args, args_types, {}
+        )
+        builtins_module = builder.load(builder.global_var(visitor.get_code_gen().get_build_in_module()))
 
         return caller.call_obj(
             visitor,
-            func_name,
-            first_value,
-            type_left,
-            args,
-            args_types,
+            "bool",
+            builtins_module,
+            lang_type.get_python_obj_type(),
+            [result_val],
+            [result_type],
             {}
+        )
+
+    # If the op is not And or Or, we cast the values to make their type match
+    if not isinstance(op, (ast.And, ast.BitAnd, ast.Or, ast.BitOr)):
+        # Need to do the primitive type conversion
+        _, first_value, _, second_value = __convert_type_to_match(
+            visitor, op, type_left, first_value, type_right, second_value
         )
 
     # the binary conditionnal operator we want to apply
     apply_op: Callable[[int, int], int]
-    if isinstance(op, ast.And):
-        apply_op = builder._and
-    elif isinstance(op, ast.Or):
-        apply_op = builder._or
-    elif isinstance(op, ast.Eq):
-        apply_op = builder.eq
-    elif isinstance(op, ast.NotEq):
-        apply_op = builder.ne
-    elif isinstance(op, ast.Lt):
-        apply_op = builder.lt
-    elif isinstance(op, ast.LtE):
-        apply_op = builder.lte
-    elif isinstance(op, ast.Gt):
-        apply_op = builder.gt
-    elif isinstance(op, ast.GtE):
-        apply_op = builder.gte
-    else:
-        raise NotImplementedError("Compare op " + str(type(op)) + " not supported")
+    match op:
+        case ast.And() | ast.BitAnd():
+            apply_op = builder._and
+        case ast.Or() | ast.BitOr():
+            apply_op = builder._or
+        case ast.Eq():
+            apply_op = builder.eq
+        case ast.NotEq():
+            apply_op = builder.ne
+        case ast.Lt():
+            apply_op = builder.lt
+        case ast.LtE():
+            apply_op = builder.lte
+        case ast.Gt():
+            apply_op = builder.gt
+        case ast.GtE():
+            apply_op = builder.gte
+        case _:
+            raise NotImplementedError("Compare op " + str(type(op)) + " not supported")
 
     result_type, result_value = lang_type.get_bool_type(), apply_op(
         first_value, second_value
@@ -272,7 +274,6 @@ def handle_op_cond_special_cases(
 
     func_name: str
     result: Optional[int] = None
-    result_type: LangType = lang_type.get_bool_type()
 
     if not parse_op.is_op_cond_special_case(op):
         raise ValueError("Operator is not a special case")
@@ -281,22 +282,22 @@ def handle_op_cond_special_cases(
     if op_type is ast.NotIn:
         """Inversion of the values and types to call __contains__ properly"""
         # TODO inverse the result of not in
-        raise NotImplementedError(
-            "Sorry, the NotIn operation is not currently working..."
+        # raise NotImplementedError(
+        #     "Sorry, the NotIn operation is not currently working..."
+        # )
+        _, result = caller.call_obj(
+            visitor,
+            "__contains__",
+            second_value,
+            type_right,
+            [first_value],
+            [type_left],
+            {},
         )
-        # iresult_type, result = caller.call_obj(
-        #     visitor,
-        #     "__contains__",
-        #     second_value,
-        #     type_right,
-        #     [first_value],
-        #     [type_left],
-        # )
 
-        # result = builder.eq(
-        #    a,
-        #    builder.int_to_ptr(builder.const_int1(False), iresult_type.to_code_type(code_gen))
-        # )
+        result = builder.eq(
+            result, builder.load(builder.global_var(code_gen.get_false()))
+        )
 
     elif op_type in {ast.Is, ast.IsNot}:
         result = builder.eq(first_value, second_value)
@@ -312,7 +313,7 @@ def handle_op_cond_special_cases(
         # result_type = lang_type.get_int_type()
         builder.print_value_type(result)
 
-    return result_type, result
+    return lang_type.get_bool_type(), result
 
 
 def unary_op(visitor: ParserVisitor, type, value, node):
@@ -320,7 +321,13 @@ def unary_op(visitor: ParserVisitor, type, value, node):
         args_types = [type]
         args = [value]
         return caller.call_obj(
-            visitor, parse_op.get_op_func_call(node.op), value, type, args, args_types, {}
+            visitor,
+            parse_op.get_op_func_call(node.op),
+            value,
+            type,
+            args,
+            args_types,
+            {},
         )
     if isinstance(node.op, ast.Not):
         return unary_op_not(visitor, type, value)
@@ -450,7 +457,9 @@ def bool_op_and(visitor, left_type, left_value, right_type, right_value):
     ):
         types = [right_type]
         values = [right_value]
-        return caller.call_obj(visitor, "__and__", left_value, left_type, values, types, {})
+        return caller.call_obj(
+            visitor, "__and__", left_value, left_type, values, types, {}
+        )
     else:
         raise NotImplementedError()
 
@@ -474,6 +483,8 @@ def bool_op_or(visitor, left_type, left_value, right_type, right_value):
     ):
         types = [right_type]
         values = [right_value]
-        return caller.call_obj(visitor, "__or__", left_value, left_type, values, types, {})
+        return caller.call_obj(
+            visitor, "__or__", left_value, left_type, values, types, {}
+        )
     else:
         raise NotImplementedError()

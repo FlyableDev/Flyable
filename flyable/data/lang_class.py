@@ -111,3 +111,8 @@ class LangClass:
         self.__class_type = class_type.LangClassType(self)
         for func in self.__funcs:
             func.clear_info()
+
+    def get_qualified_name(self):
+        if self.__inherits: 
+            return f"{str.join('.', reversed(self.__inherits))}.{self.get_name()}"
+        return self.get_name()        

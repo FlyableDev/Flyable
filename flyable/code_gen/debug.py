@@ -50,6 +50,15 @@ def flyable_debug_print_int64(code_gen: gen.CodeGen, builder: gen.CodeBuilder, v
     builder.call(func_call, [value])
 
 
+def flyable_debug_print_bool(visitor: ParserVisitor, value: int):
+    code_gen = visitor.get_code_gen()
+    builder = visitor.get_builder()
+    func_name = "flyable_debug_print_int64"
+    func_call = code_gen.get_or_create_func(func_name, code_type.get_void(), [code_type.get_int64()],
+                                            gen.Linkage.EXTERNAL)
+    builder.call(func_call, [builder.int_cast(value, code_type.get_int64())])
+
+
 def flyable_print_obj_ref_count(code_gen: gen.CodeGen, builder: gen.CodeBuilder, value: int):
     # Make sure the object is a python object
     value = builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))

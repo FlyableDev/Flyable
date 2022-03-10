@@ -124,6 +124,20 @@ def get_dict_of_python_obj_type():
 def get_unknown_type():
     return LangType(LangType.Type.UNKNOWN)
 
+def from_code_type(code_type: CodeType):
+    import flyable.data.lang_type as lang_type
+    if code_type.get_type() == CodeType.CodePrimitive.INT64:
+        return lang_type.get_int_type()
+    elif code_type.get_type() == CodeType.CodePrimitive.STRUCT:
+        return lang_type.get_python_obj_type()
+    elif code_type.get_type() == CodeType.CodePrimitive.DOUBLE:
+        return lang_type.get_dec_type()
+    elif code_type.get_type() == CodeType.CodePrimitive.FLOAT:
+        return lang_type.get_dec_type()
+    elif code_type.get_type() == CodeType.CodePrimitive.INT1:
+        return lang_type.get_bool_type()
+    elif code_type.get_type() == CodeType.CodePrimitive.VOID:
+        return lang_type.get_none_type()
 
 class LangType:
     class Type(Enum):

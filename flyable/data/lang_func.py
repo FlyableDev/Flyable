@@ -205,3 +205,9 @@ class LangFunc:
         python_impl.set_return_type(type.get_python_obj_type())
         for e in self.args_iter():
             python_impl.add_arg(type.get_python_obj_type())
+
+    def get_qualified_name(self):
+        name = self.__node.name
+        if self.__class_lang: 
+            return f"{self.__class_lang.get_qualified_name()}.{name}"
+        return name

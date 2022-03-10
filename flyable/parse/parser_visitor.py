@@ -31,6 +31,7 @@ import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as hint
 import flyable.parse.adapter as adapter
 import flyable.parse.build_in as build
+from flyable.parse.variable import Variable
 import flyable.parse.op as op
 from flyable.data.lang_type import LangType, code_type, get_none_type
 from flyable.code_gen.code_builder import CodeBuilder
@@ -349,9 +350,10 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     if isinstance(node.ctx, Store):
                         # If it tries to assign a global variable in a local context without the global keyword,
                         # instead declare a new local variable in the function context
-                        if found_var.is_global() and found_var.get_context() != self.__func.get_context():
+                        if not found_var.is_global():
                             found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
-                            alloca_value = self.generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen), True)
+                            alloca_value = self.generate_entry_block_var(
+                                self.__assign_type.to_code_type(self.__code_gen), True)
                             found_var.set_code_gen_value(alloca_value)
                             self.__builder.store(self.__assign_value, alloca_value)
                             self.__last_value = found_var.get_code_gen_value()
@@ -364,7 +366,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                             ref_counter.ref_decr_nullable(self, found_var.get_type(), old_content)
 
                             # The variable might have a new type
-                            var_type = lang_type.get_most_common_type(self.__data, found_var.get_type(), self.__assign_type)
+                            var_type = lang_type.get_most_common_type(self.__data, found_var.get_type(),
+                                                                      self.__assign_type)
                             if found_var.get_type() != var_type:
                                 found_var.set_type(var_type)
                                 if found_var.is_global():
@@ -376,12 +379,12 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                             value_assign = self.__assign_value
                             if self.__last_type.is_python_obj():
                                 _, value_assign = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_assign,
-                                                                        self.__assign_type)
+                                                                         self.__assign_type)
                             hint.remove_hint_type(self.__last_type, hint.TypeHintConstInt)
                             self.__builder.store(value_assign, self.__last_value)
                             self.__last_become_assign()
                     else:
-                        #if found_var.is_global() and found_var.get_context() != self.__func.get_context():
+                        # if found_var.is_global() and found_var.get_context() != self.__func.get_context():
                         #    self.__parser.throw_error("Not found variable '" + node.id + "'", node.lineno, node.col_offset)
                         self.__last_value = self.__builder.load(self.__last_value)
                         self.__last_type = copy.copy(found_var.get_type())
@@ -452,7 +455,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             #   recursively check for an imported module for attribute access
             module_name = module_lookup
             for range_idx in range(len(attributes)):
-                module_name = '.'.join(attributes[:range_idx-1])
+                module_name = '.'.join(attributes[:range_idx - 1])
                 module_lookup = module_prefix + module_name
                 module = self.__code_gen.get_global_var(module_lookup)
                 node_copy.id = module_name
@@ -462,7 +465,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             if not module:
                 # Access is not from an imported module, visit node value
                 self.__last_type, self.__last_value = self.__visit_node(node.value)
-                
+
         str_value = node.attr
         if self.__last_type.is_python_obj():  # Python obj attribute. Type is unknown
             self.__last_type = lang_type.get_python_obj_type()
@@ -614,7 +617,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     self.__last_value = fly_obj.allocate_flyable_instance(self, content)
 
                     # Call the constructor
-                    caller.call_obj(self, "__init__", self.__last_value, self.__last_type, args, args_types, kwargs, True)
+                    caller.call_obj(self, "__init__", self.__last_value, self.__last_type, args, args_types, kwargs,
+                                    True)
 
                 elif isinstance(content, lang_func.LangFunc):
                     # Func call
@@ -642,7 +646,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
                     if func_to_call is not None:
                         self.__last_type, self.__last_value = caller.call_obj(self, method_name, self.__last_value,
-                                                                              self.__last_type, args, args_types, kwargs)
+                                                                              self.__last_type, args, args_types,
+                                                                              kwargs)
                         if self.__last_type.is_unknown():
                             self.__last_type = lang_type.get_none_type()
                             self.__last_value = self.__builder.const_int32(0)
@@ -712,7 +717,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         if value_type.is_primitive():
             self.__parser.throw_error("'[]' can't be used on a primitive type", node.lineno, node.end_col_offset)
         else:
-            self.__last_type, self.__last_value = caller.call_obj(self, func_name, value, value_type, args, args_types, {})
+            self.__last_type, self.__last_value = caller.call_obj(self, func_name, value, value_type, args, args_types,
+                                                                  {})
 
         ref_counter.ref_decr_multiple_incr(self, args_types, args)
 
@@ -752,7 +758,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         # If return is void, assumes a return type of None (which python does)
         if node.value is None:
             return_type, return_value = lang_type.get_none_type(), self.__builder.const_int32(0)
-        else: 
+        else:
             return_type, return_value = self.__visit_node(node.value)
 
         if not hint.is_incremented_type(return_type):  # Need to increment if we return to be consistent to CPython
@@ -775,19 +781,18 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             conv_type, conv_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, return_value, return_type)
             self.__builder.ret(conv_value)
 
-    # TODO: fix issues #39 & #41 and then complete the visitor
+    # FIXME: issues #39 & #41 and then complete the visitor
     def visit_Global(self, node: Global) -> Any:
         file = self.__func.get_parent_func().get_file()
-        if file is None:
-            raise Exception("Function of function implementationt has no file. Was the file set before parsing?")
-        global_func = file.get_global_func()
-        if global_func is None:
-            raise Exception("File has no global function. Was the function set before parsing?")
-        impl = global_func.get_impl(3)
         for name in node.names:
-            result = impl.get_context().find_active_var(name)
+            global_var = self.__code_gen.get_global_var(f"@global@var@{name}@{file.get_path()}")
+            _type = lang_type.from_code_type(global_var.get_type())
+            local_var = self.__func.get_context().add_var(name, _type)
+            local_var.set_code_gen_value(global_var)
+            local_var.set_global(True)
+            local_var.set_type(_type)
 
-    # TODO: fix issues #39 & #41 and then complete the visitor
+    #  FIXME: issues #39 & #41 and then complete the visitor
     def visit_Nonlocal(self, node: Nonlocal) -> Any:
         for name in node.names:
             self.__func.get_context()
@@ -801,7 +806,12 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         if isinstance(node.value, bool):
             self.__last_type = lang_type.get_bool_type()
             self.__last_type.add_hint(hint.TypeHintConstBool(node.value))
-            self.__last_value = self.__builder.const_int1(int(node.value))
+            self.__last_value = self.__builder.const_int1(node.value)
+            # self.__last_value = (
+            #     self.__code_gen.get_true().get_id()
+            #     if node.value
+            #     else self.__code_gen.get_false().get_id()
+            # )
         elif isinstance(node.value, int):
             self.__last_type = lang_type.get_int_type()
             self.__last_value = self.__builder.const_int64(node.value)
@@ -818,7 +828,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         elif isinstance(node.value, bytes):
             self.__last_type = lang_type.get_python_obj_type()
             self.__last_type.add_hint(hint.TypeHintRefIncr())
-            self.__last_value = flyable.code_gen.runtime.create_bytes_object(self.__code_gen, self.__builder, node.value)
+            self.__last_value = flyable.code_gen.runtime.create_bytes_object(self.__code_gen, self.__builder,
+                                                                             node.value)
         elif node.value is None:
             self.__last_type = lang_type.get_none_type()
             self.__last_value = self.__builder.const_int32(0)
@@ -1346,7 +1357,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
             new_var = self.__func.get_context().add_var(import_name, module_type)
             if self.__func.get_parent_func().is_global():
-                new_global_var = gen.GlobalVar("@flyable@global@module@" + import_name, module_code_type, containing_module=module_name)
+                new_global_var = gen.GlobalVar("@flyable@global@module@" + import_name, module_code_type,
+                                               containing_module=module_name)
                 new_var.set_global(True)
                 new_var.set_code_gen_value(new_global_var)
                 self.__code_gen.add_global_var(new_global_var)
@@ -1442,11 +1454,11 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
     def __find_active_var(self, name: str):
         result = self.__func.get_context().find_active_var(name)
-        if result is None:
+        if isinstance(result, Variable) and result.is_global():
             parent_func = self.__func.get_parent_func().get_file().get_global_func()
             if parent_func is not None:
                 impl = parent_func.get_impl(4)
-                result = impl.get_context().find_active_var(name)
+                return impl.get_context().find_active_var(name)
         return result
 
     def __get_code_func(self):
