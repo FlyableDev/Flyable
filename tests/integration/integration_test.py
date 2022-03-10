@@ -30,7 +30,7 @@ class IntegrationTest:
   __output_dir: str = field(init=False)
 
   def __post_init__(self):
-    self.__output_dir = self.dir_path + "/build"
+    self.__output_dir = "./build"
     self.__main_path = f"{self.dir_path}/src/{self.main if self.main.endswith('.py') else self.main + '.py'}"
     if self.logging(): 
       create_log(self)

@@ -267,7 +267,6 @@ def create_new_quail_integration_test(name: str, conf: bool, git_add: bool):
         body.write('print("Hello World!")')
     
     os.mkdir(f"{path}/output")
-    os.mkdir(f"{path}/build")
 
     if git_add:
         Popen(f"git add ./{path}")
