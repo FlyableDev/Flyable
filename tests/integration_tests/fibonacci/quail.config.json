@@ -1,5 +1,7 @@
 {
   "name": "fibonnaci",
   "description": "This is a very cool desc",
-  "main": "main.py"
+  "main": "main.py",
+  "logging": true,
+  "debug_flags": ["FLAG_SHOW_VISIT_AST"]
 }

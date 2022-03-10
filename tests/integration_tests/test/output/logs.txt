@@ -1,5 +1,0 @@
-Logs of test test&6-------- Running test 2/3 --------&7[FLYABLE - Output of test test]Hello World!
-&7[FLYABLE - End of output of test test]&7[PYTHON - Output of test test]
-Hello World!
-&7[PYTHON - End of output of test test]
-&a-------- Success running test test --------

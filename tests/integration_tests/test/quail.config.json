@@ -1,6 +1,0 @@
-{
-  "name": "test",
-  "description": "Quail Integration test 'test' for the flyable compiler",
-  "main": "main.py",
-  "logging": true
-}

@@ -7,6 +7,8 @@ from contextlib import redirect_stdout
 
 from flyable.compiler import Compiler
 from flyable import constants
+from flyable.debug.debug_flags import DebugFlag, disable_debug_flags, enable_debug_flags
+from flyable.debug.debug_flags_list import FLAGS
 
 from tests.quail.utils.utils import CompilationError
 import tests.integration.constants as const
@@ -20,11 +22,12 @@ class IntegrationTest:
   desc: str
   main: str
   dir_path: str
+  flags: list[DebugFlag]
+  __logging: bool;
 
   __lines: list[str] | None = field(default=None, init=False)
   __main_path: str = field(init=False)
   __output_dir: str = field(init=False)
-  __logging: bool = field(default=False)
 
   def __post_init__(self):
     self.__output_dir = self.dir_path + "/build"
@@ -48,6 +51,8 @@ class IntegrationTest:
 
 
   def fly_compile(self, save_results: bool = False):
+    disable_debug_flags()
+    enable_debug_flags(*self.flags)
     compiler = Compiler()
     compiler.add_file(self.__main_path)
     compiler.set_output_path(f"{self.__output_dir}/output.o")
@@ -63,6 +68,8 @@ class IntegrationTest:
     raise CompilationError(compiler.get_errors())
 
   def fly_exec(self):
+    disable_debug_flags()
+    enable_debug_flags(*self.flags)
     self.fly_compile()
     linker_args = [
         "gcc",
@@ -109,14 +116,26 @@ def load_integration_tests(base_dir: str):
         continue
 
       if file == const.quail_config_file_name:
-        with open(f"{test_folder}/{file}", 'r') as f:
-          config_content = json.loads("".join(f.readlines()))
+        with open(f"{test_folder}/{file}", 'r') as name:
+          config_content = json.loads("".join(name.readlines()))
 
         if not valid_config(config_content):
           raise Exception(f"Invalid test config in {test_folder} test")
         
         logging = config_content.get('logging', False)
-        tests.append(IntegrationTest(config_content['name'], config_content['description'], config_content['main'], test_folder, logging))
+
+        flags = []
+        if "debug_flags" in config_content:
+          flag_names = config_content["debug_flags"]
+          for name in flag_names:
+            flag_found = FLAGS.get(name, None)
+            if flag_found is not None:
+              flags.append(flag_found)
+            else:
+              # TODO: Add invalid flag warning
+              pass
+        print(flags)
+        tests.append(IntegrationTest(config_content['name'], config_content['description'], config_content['main'], test_folder, flags, logging))
 
   return tests
 

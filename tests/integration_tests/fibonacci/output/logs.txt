@@ -1,1 +1,3 @@
-Logs of test fibonnaci
+Logs of test fibonnaci&6-------- Running test 1/3 --------&7[FLYABLE - Output of test fibonnaci]75025
+&7[FLYABLE - End of output of test fibonnaci]&7[PYTHON - Output of test fibonnaci]75025
+&7[PYTHON - End of output of test fibonnaci]&a-------- Success running test fibonnaci --------

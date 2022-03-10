@@ -2,7 +2,6 @@
 Module where are declared the diffenrent debug flags
 """
 from typing import Literal
-
 from flyable.debug.debug_flags import DebugFlag
 
 """

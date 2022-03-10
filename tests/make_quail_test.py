@@ -255,7 +255,9 @@ def create_new_quail_integration_test(name: str, conf: bool, git_add: bool):
             content = json.dumps({
                 'name': name,
                 'description': f"Quail Integration test '{name}' for the flyable compiler",
-                'main': 'main.py'
+                'main': 'main.py',
+                "debug_flags": [],
+                "logging": False
             }, indent=4)
         else:
             content = "{}"
