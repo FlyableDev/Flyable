@@ -64,7 +64,7 @@ def cli():
     is_flag=True,
     help="Adds the files created to git",
     prompt="Do you want to add the file created to git?",
-    default=True,
+    default=False,
 )
 def create_new_quail_integration_test(name: str, blank: bool, git_add: bool):
     """
@@ -232,7 +232,7 @@ def add_test_to_test_suite(
     is_flag=True,
     help="Adds the files created to git",
     prompt="Do you want to add the file created to git?",
-    default=True,
+    default=False,
 )
 def create_new_quail_integration_test(name: str, conf: bool, git_add: bool):
     """
