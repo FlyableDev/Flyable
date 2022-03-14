@@ -7,7 +7,8 @@ Compiling : Read and transform the Python into machines instructions contained i
 Linking : Combine the generated object file with Python runtime to generate an executable program.
 Running : Run the generated program. Generated exe file will try to find an existing python installation on the setup.
 """
-
+import sys
+import os
 from pathlib import Path
 from subprocess import PIPE, Popen
 from sys import stderr, stdin, stdout
@@ -20,7 +21,6 @@ from flyable.debug.code_branch_viewer import BranchViewer
 from flyable.debug.debug_flags import DebugFlag, DebugFlagListType, enable_debug_flags
 from flyable.debug.debug_flags_list import *
 from flyable.tool.utils import end_step, add_step
-
 
 ENABLED_DEBUG_FLAGS: DebugFlagListType = [
 ]
@@ -52,7 +52,7 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
             "-flto",
             "output.o",
             constants.LIB_FLYABLE_RUNTIME_PATH,
-            constants.PYTHON_3_10_PATH,
+            constants.PYTHON_3_11_PATH,
         ]
         p = Popen(linker_args, cwd=output_dir)
         p.wait()
@@ -60,6 +60,7 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
             raise Exception("Linking error")
 
         end_step()
+
 
 def run_code(output_dir: str, exec_name: str):
     """Runs the code
@@ -71,8 +72,8 @@ def run_code(output_dir: str, exec_name: str):
     add_step("Running")
 
     p = Popen(
-        [output_dir + f"/{exec_name}.exe"],
-        cwd=output_dir,
+        [output_dir + "/" + exec_name, os.getcwd() + "\\test.py"],
+        cwd="C:\\Users\\User\\Desktop\\Workspace\\cpython",
         stdin=stdin,
         stdout=stdout,
         stderr=stderr,

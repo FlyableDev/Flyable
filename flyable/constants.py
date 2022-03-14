@@ -7,5 +7,5 @@ RESOURCES_DIRECTORY = os.path.join(ROOT_DIRECTORY, "resources")
 BUILD_FILES_DIRECTORY = os.path.join(RESOURCES_DIRECTORY, "build_files")
 
 LIB_FLYABLE_RUNTIME_PATH = os.path.join(BUILD_FILES_DIRECTORY, "libFlyableRuntime.a")
-PYTHON_3_10 = "python310.lib" if platform.system() == "Windows" else "python3.10.a" if platform.system() == "Linux" else "python310.dylib"
-PYTHON_3_10_PATH = os.path.join(BUILD_FILES_DIRECTORY, PYTHON_3_10)
+PYTHON_3_11 = "python311.lib" if platform.system() == "Windows" else "python3.11.a" if platform.system() == "Linux" else "python311.dylib"
+PYTHON_3_11_PATH = os.path.join(BUILD_FILES_DIRECTORY, PYTHON_3_11)

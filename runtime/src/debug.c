@@ -15,7 +15,6 @@ void flyable_debug_addr_minus(void* addr1,void* addr2)
 
 void flyable_debug_support_vec(PyObject* obj)
 {
-
     vectorcallfunc func = PyVectorcall_Function(obj);
     if(func != NULL)
         printf("DOES SUPPORT VEC CALL\n");

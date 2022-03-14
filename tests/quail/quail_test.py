@@ -53,7 +53,7 @@ class QuailTest:
                 "-flto",
                 "output.o",
                 constants.LIB_FLYABLE_RUNTIME_PATH,
-                constants.PYTHON_3_10_PATH,
+                constants.PYTHON_3_11_PATH,
             ]
             p = Popen(linker_args, cwd=temp_working_dir)
             p.wait()

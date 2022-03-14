@@ -32,11 +32,11 @@
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
-			<Add directory="C:/Software/Python/Python310/include" />
+			<Add directory="../../cpython/Include" />
+			<Add directory="../../cpython/Include/cpython" />
+			<Add directory="../../cpython/Include/internal" />
+			<Add directory="../../cpython/PC" />
 		</Compiler>
-		<Linker>
-			<Add library="C:/Software/Python/Python310/libs/python3.lib" />
-		</Linker>
 		<Unit filename="src/debug.c">
 			<Option compilerVar="CC" />
 		</Unit>
