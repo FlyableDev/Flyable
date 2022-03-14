@@ -34,3 +34,30 @@ FLAG_LOG_DEBUG: DebugFlag[str] = DebugFlag(default_value="./debug.log")
 """value: str (path of log file)"""
 
 FLAG_SHOW_STEP_LEVEL: DebugFlag[int] = DebugFlag(default_value=1)
+
+FLAGS = {flag_name: flag for flag_name, flag in locals().items() if flag_name.startswith("FLAG_")}
+"""
+Here is a dictionnary containing all the flags so you can access them programmatically.
+
+WARNING
+    the keys of this dictionnary are the name of the variable of the debug FLAGs.\n
+    If you change the name of a variable, it changes the name of the flag inside this dictionary\n
+    Proceed with caution 
+(~°3°)~
+"""
+
+
+def get_enabled_debug_flags() -> list[DebugFlag]:
+    return [flag for flag in FLAGS.values() if flag.is_enabled]
+
+
+def get_all_debug_flags() -> list[DebugFlag]:
+    return list(FLAGS.values())
+
+
+def get_flag(name: str, default=None) -> DebugFlag:
+    return FLAGS.get(name, default)
+
+
+def get_flag_name(flag: DebugFlag):
+    return next((flag_name for flag_name, debug_flag in FLAGS.items() if flag is debug_flag), None)

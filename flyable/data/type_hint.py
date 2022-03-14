@@ -32,9 +32,20 @@ Const value hints
 """
 
 
+def is_const_type(lang_type: LangType, const_type: type | str):
+    found_hint = get_lang_type_contained_hint_type(lang_type, TypeHintConstValue)
+    if found_hint is not None:
+        if isinstance(const_type, type):
+            return isinstance(found_hint.get_value(), const_type)
+        else:
+            cls = found_hint.get_value().__class__
+            return f"{cls.__module__}.{cls.__name__}" == const_type
+    return False
+
+
 class TypeHintConstValue(TypeHint):
 
-    def __init__(self, value: Union[int, float, bool, str]):
+    def __init__(self, value: int | float | bool | str):
         self.__value = value
 
     def get_value(self):
@@ -227,7 +238,7 @@ class TypeHintIntRange(TypeHint):
     Hints that represents stuff
     """
 
-    def __init__(self, minimum:int=0, maximum:int=0):
+    def __init__(self, minimum: int = 0, maximum: int = 0):
         self.__min_range = minimum
         self.__max_range = maximum
 

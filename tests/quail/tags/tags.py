@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from functools import wraps
 from typing import TYPE_CHECKING
 
 from tests.quail.tags.quail_tag import QuailTag, QuailTagType
@@ -84,49 +86,59 @@ def tag_end(match: re.Match, test: QuailTestParser) -> tuple[QuailTestState, Any
 
 
 def get_indent(line: str):
-    return line[: line.index(line.strip()[0])]
+    return line[:line.index(line.strip()[0])]
 
 
+def __indented(func):
+    @wraps(func)
+    def inner(match: re.Match, test: QuailTestParser):
+        indent = get_indent(match.group(1))
+        line = func(match, test)
+        return "\n".join(indent + line for line in line.split("\n"))
+
+    return inner
+
+
+@__indented
 def assert_tag_empty(match: re.Match, test: QuailTestParser) -> str:
     line = match.group(1)
-    indent = get_indent(line)
-    return indent + f"print(({line.strip()}))\n"
+    return f"print(({line.strip()}))\n"
 
 
+@__indented
 def assert_tag_eq(match: re.Match, test: QuailTestParser) -> str:
     line = match.group(1)
-    indent = get_indent(line)
     value = match.group(5).strip()
-    return indent + f"print(({line.strip()}) == ({value}))\n"
+    return f"print(({line.strip()}) == ({value}))\n"
 
 
+@__indented
 def assert_tag_eq_True(match: re.Match, test: QuailTestParser) -> str:
     line = match.group(1)
-    indent = get_indent(line)
-    return indent + f"print(({line.strip()}) == True)\n"
+    return f"print(({line.strip()}) == True)\n"
 
 
+@__indented
 def assert_tag_eq_False(match: re.Match, test: QuailTestParser) -> str:
     line = match.group(1)
-    indent = get_indent(line)
-    return indent + f"print(({line.strip()}) == False)\n"
+    return f"print(({line.strip()}) == False)\n"
 
 
+@__indented
 def assert_tag_raises(match: re.Match, test: QuailTestParser) -> str:
     line = match.group(1)
-    indent = get_indent(line)
     value = match.group(5).strip()
 
     return (
             trim(
                 f"""
-                {indent}try:
-                {indent}    {line.strip()}
-                {indent}except {value or ""}:
-                {indent}    print(True)
-                {indent}else:
-                {indent}    print(False)
-                {indent}"""
+                try:
+                    {line.strip()}
+                except {value or ""}:
+                    print(True)
+                else:
+                    print(False)
+                """
             )
             + "\n"
     )

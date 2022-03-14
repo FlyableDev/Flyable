@@ -40,7 +40,7 @@ class Variable:
     def set_type(self, type: type.LangType):
         type = copy.deepcopy(type)
         hint.remove_hint_type(type, hint.TypeHintRefIncr)
-        hint.remove_hint_type(type ,hint.TypeHintDataSource)
+        hint.remove_hint_type(type, hint.TypeHintDataSource)
         self.__type = type
 
     def get_type(self) -> type.LangType:

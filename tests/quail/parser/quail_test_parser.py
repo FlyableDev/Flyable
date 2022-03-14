@@ -5,7 +5,7 @@ from typing import Any
 from tests.quail.quail_test import QuailTest
 from tests.quail.tags.quail_tag import QuailTag, QuailTagType
 
-_QUAIL_VALID_INFOS: list[str] = ["Name", "Flyable-version", "Description"]
+_QUAIL_VALID_INFOS: list[str] = ["Name", "Flyable-version", "Description", "Dependencies"]
 
 
 class QuailTestState(Enum):
@@ -70,7 +70,7 @@ class QuailTestParser:
         self.current_test.lines.append(line)
 
     def __add_info_to_current_quail_test(self, line):
-        if not line or line.strip() == '"""':
+        if not line.strip() or line.strip() in ('"""', "'''"):
             return
         info_name, info_content = line.split(":", 1)
         info_name = info_name.strip()

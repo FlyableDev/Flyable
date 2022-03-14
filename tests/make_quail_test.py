@@ -1,13 +1,77 @@
+import json
 import os
-from typing import Optional
 
 from tests.quail.utils.trim import trim
 from flyable import FLYABLE_VERSION
+import click
+from subprocess import Popen
+
+HELP = "Welcome to the Quail maker helper!"
 
 
-def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
-    """Creates a new folder with a body_<x>.py and a test_<x>.py file for Quail"""
-    path = f"./unit_tests/{name}"
+class QuailSuiteTestNameType(click.ParamType):
+    name = "test_suite_name_type"
+
+    def __init__(self):
+        super().__init__()
+
+    def convert(self, value, param, ctx):
+        test_suite_name = value.strip()
+        path = f"./tests/unit_tests/{test_suite_name}"
+        if not os.path.exists(path):
+            self.fail(
+                f"The Quail test suite '{test_suite_name}' doesn't exist, if you wanted to create a new test suite, "
+                f"use the 'new' command",
+                param=param,
+                ctx=ctx,
+            )
+        return test_suite_name
+
+
+class QuailTestNameType(click.ParamType):
+    name = "quail_test_name_type"
+
+    def __init__(self):
+        super().__init__()
+
+    def convert(self, value, param, ctx):
+        test_name = value.strip()
+        if not test_name.replace("_", "").isalnum():
+            self.fail(
+                f"Invalid test name {test_name!r}. Test names must be alpha numerical (though _ are allowed)",
+                param=param,
+                ctx=ctx,
+            )
+        return test_name
+
+
+@click.group(help=HELP)
+def cli():
+    pass
+
+
+@cli.command(name="new")
+@click.argument("name")
+@click.option(
+    "--blank",
+    is_flag=True,
+    help="Doesn't add a placeholder test in the test suite.",
+    prompt="Do you want to add a placeholder test?",
+    default=True,
+)
+@click.option(
+    "--git-add",
+    is_flag=True,
+    help="Adds the files created to git",
+    prompt="Do you want to add the file created to git?",
+    default=False,
+)
+def create_new_quail_integration_test(name: str, blank: bool, git_add: bool):
+    """
+    For more information, write `Quail new --help`\n
+    Creates a new Quail test suite <x> containing a folder with a quailt_<x>.py file and a test_<x>.py file.
+    """
+    path = f"./tests/unit_tests/{name}"
     try:
         os.makedirs(path, exist_ok=False)
     except OSError:
@@ -17,10 +81,11 @@ def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
         )
         return
     with open(f"{path}/quailt_{name}.py", "w+") as body:
-        if add_place_holder_test:
-            body.write(
-                trim(
-                    f'''
+        msg = f'"""Module {name}"""\n\n'
+        if blank:
+            msg += (
+                    trim(
+                        f'''
                     # Quail-test:new
                     """
                     Name: YOUR_NAME
@@ -31,9 +96,10 @@ def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
                     "hello world!" == "hello world!"  # Quail-assert: True
                     # Quail-test:end
                     '''
-                )
-                + "\n"
+                    )
+                    + "\n"
             )
+        body.write(msg)
 
     with open(f"{path}/test_{name}.py", "w+") as body:
         body.write(
@@ -48,97 +114,159 @@ def create_new_quail_test_suite(name: str, add_place_holder_test: bool):
             )
             + "\n"
         )
-    print(u"Done! 🥳")
+    if git_add:
+        Popen(f"git add ./{path}")
+    click.echo(f"Quail test suite {name!r} created successfully!{u'🥳'}")
 
 
-def create_new_quail_test():
-    """
-    In an already existing Quail test suite, creates a new Quail test in body_<x>.py
-    and its corresponding test method in test_<x>.py if desired
-    """
+is_compile = False
 
 
-def get_value_of_arg(arg, command_args) -> Optional[str]:
-    if arg in command_args:
-        idx = command_args.index("--name") + 1
-        if idx >= len(command_args):
-            print(f"the {arg} command argument takes a value")
-            return None
-        return command_args[idx]
-    return None
+def get_is_compile():
+    return is_compile
 
 
-def handle_new(command_args: list[str]) -> Optional[dict]:
-    name = command_args[0] if len(command_args) else None
-    add_place_holder_test = "--blank" not in command_args
-
-    if name is None:
-        name = input("Name of the Quail test suite: ").strip()
-        if not name:
-            return None
-
-    if add_place_holder_test is None:
-        add_place_holder_test = (
-                input("Add a Quail test place holder? ([Y], N)").lower() != "n"
-        )
-
-    return {"name": name, "add_place_holder_test": add_place_holder_test}
-
-
-def cli():
-    command: str
-    command_args: list[str]
-
-    res = input('|Quail> ')
-    if not res.strip():
-        print("You must enter a command!")
+def set_is_compile(_ctx, _self, choice):
+    global is_compile
+    if choice is None:
         return
-    command, *command_args = res.split()
-    command = command.lower()
+    is_compile = choice == "compile"
+    print(is_compile)
 
-    if command == "new":
-        result = handle_new(command_args)
-        if result is None:
-            print("Creation of Quail test suite interrupted")
-            return
-        print("New Quail test suite description:")
-        print("\n".join(f"- {name} = {value}" for name, value in result.items()))
-        choice = input(
-            "Do you want to proceed to create Quail test suite with those informations ([Y], N): "
+
+@cli.command(name="add")
+@click.argument("test-suite-name", type=QuailSuiteTestNameType())
+@click.option(
+    "--test-name", prompt="Enter the name of your test", type=QuailTestNameType()
+)
+@click.option(
+    "--mode",
+    prompt="Enter the mode",
+    default="runtime",
+    type=click.Choice(["runtime", "compile", "both"]),
+    callback=set_is_compile,
+)
+@click.option(
+    "--add-tester",
+    is_flag=True,
+    prompt="Add a quail tester?",
+    default=get_is_compile,
+)
+def add_test_to_test_suite(
+        test_suite_name: str,
+        test_name: str,
+        mode: str = None,
+        add_tester: bool = False,
+):
+    """
+    For more information, write `Quail add --help`\n
+    Adds a new Quail test to an already existing Quail test suite.
+    """
+    test_name = test_name.strip()
+    if not test_name.replace("_", "").isalnum():
+        print(
+            f"Invalid test name {test_name!r}. Test names must be alpha numerical (though _ are allowed)"
         )
-        if choice.lower() != "n":
-            create_new_quail_test_suite(**result)
-            return
-        print("Creation of Quail test suite interrupted")
-
-    elif command == "add":
-        pass
-
-    elif command == "quit":
-        exit()
-
-    else:
-        print(f"Command '{command}' unknown, try again!")
-
-
-def main():
-    """"""
-    print(
-        trim(
-            """
-            Welcome to the Quail maker helper!
-            How can I help you today?
-            [new] Quail test suite
-            [add] a new test to an existing test Quail test suite  
-            [quit] to quit the program
-            (you can interrupt the the program at any point by typing Ctrl+C)
-            
-            """
+        return
+    path = f"./tests/unit_tests/{test_suite_name}"
+    if not os.path.exists(path):
+        print(
+            f"The Quail test suite '{test_suite_name}' doesn't exist, if you wanted to create a new test suite, "
+            f"use the 'new' command"
         )
+        return
+
+    with open(f"{path}/quailt_{test_suite_name}.py", "a+") as body:
+        msg = (
+                trim(
+                    f'''
+                \n\n
+                # Quail-test:new {mode if mode != "runtime" else ""}
+                """
+                Name: {test_name}
+                Flyable-version: {FLYABLE_VERSION}
+                Description: tests {test_name.replace("_", " ")}
+                """
+                # Quail-test:start
+                
+                # Quail-test:end
+                '''
+                )
+                + "\n"
+        )
+        body.write(msg)
+
+    if add_tester:
+        with open(f"{path}/test_{test_suite_name}.py", "a+") as body:
+            args = (
+                "quail_test: QuailTest, stdout: StdOut"
+                if mode != "compile"
+                else "quail_results: CompilerResult"
+            )
+            body.write(
+                trim(
+                    f"""
+                    \n\n
+                    @quail_tester
+                    def test_{test_name}({args}):
+                        pass
+                    """
+                )
+                + "\n"
+            )
+    click.echo(
+        f"Quail test {test_name!r} created successfully in {test_suite_name!r}!{u'🥳'}"
     )
-    while True:
-        cli()
 
+@cli.command(name="integration")
+@click.argument("name")
+@click.option(
+    "--conf",
+    is_flag=True,
+    help="Puts nothing in the default quail.config.json",
+    prompt="Do you want to create a default config file?",
+    default=True,
+)
+@click.option(
+    "--git-add",
+    is_flag=True,
+    help="Adds the files created to git",
+    prompt="Do you want to add the file created to git?",
+    default=False,
+)
+def create_new_quail_integration_test(name: str, conf: bool, git_add: bool):
+    """
+    For more information, write `Quail integration --help`\n
+    Creates a new Quail integration test <x> containing a folder with a src folder, output folder and quail.config.json.
+    """
+    path = f"./tests/integration_tests/{name}"
+    try:
+        os.makedirs(path, exist_ok=False)
+    except OSError:
+        print(
+            f"The Quail Integration test '{name}' already exists"
+        )
+        return
+    
+    os.mkdir(f"{path}/src")
+    
+    with open(f"{path}/quail.config.json", "w+") as body:
+        if conf:
+            content = json.dumps({
+                'name': name,
+                'description': f"Quail Integration test '{name}' for the flyable compiler",
+                'main': 'main.py'
+            }, indent=4)
+        else:
+            content = "{}"
+        body.write(content)
 
-if __name__ == "__main__":
-    main()
+    with open(f"{path}/src/main.py", "w+") as body:
+        body.write('print("Hello World!")')
+    
+    os.mkdir(f"{path}/output")
+    os.mkdir(f"{path}/build")
+
+    if git_add:
+        Popen(f"git add ./{path}")
+    click.echo(f"Quail integration test {name!r} created successfully!{u'🥳'}")
