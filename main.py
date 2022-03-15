@@ -73,7 +73,7 @@ def run_code(output_dir: str, exec_name: str):
 
     p = Popen(
         [output_dir + "/" + exec_name, os.getcwd() + "\\test.py"],
-        cwd="C:\\Users\\User\\Desktop\\Workspace\\cpython",
+        cwd=os.path.dirname(os.path.realpath(sys.executable)),
         stdin=stdin,
         stdout=stdout,
         stderr=stderr,

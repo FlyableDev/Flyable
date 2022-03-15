@@ -165,8 +165,8 @@ def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args:
     tp_flag = function.py_obj_type_get_tp_flag_ptr(visitor, callable_type)
     tp_flag = builder.load(tp_flag)
 
-    has_vector_call_tpflag = builder._and(tp_flag, builder.const_int32(
-        2048))  # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
+    # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
+    has_vector_call_tpflag = builder._and(tp_flag, builder.const_int32(2048))
 
     can_vec_based_on_flag = builder.ne(has_vector_call_tpflag, builder.const_int32(0))
     vector_call_ptr = function.get_vector_call_ptr(visitor, callable_type)

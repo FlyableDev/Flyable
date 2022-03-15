@@ -36,7 +36,8 @@ class LangClassType:
             func = _class.get_func(i)
             tp_func = func.get_tp_call_impl()
             vec_func = func.get_vec_call_impl()
-            impl_name = builder.ptr_cast(builder.global_str(_class.get_name() + "\0"), code_type.get_int8_ptr())
+            impl_name = builder.ptr_cast(builder.global_str(func.get_qualified_name() + "\0"),
+                                         code_type.get_int8_ptr())
             tp_func = builder.ptr_cast(builder.func_ptr(tp_func.get_code_func()), code_type.get_int8_ptr())
             vec_func = builder.ptr_cast(builder.func_ptr(vec_func.get_code_func()), code_type.get_int8_ptr())
             builder.call(func_add_impl, [impl_name, tp_func, vec_func])

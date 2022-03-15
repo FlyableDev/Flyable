@@ -58,7 +58,7 @@ def py_runtime_get_string(code_gen: CodeGen, builder: CodeBuilder, value: str):
     str_ptr = builder.ptr_cast(builder.global_str(value), code_type.get_int8_ptr())
     args_type = [code_type.get_int8_ptr(), code_type.get_int64()]
     new_str_func = code_gen.get_or_create_func("PyUnicode_FromStringAndSize", code_type.get_py_obj_ptr(code_gen),
-                                               args_type, _code_gen.Linkage.EXTERNAL)
+                                                args_type, _code_gen.Linkage.EXTERNAL)
     return builder.call(new_str_func, [str_ptr, builder.const_int64(len(value))])
 
 
