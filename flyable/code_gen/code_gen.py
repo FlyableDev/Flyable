@@ -683,6 +683,9 @@ class CodeGen:
         entry_block = builder.create_block("Main Function Block")
         builder.set_insert_block(entry_block)
 
+        init_func = self.get_or_create_func("Py_Initialize", code_type.get_void(), [], Linkage.EXTERNAL)
+        builder.call(init_func, [])
+
         # Create all the static Python string that we need
         for global_str in self.__global_strings.items():
             new_str = runtime.py_runtime_get_string(self, builder, global_str[0])

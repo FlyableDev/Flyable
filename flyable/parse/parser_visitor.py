@@ -124,8 +124,6 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         self.__content_block = self.__builder.create_block("Main Content")
         self.__builder.set_insert_block(self.__content_block)
-        runtime.py_runtime_object_print(self.__code_gen, self.__builder,
-                                        runtime.py_runtime_get_string(self.__code_gen, self.__builder, "SALUT :D"))
 
     def __parse_over(self):
         # When parsing is done we can put the final br of the entry block
