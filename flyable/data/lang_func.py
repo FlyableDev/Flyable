@@ -9,6 +9,8 @@ import ast
 import flyable.data.lang_type as type
 import flyable.data.lang_file as lang_file
 from flyable.data.lang_func_impl import LangFuncImpl, FuncImplType
+import flyable.code_gen.code_type as code_type
+import flyable.code_gen.code_gen as _gen
 
 
 class LangFunc:
@@ -208,6 +210,20 @@ class LangFunc:
 
     def get_qualified_name(self):
         name = self.__node.name
-        if self.__class_lang: 
+        if self.__class_lang:
             return f"{self.__class_lang.get_qualified_name()}.{name}"
         return name
+
+    def generate_code_to_set_impl(self, code_gen, builder):
+        """
+        Generate the code that creates implementation inside CPython
+        """
+        func_add_impl = code_gen.get_or_create_func("flyable_add_impl", code_type.get_void(),
+                                                    [code_type.get_int8_ptr()] * 3,
+                                                    _gen.Linkage.EXTERNAL)
+        tp_func = self.get_tp_call_impl()
+        vec_func = self.get_vec_call_impl()
+        impl_name = builder.ptr_cast(builder.global_str(self.get_qualified_name() + "\0"), code_type.get_int8_ptr())
+        tp_func = builder.ptr_cast(builder.func_ptr(tp_func.get_code_func()), code_type.get_int8_ptr())
+        vec_func = builder.ptr_cast(builder.func_ptr(vec_func.get_code_func()), code_type.get_int8_ptr())
+        builder.call(func_add_impl, [impl_name, tp_func, vec_func])

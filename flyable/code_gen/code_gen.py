@@ -720,7 +720,10 @@ class CodeGen:
 
         # Create all the implementations on Python side
         for _class in self.__data.classes_iter():
-            _class.get_class_type().generate(_class, self, builder)
+            for _func in _class.funcs_iter():
+                _func.generate_code_to_set_impl(self, builder)
+        for _func in self.__data.funcs_iter():
+            _func.generate_code_to_set_impl(self, builder)
 
         func_to_call = self.get_or_create_func("Py_BytesMain", code_type.get_int32(),
                                                [code_type.get_int32(), code_type.get_int8_ptr().get_ptr_to()],

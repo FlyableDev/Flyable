@@ -124,6 +124,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         self.__content_block = self.__builder.create_block("Main Content")
         self.__builder.set_insert_block(self.__content_block)
+        debug.flyable_debug_print_int64(self.__code_gen, self.__builder, self.__builder.const_int64(2100))
 
     def __parse_over(self):
         # When parsing is done we can put the final br of the entry block

@@ -4,6 +4,8 @@ import ast
 from typing import TYPE_CHECKING
 from flyable.data.lang_type import LangType
 import flyable.data.lang_class_type as class_type
+import flyable.code_gen.code_type as code_type
+import flyable.code_gen.code_gen as _gen
 
 if TYPE_CHECKING:
     from flyable.data.lang_file import LangFile
