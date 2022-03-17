@@ -7,6 +7,7 @@ Compiling : Read and transform the Python into machines instructions contained i
 Linking : Combine the generated object file with Python runtime to generate an executable program.
 Running : Run the generated program. Generated exe file will try to find an existing python installation on the setup.
 """
+import platform
 import sys
 import os
 from pathlib import Path
@@ -54,6 +55,10 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
             constants.LIB_FLYABLE_RUNTIME_PATH,
             constants.PYTHON_3_11_PATH,
         ]
+
+        if platform.system() == "Windows":
+            linker_args.append(constants.PYTHON_3_11_DLL_PATH)
+
         p = Popen(linker_args, cwd=output_dir)
         p.wait()
         if p.returncode != 0:
