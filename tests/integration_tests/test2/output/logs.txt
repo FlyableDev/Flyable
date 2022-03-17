@@ -1,1 +1,13 @@
-Logs of test Test2
+Logs of test Test2 
+
+[15:24:27] &6-------- Running test 3/3 --------
+[15:24:27] &7[FLYABLE - Output of test Test2]
+[15:24:27] Hello World!
+
+[15:24:27] &7[FLYABLE - End of output of test Test2]
+[15:24:27] &7[PYTHON - Output of test Test2]
+[15:24:27] Hello World!
+
+[15:24:27] &7[PYTHON - End of output of test Test2]
+[15:24:27] &a-------- Success running test Test2 --------
+

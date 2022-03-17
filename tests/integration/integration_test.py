@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from subprocess import Popen, PIPE
 from io import StringIO
 from contextlib import redirect_stdout
+from sys import stdin, stdout
 
 
 from flyable.compiler import Compiler
@@ -27,12 +28,11 @@ class IntegrationTest:
 
   __lines: list[str] | None = field(default=None, init=False)
   __main_path: str = field(init=False)
-  __output_dir: str = field(init=False)
+  __output_dir: str = field(default="./build", init=True)
 
   def __post_init__(self):
-    self.__output_dir = "./build"
     self.__main_path = f"{self.dir_path}/src/{self.main if self.main.endswith('.py') else self.main + '.py'}"
-    if self.logging(): 
+    if self.logging():
       create_log(self)
 
   def py_compile(self):
@@ -55,7 +55,7 @@ class IntegrationTest:
     enable_debug_flags(*self.flags)
     compiler = Compiler()
     compiler.add_file(self.__main_path)
-    compiler.set_output_path(f"{self.__output_dir}/output.o")
+    compiler.set_output_path(os.path.join(self.__output_dir, "output.o"))
 
     try:
       compiler.compile()
@@ -70,7 +70,9 @@ class IntegrationTest:
   def fly_exec(self):
     disable_debug_flags()
     enable_debug_flags(*self.flags)
+    f = StringIO()
     self.fly_compile()
+
     linker_args = [
         "gcc",
         "-flto",
@@ -83,8 +85,10 @@ class IntegrationTest:
     if p0.returncode != 0:
         raise CompilationError("Linking error")
 
+
+    #with redirect_stdout(f):
     p = Popen(
-      [self.__output_dir + "/a.exe"],
+      [os.path.join(self.__output_dir, "a.exe")],
       cwd=self.__output_dir,
       stdout=PIPE,
       text=True
@@ -92,9 +96,11 @@ class IntegrationTest:
 
     if isinstance(p, str):
       raise CompilationError(p)
-    
-    result = p.communicate()[0]
-    return result
+
+    res = p.communicate()[0]
+
+    #s = f.getvalue()
+    return res
 
   def py_exec(self):
     f = StringIO()
@@ -106,11 +112,12 @@ class IntegrationTest:
 
 def load_integration_tests(base_dir: str):
   tests = []
-
+  output_dir = os.path.join(base_dir, 'build')
   for test_folder in os.listdir(base_dir):
+    test_folder = os.path.join(base_dir, test_folder)
     if not os.path.isdir(test_folder):
       continue
-
+    
     for file in os.listdir(test_folder):
       if os.path.isdir(file):
         continue
@@ -134,8 +141,8 @@ def load_integration_tests(base_dir: str):
             else:
               # TODO: Add invalid flag warning
               pass
-        print(flags)
-        tests.append(IntegrationTest(config_content['name'], config_content['description'], config_content['main'], test_folder, flags, logging))
+
+        tests.append(IntegrationTest(config_content['name'], config_content['description'], config_content['main'], test_folder, flags, logging, output_dir))
 
   return tests
 

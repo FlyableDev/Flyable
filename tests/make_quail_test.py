@@ -1,5 +1,7 @@
 import json
 import os
+from tests.integration.integration_test import load_integration_tests
+from tests.integration.integration_test_runner import IntegrationTestRunner
 
 from tests.quail.utils.trim import trim
 from flyable import FLYABLE_VERSION
@@ -44,6 +46,26 @@ class QuailTestNameType(click.ParamType):
             )
         return test_name
 
+class QuailIntegrationTestNameType(click.ParamType):
+    name = "integration_test_name_type"
+
+    def __init__(self):
+        super().__init__()
+
+    def convert(self, value, param, ctx: click.core.Context):
+        if ctx.command.get_params(ctx)[0].expose_value == True:
+            return
+        integration_test_name = value.strip()
+        path = f"./tests/integration_tests/{integration_test_name}"
+        if not os.path.exists(path):
+            self.fail(
+                f"The Quail integration test '{integration_test_name}' doesn't exist, if you wanted to create a new integration test, "
+                f"use the 'new-integration' command",
+                param=param,
+                ctx=ctx,
+            )
+        return integration_test_name
+
 
 @click.group(help=HELP)
 def cli():
@@ -66,7 +88,7 @@ def cli():
     prompt="Do you want to add the file created to git?",
     default=True,
 )
-def create_new_quail_integration_test(name: str, blank: bool, git_add: bool):
+def create_new_quail_test_suite(name: str, blank: bool, git_add: bool):
     """
     For more information, write `Quail new --help`\n
     Creates a new Quail test suite <x> containing a folder with a quailt_<x>.py file and a test_<x>.py file.
@@ -218,7 +240,7 @@ def add_test_to_test_suite(
         f"Quail test {test_name!r} created successfully in {test_suite_name!r}!{u'🥳'}"
     )
 
-@cli.command(name="integration")
+@cli.command(name="new-integration")
 @click.argument("name")
 @click.option(
     "--conf",
@@ -236,7 +258,7 @@ def add_test_to_test_suite(
 )
 def create_new_quail_integration_test(name: str, conf: bool, git_add: bool):
     """
-    For more information, write `Quail integration --help`\n
+    For more information, write `Quail new-integration --help`\n
     Creates a new Quail integration test <x> containing a folder with a src folder, output folder and quail.config.json.
     """
     path = f"./tests/integration_tests/{name}"
@@ -271,3 +293,40 @@ def create_new_quail_integration_test(name: str, conf: bool, git_add: bool):
     if git_add:
         Popen(f"git add ./{path}")
     click.echo(f"Quail integration test {name!r} created successfully!{u'🥳'}")
+
+@cli.command(name="run-integration")
+@click.option(
+    "--all",
+    is_flag=True,
+    help="Runs all the integration tests",
+    prompt="Do you want to run all the integration tests?",
+    default=False,
+)
+@click.option(
+    "--name",
+    help="Run a specific test based on its name",
+    prompt="What is the name of the test you want to run?",
+    type=QuailIntegrationTestNameType(),
+)
+def run_quail_integration_test(all: bool, name: str):
+    """
+    For more information, write `Quail run-integration --help`\n
+    Creates a new Quail integration test <x> containing a folder with a src folder, output folder and quail.config.json.
+    """
+    tests = load_integration_tests(os.path.abspath('./tests/integration_tests'))
+    test_runner = IntegrationTestRunner()
+    for test in tests:
+        test_runner.add_test(test)
+
+    if all:
+        test_runner.run_all_tests()
+    else:
+        test = test_runner.get_test(name)
+        if test is None:
+            print(
+                f"The Quail test suite '{name}' already exists, if you wanted to add a new test, "
+                f"use the 'add' command"
+            )
+
+
+    #click.echo(f"Quail integration test {name!r} created successfully!{u'🥳'}")
