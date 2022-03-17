@@ -8,6 +8,7 @@ Linking : Combine the generated object file with Python runtime to generate an e
 Running : Run the generated program. Generated exe file will try to find an existing python installation on the setup.
 """
 import platform
+from shutil import copyfile
 import sys
 import os
 from pathlib import Path
@@ -75,7 +76,7 @@ def run_code(output_dir: str, exec_name: str):
         exec_name (str): the name of the executable
     """
     add_step("Running")
-
+    
     p = Popen(
         [output_dir + "/" + exec_name, os.getcwd() + "\\test.py"],
         cwd=os.path.dirname(os.path.realpath(sys.executable)),
@@ -97,5 +98,10 @@ if __name__ == "__main__":
     # toggles on the debug flags
     enable_debug_flags(*ENABLED_DEBUG_FLAGS)
     dir = f"./build/{plat.get_platform_folder()}"
+    
+    if platform.system() == "Windows":
+        # move dll to executable location
+        copyfile(constants.PYTHON_3_11_DLL_PATH, f"{dir}/python311.dll")
+    
     main("test.py", dir, "a")
     run_code("./build/win64/", "a")
