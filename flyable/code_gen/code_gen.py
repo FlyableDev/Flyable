@@ -626,6 +626,8 @@ class CodeGen:
                     func.get_builder().ret_void()
                 elif visitor.get_func().get_return_type() == lang_type.get_python_obj_type():
                     none_value = builder.global_var(self.get_none())
+                    # None needs the be counted twice since we load it, and return it
+                    ref_counter.ref_incr(builder, lang_type.get_python_obj_type(), none_value)
                     ref_counter.ref_incr(builder, lang_type.get_python_obj_type(), none_value)
                     builder.ret(none_value)
                 else:
