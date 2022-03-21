@@ -381,9 +381,9 @@ class CodeGen:
         self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_vectorcall
 
         self.__true_var = self.add_global_var(
-            GlobalVar("@flyable@_True", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
+            GlobalVar("_Py_TrueStruct", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__false_var = self.add_global_var(
-            GlobalVar("@flyable@_False", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
+            GlobalVar("_Py_FalseStruct", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__none_var = self.add_global_var(
             GlobalVar("_Py_NoneStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
         self.__py_func_type_var = self.add_global_var(
@@ -698,8 +698,8 @@ class CodeGen:
         builder.store(false_value, builder.global_var(self.get_false()))
 
         # Set the build-in module
-        # build_in_module = gen_module.import_py_module(self, builder, "builtins")
-        # builder.store(build_in_module, builder.global_var(self.get_build_in_module()))
+        build_in_module = gen_module.import_py_module(self, builder, "builtins")
+        builder.store(build_in_module, builder.global_var(self.get_build_in_module()))
 
         # Set flyable constants
         for key in self.__py_constants.keys():
