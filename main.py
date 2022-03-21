@@ -53,7 +53,6 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
             "gcc",
             "-flto",
             "output.o",
-            constants.LIB_FLYABLE_RUNTIME_PATH,
             constants.PYTHON_3_11_PATH,
         ]
 
@@ -76,7 +75,7 @@ def run_code(output_dir: str, exec_name: str):
         exec_name (str): the name of the executable
     """
     add_step("Running")
-    
+
     p = Popen(
         [output_dir + "/" + exec_name, os.getcwd() + "\\test.py"],
         cwd=os.path.dirname(os.path.realpath(sys.executable)),
@@ -98,10 +97,10 @@ if __name__ == "__main__":
     # toggles on the debug flags
     enable_debug_flags(*ENABLED_DEBUG_FLAGS)
     dir = f"./build/{plat.get_platform_folder()}"
-    
+
     if platform.system() == "Windows":
         # move dll to executable location
         copyfile(constants.PYTHON_3_11_DLL_PATH, f"{dir}/python311.dll")
-    
+
     main("test.py", dir, "a")
     run_code("./build/win64/", "a")

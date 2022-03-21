@@ -11,6 +11,7 @@ import flyable.code_gen.code_type as code_type
 import flyable.code_gen.debug as debug
 import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as type_hint
+import flyable.code_gen.ref_counter as ref_counter
 
 from flyable.code_gen.code_type import CodeType
 
@@ -58,7 +59,7 @@ def py_runtime_get_string(code_gen: CodeGen, builder: CodeBuilder, value: str):
     str_ptr = builder.ptr_cast(builder.global_str(value), code_type.get_int8_ptr())
     args_type = [code_type.get_int8_ptr(), code_type.get_int64()]
     new_str_func = code_gen.get_or_create_func("PyUnicode_FromStringAndSize", code_type.get_py_obj_ptr(code_gen),
-                                                args_type, _code_gen.Linkage.EXTERNAL)
+                                               args_type, _code_gen.Linkage.EXTERNAL)
     return builder.call(new_str_func, [str_ptr, builder.const_int64(len(value))])
 
 
@@ -110,7 +111,8 @@ def value_to_pyobj(code_gen: CodeGen, builder: CodeBuilder, value: int, value_ty
             result_type.add_hint(type_hint.TypeHintRefIncr())
         return result_type, builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
     elif value_type.is_none():
-        none_value = builder.load(builder.global_var(code_gen.get_none()))
+        none_value = builder.global_var(code_gen.get_none())
+        ref_counter.ref_incr(builder, none_value, lang_type.get_python_obj_type())
         return result_type, none_value
 
     return result_type, value
