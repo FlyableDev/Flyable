@@ -102,6 +102,9 @@ class LangFile:
     def get_funcs_count(self):
         return len(self.__funcs)
 
+    def get_qualified_name(self):
+        return ""
+
     def get_path(self):
         return self.__path
 

@@ -17,7 +17,7 @@ module to handle flyable object info
 """
 
 
-def py_obj_get_attr(visitor: ParserVisitor, obj: int, name: str, obj_type:int=None):
+def py_obj_get_attr(visitor: ParserVisitor, obj: int, name: str, obj_type: int = None):
     """
     Obtain the attribute of an object by calling get_attr or get_attro.
     If a type is supplied it will avoid loading the type again
@@ -72,7 +72,7 @@ def py_obj_get_attr(visitor: ParserVisitor, obj: int, name: str, obj_type:int=No
     return builder.load(attr_found_var)
 
 
-def py_obj_set_attr(visitor: ParserVisitor, obj: int, name: str, obj_set: int, obj_type:int=None):
+def py_obj_set_attr(visitor: ParserVisitor, obj: int, name: str, obj_set: int, obj_type: int = None):
     """
     Obtain the attribute of an object by calling get_attr or get_attro.
     If a type is supplied it will avoid loading the type again
@@ -188,8 +188,8 @@ def allocate_flyable_instance(visitor: ParserVisitor, lang_class: LangClass):
     visitor.get_builder().store(visitor.get_builder().const_int64(1), ref_ptr)
 
     # Set the type of the object
-    type_instance = builder.load(builder.global_var(lang_class.get_class_type().get_type_global_instance()))
-    ref_counter.ref_incr(visitor.get_builder(), lang_type.get_python_obj_type(), type_instance)
-    type_ptr = get_py_obj_type_ptr(visitor.get_builder(), value)
-    visitor.get_builder().store(type_instance, type_ptr)
+    # type_instance = builder.load(builder.global_var(lang_class.get_class_type().get_type_global_instance()))
+    # ref_counter.ref_incr(visitor.get_builder(), lang_type.get_python_obj_type(), type_instance)
+    # type_ptr = get_py_obj_type_ptr(visitor.get_builder(), value)
+    # visitor.get_builder().store(type_instance, type_ptr)
     return value

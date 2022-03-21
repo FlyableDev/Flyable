@@ -385,7 +385,7 @@ class CodeGen:
         self.__false_var = self.add_global_var(
             GlobalVar("@flyable@_False", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__none_var = self.add_global_var(
-            GlobalVar("@flyable@_None", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
+            GlobalVar("_Py_NoneStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
         self.__py_func_type_var = self.add_global_var(
             GlobalVar("PyFunction_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
         self.__method_type = self.add_global_var(
@@ -568,10 +568,6 @@ class CodeGen:
         _class.set_struct(new_struct)
         self.add_struct(new_struct)
 
-        # Create the global variable to hold it
-        # The allocation is static and not dynamic
-        _class.get_class_type().setup(self)
-
     def setup_struct(self):
         for _class in self.__data.classes_iter():
             _class.get_struct().add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
@@ -629,7 +625,7 @@ class CodeGen:
                 if func_return_type == CodeType():
                     func.get_builder().ret_void()
                 elif visitor.get_func().get_return_type() == lang_type.get_python_obj_type():
-                    none_value = builder.load(builder.global_var(self.get_none()))
+                    none_value = builder.global_var(self.get_none())
                     ref_counter.ref_incr(builder, lang_type.get_python_obj_type(), none_value)
                     builder.ret(none_value)
                 else:
@@ -673,18 +669,22 @@ class CodeGen:
 
         # On Windows, an executable starts on the WinMain symbol
         if platform.uname()[0] == "Windows":
-            main_name = "WinMain"
+            main_name = "main"
         elif platform.uname()[0] == "Linux" or platform.uname()[0] == "Darwin":
             main_name = "main"
         else:
             raise Exception(platform.uname()[0] + " not supported")
 
-        main_func = self.get_or_create_func(main_name, code_type.get_int32(), [], Linkage.EXTERNAL)
+        main_func = self.get_or_create_func(main_name, code_type.get_int32(),
+                                            [code_type.get_int32(), code_type.get_int8_ptr().get_ptr_to()],
+                                            Linkage.EXTERNAL)
+
         builder = CodeBuilder(main_func)
         entry_block = builder.create_block("Main Function Block")
         builder.set_insert_block(entry_block)
 
-        runtime.py_runtime_init(self, builder)  # This call is required to properly starts the CPython interpreter
+        init_func = self.get_or_create_func("Py_Initialize", code_type.get_void(), [], Linkage.EXTERNAL)
+        builder.call(init_func, [])
 
         # Create all the static Python string that we need
         for global_str in self.__global_strings.items():
@@ -701,20 +701,11 @@ class CodeGen:
                                                          lang_type.get_bool_type())
         builder.store(false_value, builder.global_var(self.get_false()))
 
-        # Set None global var
-        none_value = builder.call(
-            self.get_or_create_func("flyable_get_none", code_type.get_py_obj_ptr(self), [], Linkage.EXTERNAL), [])
-        builder.store(none_value, builder.global_var(self.get_none()))
-
         # Set the build-in module
-        build_in_module = gen_module.import_py_module(self, builder, "builtins")
-        builder.store(build_in_module, builder.global_var(self.get_build_in_module()))
-        # Set the tuple type
-        tuple_func_type = self.get_or_create_func("flyable_get_tuple_type", code_type.get_py_obj_ptr(self), [],
-                                                  Linkage.EXTERNAL)
-        builder.store(builder.call(tuple_func_type, []), builder.global_var(self.get_tuple_type()))
+        # build_in_module = gen_module.import_py_module(self, builder, "builtins")
+        # builder.store(build_in_module, builder.global_var(self.get_build_in_module()))
 
-        # Set the constant
+        # Set flyable constants
         for key in self.__py_constants.keys():
             constant_var = builder.global_var(self.__py_constants[key])
             if isinstance(key, int):
@@ -727,16 +718,19 @@ class CodeGen:
                                                                          lang_type.get_dec_type())
             builder.store(value_to_assign, constant_var)
 
-        # Create all the instances of type
-        # Put their ref count to 2 to avoid decrement delete
+        # Create all the implementations on Python side
         for _class in self.__data.classes_iter():
-            _class.get_class_type().generate(_class, self, builder)
+            for _func in _class.funcs_iter():
+                _func.generate_code_to_set_impl(self, builder)
+        for _func in self.__data.funcs_iter():
+            _func.generate_code_to_set_impl(self, builder)
 
-        return_value = builder.call(main_impl.get_code_func(), [])
-        if main_impl.get_return_type().is_int():
-            builder.ret(builder.int_cast(return_value, code_type.get_int32()))
-        else:
-            builder.ret(builder.const_int32(0))
+        func_to_call = self.get_or_create_func("Py_BytesMain", code_type.get_int32(),
+                                               [code_type.get_int32(), code_type.get_int8_ptr().get_ptr_to()],
+                                               Linkage.EXTERNAL)
+
+        return_value = builder.call(func_to_call, [0, 1])
+        builder.ret(return_value)
 
     def convert_type(self, builder: CodeBuilder, code_gen: CodeGen, type_from: lang_type.LangType, value: int,
                      type_to: lang_type.LangType):

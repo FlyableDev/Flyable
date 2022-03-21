@@ -52,17 +52,13 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
         code_func = called_impl.get_code_func()
         if code_func is None:
             raise Exception(f"Function {called_impl} has no code_func")
-        return return_type, visitor.get_builder().call(
-            code_func, [obj] + args
-        )
+        return return_type, visitor.get_builder().call(code_func, [obj] + args)
     elif obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive():
         did_caller_conversion = False
         # The caller can be a primitive, convert if it's the case
         if obj_type.is_primitive():
             did_caller_conversion = True
-            obj_type, obj = runtime.value_to_pyobj(
-                visitor.get_code_gen(), visitor.get_builder(), obj, obj_type
-            )
+            obj_type, obj = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), obj, obj_type)
         # the args for the different handlers
         handlers_args = [visitor, func_name, obj, obj_type, args, args_type, kwargs]
         nb_args = len(args)
@@ -70,12 +66,9 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
         # Maybe there is a shortcut available to skip the python call
         found_shortcut = shortcut.get_obj_call_shortcuts(obj_type, args_type, func_name)
         if found_shortcut is not None:
-            result = found_shortcut.parse(
-                visitor, obj_type, obj, copy.copy(args_type), copy.copy(args)
-            )
+            result = found_shortcut.parse(visitor, obj_type, obj, copy.copy(args_type), copy.copy(args))
         elif not protocol:
             result = _handle_default(*handlers_args)
-
         # Special case where the call is a binary number protocol
         elif num.is_number_binary_func_valid(func_name, nb_args):  # Number protocol
             return _handle_binary_number_protocol(*handlers_args)
@@ -93,8 +86,7 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
 
         elif _iter.is_iter_func_name(func_name) and len(args) == 0:  # Iter protocol
             return lang_type.get_python_obj_type(
-                hint.TypeHintRefIncr()
-            ), _iter.call_iter_protocol(visitor, func_name, obj)
+                hint.TypeHintRefIncr()), _iter.call_iter_protocol(visitor, func_name, obj)
         elif rich_compare.is_func_name_rich_compare(func_name) and len(args) == 1:  # Rich Compare protocol
             instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
             result = rich_compare.call_rich_compare_protocol(
@@ -173,8 +165,8 @@ def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args:
     tp_flag = function.py_obj_type_get_tp_flag_ptr(visitor, callable_type)
     tp_flag = builder.load(tp_flag)
 
-    has_vector_call_tpflag = builder._and(tp_flag, builder.const_int32(
-        2048))  # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
+    # Does the type flags contain Py_TPFLAGS_HAVE_VECTORCALL
+    has_vector_call_tpflag = builder._and(tp_flag, builder.const_int32(2048))
 
     can_vec_based_on_flag = builder.ne(has_vector_call_tpflag, builder.const_int32(0))
     vector_call_ptr = function.get_vector_call_ptr(visitor, callable_type)
