@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 import copy
-import enum
 from ast import *
 from typing import TYPE_CHECKING, Any, Union, TypeAlias, Generic, Type, Optional, TypeVar
 
@@ -32,7 +31,7 @@ import flyable.data.type_hint as hint
 import flyable.parse.adapter as adapter
 import flyable.parse.build_in as build
 from flyable.parse.variable import Variable
-import flyable.parse.op as op
+import flyable.code_gen.code_gen as _gen
 from flyable.data.lang_type import LangType, code_type, get_none_type
 from flyable.code_gen.code_builder import CodeBuilder
 from flyable.data.lang_func_impl import LangFuncImpl
@@ -692,7 +691,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             common_type = lang_type.get_most_common_type(self.__data, value_type, self.__assign_type)
 
             if common_type != value_type:
-                if isinstance(source_data, _variable.Variable):
+                if isinstance(source_data, Variable):
                     source_data.set_type(common_type)
                     if source_data.is_global():
                         self.__data.set_changed(True)  # A modification of global variable means recompile globally
@@ -1284,7 +1283,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         if node.msg is not None:
             msg_type, msg_value = self.__visit_node(node.msg)
         else:
-            msg_type = get_python_obj_type()
+            msg_type = lang_type.get_python_obj_type()
             msg_type.add_hint(hint.TypeHintConstStr(""))
             msg_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(""))
             msg_value = self.__builder.load(msg_value)
@@ -1325,7 +1324,6 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                 content = self.__builder.const_int32(file.get_id())
 
             module_code_type = module_type.to_code_type(self.__code_gen)
-            module_store = None
 
             new_var = self.__func.get_context().add_var(import_name, module_type)
             if self.__func.get_parent_func().is_global():
@@ -1353,7 +1351,6 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                 content = self.__builder.const_int32(file.get_id())
 
             module_code_type = module_type.to_code_type(self.__code_gen)
-            module_store = None
 
             new_var = self.__func.get_context().add_var(import_name, module_type)
             if self.__func.get_parent_func().is_global():

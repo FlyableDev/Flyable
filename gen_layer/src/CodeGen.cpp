@@ -286,6 +286,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
 
                 current->setCurrentIndex(beforeTryIndex);
 
+
                 if(canRunBlock)
                 {
                     if(mDebug)

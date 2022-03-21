@@ -11,6 +11,7 @@ import flyable.code_gen.code_type as code_type
 import flyable.code_gen.debug as debug
 import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as type_hint
+import flyable.code_gen.ref_counter as ref_counter
 
 from flyable.code_gen.code_type import CodeType
 
@@ -110,7 +111,8 @@ def value_to_pyobj(code_gen: CodeGen, builder: CodeBuilder, value: int, value_ty
             result_type.add_hint(type_hint.TypeHintRefIncr())
         return result_type, builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
     elif value_type.is_none():
-        none_value = builder.load(builder.global_var(code_gen.get_none()))
+        none_value = builder.global_var(code_gen.get_none())
+        ref_counter.ref_incr(builder, none_value, lang_type.get_python_obj_type())
         return result_type, none_value
 
     return result_type, value
