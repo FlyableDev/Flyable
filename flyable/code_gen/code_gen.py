@@ -669,14 +669,8 @@ class CodeGen:
         Generate Flyable program entry point.
         """
 
-        # On Windows, an executable starts on the WinMain symbol
-        if platform.uname()[0] == "Windows":
-            main_name = "main"
-        elif platform.uname()[0] == "Linux" or platform.uname()[0] == "Darwin":
-            main_name = "main"
-        else:
-            raise Exception(platform.uname()[0] + " not supported")
-
+        # Since we link we GCC even on Windows we can use main for all platforms
+        main_name = "main"
         main_func = self.get_or_create_func(main_name, code_type.get_int32(),
                                             [code_type.get_int32(), code_type.get_int8_ptr().get_ptr_to()],
                                             Linkage.EXTERNAL)
