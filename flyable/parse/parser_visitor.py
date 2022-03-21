@@ -123,13 +123,6 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         self.__content_block = self.__builder.create_block("Main Content")
         self.__builder.set_insert_block(self.__content_block)
-        debug.flyable_debug_print_int64(self.__code_gen, self.__builder, self.__builder.const_int64(420))
-
-        if impl_type == lang_func.FuncImplType.VEC_CALL or impl_type == lang_func.FuncImplType.TP_CALL:
-            ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), self.__builder.global_var(self.__code_gen.get_none()))
-            ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(),
-                                 self.__builder.global_var(self.__code_gen.get_none()))
-            self.__builder.ret(self.__builder.global_var(self.__code_gen.get_none()))
 
     def __parse_over(self):
         # When parsing is done we can put the final br of the entry block
