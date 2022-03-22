@@ -153,9 +153,11 @@ CTestTestfile.cmake
 _deps
 
 
-build/**/*.exe
-build/**/*.o
 test.py
 test_nbody.py
 /cli
 **/generated_scripts/*
+**/build/**/*.exe
+**/build/**/*.o
+**/build/**/*.dll
+**/build/**/*.lib

@@ -1,18 +1,16 @@
-import json, os
+import json, os, sys
 from dataclasses import dataclass, field
 from shutil import copyfile
 from subprocess import Popen, PIPE
 from io import StringIO
 from contextlib import redirect_stdout
-from sys import stdin, stdout
 import platform
-import sys
-
 
 from flyable.compiler import Compiler
 from flyable import constants
 from flyable.debug.debug_flags import DebugFlag, disable_debug_flags, enable_debug_flags
 from flyable.debug.debug_flags_list import FLAGS
+import flyable.tool.platform as plat
 
 from tests.quail.utils.utils import CompilationError
 import tests.integration.constants as const
@@ -122,7 +120,7 @@ class IntegrationTest:
 
 def load_integration_tests(base_dir: str):
   tests = []
-  output_dir = os.path.join(base_dir, 'build')
+  output_dir = os.path.join(base_dir, 'build', plat.get_platform_folder())
   for test_folder in os.listdir(base_dir):
     test_folder = os.path.join(base_dir, test_folder)
     if not os.path.isdir(test_folder):

@@ -1,13 +1,13 @@
 Logs of test Test2 
 
-[16:31:53] &6-------- Running test 2/2 --------
-[16:31:53] &7[FLYABLE - Output of test Test2]
-[16:31:53] Hello World!
+[16:55:06] &6-------- Running test 2/2 --------
+[16:55:06] &7[FLYABLE - Output of test Test2]
+[16:55:06] Hello World!
 
-[16:31:53] &7[FLYABLE - End of output of test Test2]
-[16:31:53] &7[PYTHON - Output of test Test2]
-[16:31:53] Hello World!
+[16:55:06] &7[FLYABLE - End of output of test Test2]
+[16:55:06] &7[PYTHON - Output of test Test2]
+[16:55:06] Hello World!
 
-[16:31:53] &7[PYTHON - End of output of test Test2]
-[16:31:53] &a-------- Success running test Test2 --------
+[16:55:06] &7[PYTHON - End of output of test Test2]
+[16:55:06] &a-------- Success running test Test2 --------
 
