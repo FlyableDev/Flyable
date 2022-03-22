@@ -68,12 +68,6 @@ def py_runtime_init(code_gen: CodeGen, builder: CodeBuilder):
     return builder.call(init_func, [])
 
 
-def py_runtime_object_print(code_gen: CodeGen, builder: CodeBuilder, obj: int):
-    print_func = code_gen.get_or_create_func("__flyable__print", code_type.get_int32(),
-                                             [code_type.get_py_obj_ptr(code_gen)], _code_gen.Linkage.EXTERNAL)
-    return builder.call(print_func, [obj])
-
-
 def value_to_pyobj(code_gen: CodeGen, builder: CodeBuilder, value: int, value_type: LangType):
     result_type = lang_type.get_python_obj_type()
 
@@ -116,10 +110,3 @@ def value_to_pyobj(code_gen: CodeGen, builder: CodeBuilder, value: int, value_ty
         return result_type, none_value
 
     return result_type, value
-
-
-def py_runtime_obj_len(code_gen: CodeGen, builder: CodeBuilder, value: int):
-    func_name = "PyObject_Length"
-    py_func = code_gen.get_or_create_func(func_name, code_type.get_int64(), [code_type.get_py_obj_ptr(code_gen)],
-                                          _code_gen.Linkage.EXTERNAL)
-    return builder.call(py_func, [value])

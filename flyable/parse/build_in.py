@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 
 from abc import ABC, abstractmethod
 
-import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.list as gen_list
+import flyable.code_gen.caller as caller
 
 import builtins as built_in
 
@@ -51,11 +51,12 @@ class BuildInLen(BuildInFunc):
         super().__init__()
 
     def parse(self, args_types, args, visitor):
+        builder = visitor.get_builder()
         if len(args_types) == 1 and args_types[0].is_list():
             return lang_type.get_int_type(), gen_list.python_list_len(visitor, args[0])
         else:
-            return lang_type.get_int_type(), runtime.py_runtime_obj_len(visitor.get_code_gen(), visitor.get_builder(),
-                                                                        args[0])
+            build_module = visitor.get_code_gen().get_build_in_module()
+            return caller.call_obj(visitor, "len", builder.load(build_module), lang_type.get_python_obj_type(), [], [])
 
 
 class BuildInInt(BuildInFunc):
