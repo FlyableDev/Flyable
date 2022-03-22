@@ -38,12 +38,7 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
                 return None, None
             raise Exception(f"Function {func_name} could not be called. Not found in class {called_class.get_name()}")
 
-        called_impl = adapter.adapt_func(
-            called_func,
-            [obj_type] + args_type,
-            visitor.get_data(),
-            visitor.get_parser(),
-        )
+        called_impl = adapter.adapt_func(called_func, [obj_type] + args_type, visitor.get_data(), visitor.get_parser())
         if called_impl is None:
             raise Exception(f"Could not create the specialized function {func_name}. Invalid function args.")
 

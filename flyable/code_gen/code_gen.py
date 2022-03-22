@@ -380,12 +380,12 @@ class CodeGen:
         self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_finalize
         self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_vectorcall
 
-        self.__true_var = self.add_global_var(
-            GlobalVar("_Py_TrueStruct", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
-        self.__false_var = self.add_global_var(
-            GlobalVar("_Py_FalseStruct", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
         self.__none_var = self.add_global_var(
             GlobalVar("_Py_NoneStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
+        self.__true_var = self.add_global_var(GlobalVar("_Py_TrueStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
+        self.__false_var = self.add_global_var(
+            GlobalVar("_Py_FalseStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
+
         self.__py_func_type_var = self.add_global_var(
             GlobalVar("PyFunction_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
         self.__method_type = self.add_global_var(
@@ -688,18 +688,12 @@ class CodeGen:
             builder.store(new_str, builder.global_var(global_str[1]))
 
         # Initialize all global vars
-        # Set True global var
-        true_type, true_value = runtime.value_to_pyobj(self, builder, builder.const_int1(1), lang_type.get_bool_type())
-        builder.store(true_value, builder.global_var(self.get_true()))
-
-        # Set False global var
-        false_type, false_value = runtime.value_to_pyobj(self, builder, builder.const_int1(0),
-                                                         lang_type.get_bool_type())
-        builder.store(false_value, builder.global_var(self.get_false()))
-
         # Set the build-in module
         build_in_module = gen_module.import_py_module(self, builder, "builtins")
         builder.store(build_in_module, builder.global_var(self.get_build_in_module()))
+
+        import flyable.code_gen.debug as debug
+        debug.flyable_print_obj_ref_count(self, builder, builder.global_var(self.get_none()))
 
         # Set flyable constants
         for key in self.__py_constants.keys():

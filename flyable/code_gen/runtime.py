@@ -99,14 +99,14 @@ def value_to_pyobj(code_gen: CodeGen, builder: CodeBuilder, value: int, value_ty
                                               [code_type.get_int1()], _code_gen.Linkage.EXTERNAL)
         result_type.add_hint(type_hint.TypeHintRefIncr())
         return result_type, builder.call(py_func, [value])
+    elif value_type.is_none():
+        none_value = builder.global_var(code_gen.get_none())
+        ref_counter.ref_incr(builder, lang_type.get_python_obj_type(), none_value)
+        return result_type, none_value
     elif value_type.is_obj() or value_type.is_collection():
         # Make sure the object is of python objet ptr to keep consistent types
         if type_hint.is_incremented_type(value_type):  # Keep the incremental hint
             result_type.add_hint(type_hint.TypeHintRefIncr())
         return result_type, builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
-    elif value_type.is_none():
-        none_value = builder.global_var(code_gen.get_none())
-        ref_counter.ref_incr(builder, none_value, lang_type.get_python_obj_type())
-        return result_type, none_value
 
     return result_type, value
