@@ -68,9 +68,7 @@ def flyable_print_obj_ref_count(code_gen: gen.CodeGen, builder: gen.CodeBuilder,
     flyable_debug_print_int64(code_gen, builder, count)
 
 
-def flyable_debug_print_ptr(visitor: ParserVisitor, value: int):
-    code_gen = visitor.get_code_gen()
-    builder = visitor.get_builder()
+def flyable_debug_print_ptr(code_gen: gen.CodeGen, builder: gen.CodeBuilder, value: int):
     func_name = "flyable_debug_print_ptr"
     func_call = code_gen.get_or_create_func(func_name, code_type.get_void(), [code_type.get_int8_ptr()],
                                             gen.Linkage.EXTERNAL)
