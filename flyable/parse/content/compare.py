@@ -32,8 +32,6 @@ def parse_compare(visitor: ParserVisitor, node: Compare):
             visitor, BitAnd(), left_type, left_val, right_type, right_val
         )
         ref_counter.ref_decr_incr(visitor, right_type, right_val)
-        print(current)
-        print(comparison)
         return result
 
     def do_cond_op(prev: tuple[LangType, int] | None, current_args):

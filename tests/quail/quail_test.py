@@ -61,7 +61,7 @@ class QuailTest:
     def fly_exec(self, stdout: StdOut):
         if platform.system() == "Windows":
             # move dll to executable location
-            copyfile(constants.PYTHON_3_11_DLL_PATH, f"{self.temp_working_dir}/python311.dll")
+            copyfile(constants.PYTHON_3_11_DLL_PATH, f"{os.path.realpath(self.temp_working_dir)}/python311.dll")
     
         self.fly_compile()
         # Now link the code
