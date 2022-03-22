@@ -1,9 +1,12 @@
 import json, os
 from dataclasses import dataclass, field
+from shutil import copyfile
 from subprocess import Popen, PIPE
 from io import StringIO
 from contextlib import redirect_stdout
 from sys import stdin, stdout
+import platform
+import sys
 
 
 from flyable.compiler import Compiler
@@ -70,16 +73,23 @@ class IntegrationTest:
   def fly_exec(self):
     disable_debug_flags()
     enable_debug_flags(*self.flags)
-    f = StringIO()
+
+    if platform.system() == "Windows":
+        # move dll to executable location
+        copyfile(constants.PYTHON_3_11_DLL_PATH, f"{self.__output_dir}/python311.dll")
+    
     self.fly_compile()
 
     linker_args = [
-        "gcc",
-        "-flto",
-        "output.o",
-        constants.LIB_FLYABLE_RUNTIME_PATH,
-        constants.PYTHON_3_10_PATH,
+      "gcc",
+      "-flto",
+      "output.o",
+      constants.PYTHON_3_11_PATH,
     ]
+
+    if platform.system() == "Windows":
+      linker_args.append(constants.PYTHON_3_11_DLL_PATH)
+      
     p0 = Popen(linker_args, cwd=self.__output_dir)
     p0.wait()
     if p0.returncode != 0:
@@ -88,8 +98,8 @@ class IntegrationTest:
 
     #with redirect_stdout(f):
     p = Popen(
-      [os.path.join(self.__output_dir, "a.exe")],
-      cwd=self.__output_dir,
+      [self.__output_dir + "/" + "a.exe", self.__main_path],
+      cwd=os.path.dirname(os.path.realpath(sys.executable)),
       stdout=PIPE,
       text=True
     )

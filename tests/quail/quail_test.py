@@ -1,4 +1,6 @@
 from __future__ import annotations
+from shutil import copyfile
+import sys
 from typing import TYPE_CHECKING
 
 from flyable.compiler import Compiler
@@ -9,6 +11,7 @@ if TYPE_CHECKING:
     from typing import Literal
 
 import os
+import platform
 from dataclasses import dataclass, field
 from subprocess import Popen, PIPE
 
@@ -56,22 +59,30 @@ class QuailTest:
         raise CompilationError(compiler.get_errors())
 
     def fly_exec(self, stdout: StdOut):
+        if platform.system() == "Windows":
+            # move dll to executable location
+            copyfile(constants.PYTHON_3_11_DLL_PATH, f"{self.temp_working_dir}/python311.dll")
+    
         self.fly_compile()
+        # Now link the code
         linker_args = [
             "gcc",
             "-flto",
             "output.o",
-            constants.LIB_FLYABLE_RUNTIME_PATH,
-            constants.PYTHON_3_10_PATH,
+            constants.PYTHON_3_11_PATH,
         ]
+
+        if platform.system() == "Windows":
+            linker_args.append(constants.PYTHON_3_11_DLL_PATH)
+
         p0 = Popen(linker_args, cwd=self.temp_working_dir)
         p0.wait()
         if p0.returncode != 0:
             raise CompilationError("Linking error")
 
         p = Popen(
-            [self.temp_working_dir + f"/a.exe"],
-            cwd=self.temp_working_dir,
+            [self.temp_working_dir + "/" + "a.exe", os.path.realpath(f"{self.temp_working_dir}\\{self.name}.py")],
+            cwd=os.path.dirname(os.path.realpath(sys.executable)),
             stdout=PIPE,
             text=True
         )

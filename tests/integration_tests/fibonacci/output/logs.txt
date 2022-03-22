@@ -1,13 +1,13 @@
 Logs of test fibonnaci 
 
-[15:24:26] &6-------- Running test 2/3 --------
-[15:24:27] &7[FLYABLE - Output of test fibonnaci]
-[15:24:27] 75025
+[16:31:51] &6-------- Running test 1/2 --------
+[16:31:53] &7[FLYABLE - Output of test fibonnaci]
+[16:31:53] <function fib at 0x0000000000E804A0>
 
-[15:24:27] &7[FLYABLE - End of output of test fibonnaci]
-[15:24:27] &7[PYTHON - Output of test fibonnaci]
-[15:24:27] 75025
+[16:31:53] &7[FLYABLE - End of output of test fibonnaci]
+[16:31:53] &7[PYTHON - Output of test fibonnaci]
+[16:31:53] 75025
 
-[15:24:27] &7[PYTHON - End of output of test fibonnaci]
-[15:24:27] &a-------- Success running test fibonnaci --------
+[16:31:53] &7[PYTHON - End of output of test fibonnaci]
+[16:31:53] &c-------- Failure running test fibonnaci --------
 

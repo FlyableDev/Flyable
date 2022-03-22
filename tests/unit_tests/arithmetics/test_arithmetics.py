@@ -9,7 +9,7 @@ def test_addition(quail_test: QuailTest, stdout: StdOut):
 
 
 @quail_tester
-def test_substraction(quail_test: QuailTest, stdout: StdOut):
+def test_subtraction(quail_test: QuailTest, stdout: StdOut):
     assert quail_test.fly_exec(stdout) == quail_test.py_exec(stdout)
 
 
