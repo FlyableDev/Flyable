@@ -200,8 +200,16 @@ void CodeGen::readGlobalVars(FormatReader& reader)
         llvm::Type* type = readType(reader);
         auto link = readLinkage(reader);
         llvm::GlobalVariable* globalVar = new llvm::GlobalVariable(*mModule,type,false,link,nullptr,name);
-        if(link != llvm::GlobalValue::ExternalLinkage) //External symbol do not take an initializer
+        if(link == llvm::GlobalValue::ExternalLinkage) //External symbol do not take an initializer
+        {
+            globalVar->setConstant(true);
+            globalVar->setExternallyInitialized(true);
+        }
+        else
+        {
+            globalVar->setExternallyInitialized(false);
             globalVar->setInitializer(llvm::Constant::getNullValue(type));
+        }
         mGlobalVars[i] = globalVar;
     }
 }
