@@ -49,11 +49,13 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
         add_step("Linking")
 
         # Now link the code
+        # On windows, since no compiler is provide we link with the linker provided with flyable
+        link_path = constants.LINKER_EXEC if platform.system() == "Windows" else "gcc"
         linker_args = [
-            "gcc",
+            link_path,
             "-flto",
-            "output.o",
             constants.PYTHON_3_11_PATH,
+            "output.o"
         ]
 
         if platform.system() == "Windows":

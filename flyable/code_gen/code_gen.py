@@ -692,9 +692,6 @@ class CodeGen:
         build_in_module = gen_module.import_py_module(self, builder, "builtins")
         builder.store(build_in_module, builder.global_var(self.get_build_in_module()))
 
-        import flyable.code_gen.debug as debug
-        debug.flyable_debug_print_ptr(self, builder, builder.global_var(self.get_none()))
-
         # Set flyable constants
         for key in self.__py_constants.keys():
             constant_var = builder.global_var(self.__py_constants[key])
