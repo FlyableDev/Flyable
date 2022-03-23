@@ -865,7 +865,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         self.__builder.br(continue_cond)
 
         self.__builder.set_insert_block(false_cond)
-        false_value = self.__code_gen.convert_type(self.__builder, false_type, false_value, common_type)
+        false_value = self.__code_gen.convert_type(self.__builder, self.__code_gen, false_type, false_value, common_type)
         self.__builder.store(false_value, new_var)
         self.__builder.br(continue_cond)
 
