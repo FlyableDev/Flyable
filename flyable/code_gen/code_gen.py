@@ -693,7 +693,7 @@ class CodeGen:
         builder.store(build_in_module, builder.global_var(self.get_build_in_module()))
 
         import flyable.code_gen.debug as debug
-        debug.flyable_print_obj_ref_count(self, builder, builder.global_var(self.get_none()))
+        debug.flyable_debug_print_ptr(self, builder, builder.global_var(self.get_none()))
 
         # Set flyable constants
         for key in self.__py_constants.keys():
