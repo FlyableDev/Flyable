@@ -1,0 +1,48 @@
+; ModuleID = 'Flyable'
+source_filename = "Flyable"
+target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-unknown-windows-msvc-coff"
+
+%"FlyableStruct@__flyable_py_obj" = type { i64, %"FlyableStruct@__flyable_py_type"* }
+%"FlyableStruct@__flyable_py_type" = type { i64, %"FlyableStruct@__flyable_py_type"*, i64, i8*, i64, i64, i8*, i64, i8*, i8*, i8*, i8*, %"FlyableStruct@__flyable_py_obj"*, %"FlyableStruct@__flyable_py_obj"*, %"FlyableStruct@__flyable_py_obj"*, i8*, i8*, i8*, i8*, i8*, %"FlyableStruct@__flyable_py_obj"*, i32, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i32, i8*, i8* }
+
+@_Py_NoneStruct = external externally_initialized global %"FlyableStruct@__flyable_py_obj"
+@FlyableImplsCount = external externally_initialized global i32
+@0 = private unnamed_addr constant [6 x i8] c"test\00\00", align 1
+
+; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn
+define internal nonnull %"FlyableStruct@__flyable_py_obj"* @"@flyable@__@test@-1@0@-1@tp@"(%"FlyableStruct@__flyable_py_obj"* nocapture readnone %0, %"FlyableStruct@__flyable_py_obj"* nocapture readnone %1, %"FlyableStruct@__flyable_py_obj"* nocapture readnone %2) #0 {
+"Block@0":
+  %3 = load i64, i64* getelementptr inbounds (%"FlyableStruct@__flyable_py_obj", %"FlyableStruct@__flyable_py_obj"* @_Py_NoneStruct, i64 0, i32 0), align 8
+  %4 = add i64 %3, 1
+  store i64 %4, i64* getelementptr inbounds (%"FlyableStruct@__flyable_py_obj", %"FlyableStruct@__flyable_py_obj"* @_Py_NoneStruct, i64 0, i32 0), align 8
+  ret %"FlyableStruct@__flyable_py_obj"* @_Py_NoneStruct
+}
+
+; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn
+define internal nonnull %"FlyableStruct@__flyable_py_obj"* @"@flyable@__@test@-1@0@-1@vec@"(%"FlyableStruct@__flyable_py_obj"* nocapture readnone %0, %"FlyableStruct@__flyable_py_obj"** nocapture readnone %1, i64 %2, %"FlyableStruct@__flyable_py_obj"* nocapture readnone %3) #0 {
+"Block@0":
+  %4 = load i64, i64* getelementptr inbounds (%"FlyableStruct@__flyable_py_obj", %"FlyableStruct@__flyable_py_obj"* @_Py_NoneStruct, i64 0, i32 0), align 8
+  %5 = add i64 %4, 1
+  store i64 %5, i64* getelementptr inbounds (%"FlyableStruct@__flyable_py_obj", %"FlyableStruct@__flyable_py_obj"* @_Py_NoneStruct, i64 0, i32 0), align 8
+  ret %"FlyableStruct@__flyable_py_obj"* @_Py_NoneStruct
+}
+
+define i32 @fly_main(i32 %0, i8** %1) local_unnamed_addr {
+"Block@0":
+  tail call void @flyable_debug_print_ptr(i8* bitcast (i32* @FlyableImplsCount to i8*))
+  tail call void @Py_Initialize()
+  tail call void @flyable_add_impl(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @0, i64 0, i64 0), i8* bitcast (%"FlyableStruct@__flyable_py_obj"* (%"FlyableStruct@__flyable_py_obj"*, %"FlyableStruct@__flyable_py_obj"*, %"FlyableStruct@__flyable_py_obj"*)* @"@flyable@__@test@-1@0@-1@tp@" to i8*), i8* bitcast (%"FlyableStruct@__flyable_py_obj"* (%"FlyableStruct@__flyable_py_obj"*, %"FlyableStruct@__flyable_py_obj"**, i64, %"FlyableStruct@__flyable_py_obj"*)* @"@flyable@__@test@-1@0@-1@vec@" to i8*))
+  %2 = tail call i32 @Py_BytesMain(i32 %0, i8** %1)
+  ret i32 %2
+}
+
+declare void @flyable_debug_print_ptr(i8*) local_unnamed_addr
+
+declare void @Py_Initialize() local_unnamed_addr
+
+declare void @flyable_add_impl(i8*, i8*, i8*) local_unnamed_addr
+
+declare i32 @Py_BytesMain(i32, i8**) local_unnamed_addr
+
+attributes #0 = { mustprogress nofree norecurse nosync nounwind willreturn }

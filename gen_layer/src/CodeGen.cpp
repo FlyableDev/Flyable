@@ -200,9 +200,10 @@ void CodeGen::readGlobalVars(FormatReader& reader)
         llvm::Type* type = readType(reader);
         auto link = readLinkage(reader);
         llvm::GlobalVariable* globalVar = new llvm::GlobalVariable(*mModule,type,false,link,nullptr,name);
+        globalVar->setConstant(false);
         if(link == llvm::GlobalValue::ExternalLinkage) //External symbol do not take an initializer
         {
-            globalVar->setConstant(true);
+            globalVar->setDLLStorageClass(llvm::GlobalValue::DLLImportStorageClass);
             globalVar->setExternallyInitialized(true);
         }
         else
@@ -210,6 +211,7 @@ void CodeGen::readGlobalVars(FormatReader& reader)
             globalVar->setExternallyInitialized(false);
             globalVar->setInitializer(llvm::Constant::getNullValue(type));
         }
+
         mGlobalVars[i] = globalVar;
     }
 }
@@ -481,7 +483,13 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                         {
                             int id = current->readInt32();
                             int newId = current->readInt32();
-                            values[newId] = mBuilder.CreateLoad(values[id]);
+                            llvm::Value* value = values[id];
+                            llvm::Type* typeToLoad;
+                            if(value->getType()->isPointerTy())
+                                typeToLoad = ((llvm::PointerType*) value->getType())->getPointerElementType();
+                            else
+                                typeToLoad = value->getType();
+                            values[newId] = mBuilder.CreateLoad(typeToLoad,value);
                         }
                         break;
 
@@ -509,7 +517,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                             llvm::Type* type = element->getType();
                             auto* ptrType = llvm::dyn_cast_or_null<llvm::PointerType>(type);
                             if(ptrType != nullptr)
-                                values[current->readInt32()] = mBuilder.CreateGEP(ptrType->getElementType(),element,indices);
+                                values[current->readInt32()] = mBuilder.CreateGEP(ptrType->getPointerElementType(),element,indices);
                             else
                             {
                                 values[current->readInt32()] = mBuilder.CreateGEP(type,element,indices);
@@ -556,7 +564,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                             }
 
                             llvm::PointerType* ptrType = (llvm::PointerType*) funcToCall->getType();
-                            llvm::FunctionType* funcType = (llvm::FunctionType*) ptrType->getElementType();
+                            llvm::FunctionType* funcType = (llvm::FunctionType*) ptrType->getPointerElementType();
                             llvm::CallInst* callInst = mBuilder.CreateCall(funcType,funcToCall,llvm::ArrayRef<llvm::Value*>(args));
                             callInst->setCallingConv(conv);
                             values[current->readInt32()] = callInst;
@@ -769,7 +777,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                             if(type->isPointerTy())
                             {
                                 llvm::PointerType* typePtr = (llvm::PointerType*) type;
-                                size = mLayout->getTypeAllocSize(typePtr->getElementType());
+                                size = mLayout->getTypeAllocSize(typePtr->getPointerElementType());
                             }
                             else
                                 size = 0;
@@ -807,7 +815,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
 
         //run conversion until all blocks are completed
         runConversion = false;
-        for(int i = 0;i < readers.size();++i)
+        for(size_t i = 0;i < readers.size();++i)
             if(!readers[i].atEnd())
                 runConversion = true;
     }

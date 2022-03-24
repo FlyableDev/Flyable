@@ -382,21 +382,26 @@ class CodeGen:
 
         self.__none_var = self.add_global_var(
             GlobalVar("_Py_NoneStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
+
         self.__true_var = self.add_global_var(GlobalVar("_Py_TrueStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
+
         self.__false_var = self.add_global_var(
             GlobalVar("_Py_FalseStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
 
         self.__py_func_type_var = self.add_global_var(
             GlobalVar("PyFunction_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
-        self.__method_type = self.add_global_var(
-            GlobalVar("PyMethod_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
-        self.__tuple_type = self.add_global_var(
-            GlobalVar("PyTuple_Type", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
+
         self.__method_type = self.add_global_var(
             GlobalVar("PyMethod_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
 
-        self.__build_in_module = self.add_global_var(GlobalVar("__flyable@BuildIn@Module@",
-                                                               code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
+        self.__tuple_type = self.add_global_var(
+            GlobalVar("PyTuple_Type", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
+
+        self.__method_type = self.add_global_var(
+            GlobalVar("PyMethod_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
+
+        self.__build_in_module = self.add_global_var(
+            GlobalVar("__flyable@BuildIn@Module@", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
 
         for _class in self.__data.classes_iter():
             self.gen_struct(_class)
