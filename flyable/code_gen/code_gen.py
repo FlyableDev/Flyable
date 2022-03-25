@@ -523,6 +523,14 @@ class CodeGen:
 
         return new_func
 
+    def get_or_create_global_var(self, name: str, type: CodeType, link: Linkage):
+        if name in self.__global_vars:
+            global_var = self.__global_vars[name]
+        else:
+            global_var = GlobalVar(name, type, link)
+            self.__global_vars[name] = global_var
+        return global_var
+
     def get_or_insert_str(self, value: str):
         if value in self.__global_strings:
             return self.__global_strings[value]

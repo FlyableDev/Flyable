@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
+import flyable.data.lang_type as lang_type
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -24,12 +25,6 @@ def py_runtime_clear_error(code_gen: CodeGen, builder: CodeBuilder):
     return builder.call(clear_error_func, [])
 
 
-def py_runtime_set_excp(visitor: ParserVisitor, type, value):
-    args_type = [code_type.get_py_obj_ptr(visitor.get_code_gen())] * 2
-    set_error_func = visitor.get_code_gen().get_or_create_func("PyErr_SetObject", code_type.get_void(), args_type)
-    return visitor.get_builder().call(set_error_func, [type, value])
-
-
 def py_runtime_get_excp(code_gen: CodeGen, builder: CodeBuilder):
     get_excp_func = code_gen.get_or_create_func("PyErr_Occurred", code_type.get_py_obj_ptr(code_gen), [],
                                                 gen.Linkage.EXTERNAL)
@@ -37,26 +32,25 @@ def py_runtime_get_excp(code_gen: CodeGen, builder: CodeBuilder):
 
 
 def raise_exception(visitor: ParserVisitor, type, value):
-    py_runtime_set_excp(visitor, type, value)
+    args_type = [code_type.get_py_obj_ptr(visitor.get_code_gen())] * 2
+    set_error_func = visitor.get_code_gen().get_or_create_func("PyErr_SetObject", code_type.get_void(), args_type)
+    return visitor.get_builder().call(set_error_func, [type, value])
 
 
 def raise_index_error(visitor: ParserVisitor):
-    raise_func = visitor.get_code_gen().get_or_create_func("flyable_raise_index_error", code_type.get_void(), [],
-                                                           gen.Linkage.EXTERNAL)
-    visitor.get_builder().call(raise_func, [])
-
-
-def raise_callable_error(visitor: ParserVisitor):
-    raise_func = visitor.get_code_gen().get_or_create_func("flyable_raise_callable_error", code_type.get_void(), [],
-                                                           gen.Linkage.EXTERNAL)
-    visitor.get_builder().call(raise_func, [])
+    builder = visitor.get_builder()
+    index = visitor.get_code_gen().get_or_create_global_var("PyExc_IndexError", code_type.get_void(),
+                                                            gen.Linkage.EXTERNAL)
+    excp = builder.global_var(index)
+    raise_exception(visitor, lang_type.get_python_obj_type(), excp)
 
 
 def raise_assert_error(visitor: ParserVisitor, obj):
-    args_type = [code_type.get_py_obj_ptr(visitor.get_code_gen())]
-    raise_func = visitor.get_code_gen().get_or_create_func("flyable_raise_assert_error", code_type.get_void(),
-                                                           args_type, gen.Linkage.EXTERNAL)
-    visitor.get_builder().call(raise_func, [obj])
+    builder = visitor.get_builder()
+    index = visitor.get_code_gen().get_or_create_global_var("PyExc_AssertionError", code_type.get_void(),
+                                                            gen.Linkage.EXTERNAL)
+    excp = builder.global_var(index)
+    raise_exception(visitor, lang_type.get_python_obj_type(), excp)
 
 
 def check_excp(visitor: ParserVisitor, value_to_check):
