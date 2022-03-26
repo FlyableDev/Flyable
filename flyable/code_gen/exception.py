@@ -31,7 +31,7 @@ def py_runtime_get_excp(code_gen: CodeGen, builder: CodeBuilder):
     return builder.call(get_excp_func, [])
 
 
-def raise_exception(visitor: ParserVisitor, type, value):
+def raise_exception(visitor: ParserVisitor, type, value=None):
     args_type = [code_type.get_py_obj_ptr(visitor.get_code_gen())] * 2
     set_error_func = visitor.get_code_gen().get_or_create_func("PyErr_SetObject", code_type.get_void(), args_type)
     return visitor.get_builder().call(set_error_func, [type, value])
@@ -42,7 +42,7 @@ def raise_index_error(visitor: ParserVisitor):
     index = visitor.get_code_gen().get_or_create_global_var("PyExc_IndexError", code_type.get_void(),
                                                             gen.Linkage.EXTERNAL)
     excp = builder.global_var(index)
-    raise_exception(visitor, lang_type.get_python_obj_type(), excp)
+    raise_exception(visitor, excp)
 
 
 def raise_assert_error(visitor: ParserVisitor, obj):
@@ -50,7 +50,7 @@ def raise_assert_error(visitor: ParserVisitor, obj):
     index = visitor.get_code_gen().get_or_create_global_var("PyExc_AssertionError", code_type.get_void(),
                                                             gen.Linkage.EXTERNAL)
     excp = builder.global_var(index)
-    raise_exception(visitor, lang_type.get_python_obj_type(), excp)
+    raise_exception(visitor, excp)
 
 
 def check_excp(visitor: ParserVisitor, value_to_check):
