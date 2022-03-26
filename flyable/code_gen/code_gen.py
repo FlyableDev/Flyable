@@ -528,6 +528,7 @@ class CodeGen:
             global_var = self.__global_vars[name]
         else:
             global_var = GlobalVar(name, type, link)
+            global_var.set_id(len(self.__global_vars))
             self.__global_vars[name] = global_var
         return global_var
 
