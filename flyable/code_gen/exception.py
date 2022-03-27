@@ -7,6 +7,7 @@ from __future__ import annotations
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.runtime as runtime
+import flyable.code_gen.code_gen as _gen
 import flyable.data.lang_type as lang_type
 from typing import TYPE_CHECKING
 
@@ -39,7 +40,8 @@ def raise_exception(visitor: ParserVisitor, type, value=None):
         value = runtime.py_runtime_get_string(code_gen, builder, "")
 
     args_type = [code_type.get_py_obj_ptr(visitor.get_code_gen())] * 2
-    set_error_func = visitor.get_code_gen().get_or_create_func("PyErr_SetObject", code_type.get_void(), args_type)
+    set_error_func = visitor.get_code_gen().get_or_create_func("PyErr_SetObject", code_type.get_void(), args_type,
+                                                               _gen.Linkage.EXTERNAL)
 
     type = builder.ptr_cast(type, code_type.get_py_obj_ptr(code_gen))
     value = builder.ptr_cast(value, code_type.get_py_obj_ptr(code_gen))
