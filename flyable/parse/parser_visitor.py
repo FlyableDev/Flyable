@@ -179,19 +179,6 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             self.__reset_last()
             self.__last_type, self.__last_value = self.__visit_node(node.targets)
         else:  # Mult assign
-            """
-            if len(targets) == len(values):
-                for i, e in enumerate(targets):
-                    self.__reset_last()
-                    self.__assign_type, self.__assign_value = self.__visit_node(values[i])
-
-                    if not hint.is_incremented_type(self.__assign_type):
-                        ref_counter.ref_incr(self.__builder, self.__assign_type, self.__assign_value)
-                    hint.remove_hint_type(self.__assign_type, hint.TypeHintRefIncr)
-
-                    self.__reset_last()
-                    value_type, value = self.__visit_node(targets[i])
-            """
             if len(targets) >= len(values):  # unpack
                 value_type, value_value = self.__visit_node(node.value)
                 unpack.unpack_assignation(self, targets, value_type, value_value, node)
@@ -557,7 +544,6 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         self.__reset_last()
 
-        name_call = ""
         if isinstance(node.func, ast.Attribute):
             self.__last_type, self.__last_value = self.__visit_node(node.func.value)
             name_call = node.func.attr
@@ -1263,11 +1249,16 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         content_try.parse_try(self, node)
 
     def visit_Raise(self, node: Raise) -> Any:
-
         self.__func.set_can_raise(True)  # There is a raise so it can raise an exception
-        self.__last_type, self.__last_value = self.__visit_node(node.exc)
+
         if node.cause is not None:
-            self.__visit_node(node.cause)
+            self.__last_type, self.__last_value = self.__visit_node(node.cause)
+
+        self.__last_type, self.__last_value = self.__visit_node(node.exc)
+
+        excp.raise_exception(self, self.__last_value)
+
+        excp.handle_raised_excp(self)
 
     def visit_Assert(self, node: Assert) -> Any:
         test_type, test_value = self.__visit_node(node.test)
@@ -1294,6 +1285,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         excp.raise_index_error(self)
         excp.handle_raised_excp(self)
+        self.__builder.ret_null()
 
         self.__builder.set_insert_block(block_continue)
 
