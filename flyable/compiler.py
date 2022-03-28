@@ -27,7 +27,6 @@ class Compiler(ErrorThrower):
         self._code_gen: CodeGen = gen.CodeGen(self._data)
         self._code_gen.setup()
         self._parser: Parser = par.Parser(self._data, self._code_gen)
-        self._main_impl: Optional[LangFuncImpl] = None
 
     def add_file(self, path: str):
         new_file: lang_file.LangFile = lang_file.LangFile()
@@ -56,7 +55,7 @@ class Compiler(ErrorThrower):
 
         if not self.has_error():
             self._code_gen.setup_struct()
-            self._code_gen.generate_main(self._main_impl)
+            self._code_gen.generate_main()
             self._code_gen.write()
 
     def __pre_parse(self):

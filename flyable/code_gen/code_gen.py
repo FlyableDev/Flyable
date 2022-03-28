@@ -678,7 +678,7 @@ class CodeGen:
 
         loader.call_code_generation_layer(writer, self.__data.get_config("output"))
 
-    def generate_main(self, main_impl: lang_func_impl.LangFuncImpl):
+    def generate_main(self):
         """
         Generate Flyable program entry point.
         """

@@ -226,7 +226,8 @@ class LangFunc:
                                                     _gen.Linkage.EXTERNAL)
         tp_func = self.get_tp_call_impl()
         vec_func = self.get_vec_call_impl()
-        impl_name = builder.ptr_cast(builder.global_str(self.get_qualified_name() + "\0"), code_type.get_int8_ptr())
-        tp_func = builder.ptr_cast(builder.func_ptr(tp_func.get_code_func()), code_type.get_int8_ptr())
-        vec_func = builder.ptr_cast(builder.func_ptr(vec_func.get_code_func()), code_type.get_int8_ptr())
-        builder.call(func_add_impl, [impl_name, tp_func, vec_func])
+        if tp_func is not None and vec_func is not None:
+            impl_name = builder.ptr_cast(builder.global_str(self.get_qualified_name() + "\0"), code_type.get_int8_ptr())
+            tp_func = builder.ptr_cast(builder.func_ptr(tp_func.get_code_func()), code_type.get_int8_ptr())
+            vec_func = builder.ptr_cast(builder.func_ptr(vec_func.get_code_func()), code_type.get_int8_ptr())
+            builder.call(func_add_impl, [impl_name, tp_func, vec_func])
