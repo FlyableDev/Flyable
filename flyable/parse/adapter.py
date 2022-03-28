@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flyable.debug.debug_flags_list import FLAG_PRINT_FUNC_IMPL
+from flyable.parse.exception.unsupported import FlyableUnsupported
 
 if TYPE_CHECKING:
     from flyable.parse.parser import Parser
@@ -44,12 +45,15 @@ def adapt_func(func: LangFunc, args: list, comp_data: CompData, parser: Parser):
             adapted_impl = lang_func_impl.LangFuncImpl()
             adapted_impl.set_impl_type(lang_func_impl.FuncImplType.SPECIALIZATION)
             for arg in args:
-                # new_arg = copy.deepcopy(arg)
-                # hint.remove_hint_type(new_arg, hint.TypeHintRefIncr)
                 adapted_impl.add_arg(arg)
             func.add_impl(adapted_impl)
             parser.get_code_gen().gen_func(adapted_impl)
-            parser.parse_impl(adapted_impl)
+
+            try:
+                parser.parse_impl(adapted_impl)
+            except FlyableUnsupported:
+                adapted_impl = None
+                func.remove_impl(adapted_impl)
 
         return adapted_impl
 

@@ -12,20 +12,17 @@ from shutil import copyfile
 import sys
 import os
 from pathlib import Path
-from subprocess import PIPE, Popen
+from subprocess import Popen
 from sys import stderr, stdin, stdout
-from typing import Any
 
 import flyable.compiler as com
 import flyable.tool.platform as plat
 from flyable import constants
-from flyable.debug.code_branch_viewer import BranchViewer
 from flyable.debug.debug_flags import DebugFlag, DebugFlagListType, enable_debug_flags
 from flyable.debug.debug_flags_list import *
 from flyable.tool.utils import end_step, add_step
 
-ENABLED_DEBUG_FLAGS: DebugFlagListType = [
-]
+ENABLED_DEBUG_FLAGS: DebugFlagListType = []
 """
 Debug flags to be enabled during the compiling, the linking and the running process\n
 Pass a flag alone to enable it or pass a tuple to also give it a value
@@ -51,12 +48,7 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
         # Now link the code
         # On windows, since no compiler is provide we link with the linker provided with flyable
         link_path = constants.LINKER_EXEC if platform.system() == "Windows" else "gcc"
-        linker_args = [
-            link_path,
-            "-flto",
-            constants.PYTHON_3_11_PATH,
-            "output.o"
-        ]
+        linker_args = [link_path, "-flto", constants.PYTHON_3_11_PATH, "output.o"]
 
         if platform.system() == "Windows":
             linker_args.append(constants.PYTHON_3_11_DLL_PATH)

@@ -51,6 +51,9 @@ class LangFunc:
         func.set_id(len(self.__impls))
         self.__impls.append(func)
 
+    def remove_impl(self, func: LangFuncImpl):
+        self.__impls.remove(func)
+
     def get_impl(self, index: int):
         return self.__impls[index]
 
