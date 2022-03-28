@@ -1,4 +1,5 @@
 import flyable.code_gen.list as gen_list
+import flyable.code_gen.tuple as gen_tuple
 import flyable.data.lang_type as lang_type
 
 """
@@ -46,6 +47,20 @@ class ShortcutListCallGet(ShortcutObjCall):
         item = gen_list.python_list_array_get_item(visitor, caller_type, caller_value, args[0])
         return caller_type.get_content(), item
 
+"""
+Tuple shortcuts
+"""
+
+class ShortcutTupleCallGet(ShortcutObjCall):
+
+    def type_test(self, caller_type, args_type):
+        if caller_type.is_tuple() and len(args_type) == 1 and args_type[0].is_int():
+            return True
+        return False
+
+    def parse(self, visitor, caller_type, caller_value, args_type, args):
+        item = gen_tuple.python_tuple_get_item(visitor, caller_type, caller_value, args[0])
+        return caller_type.get_content(), item
 
 def get_obj_call_shortcuts(type_to_test, args_to_test, name):
     shortcuts = {
