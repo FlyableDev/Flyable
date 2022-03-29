@@ -25,3 +25,9 @@ def python_dict_len(visitor: ParserVisitor, dict: int):
     args_types = [code_type.get_py_obj_ptr(code_gen)]
     func = code_gen.get_or_create_func("PyDict_Size", code_type.get_int64(), args_types, gen.Linkage.EXTERNAL)
     return builder.call(func, [dict])
+
+def python_dict_get_keys(visitor: ParserVisitor, dict: int):
+    builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
+    args_types = [code_type.get_py_obj_ptr(code_gen)]
+    func = code_gen.get_or_create_func("PyDict_Keys", code_type.get_py_obj_ptr(code_gen), args_types, gen.Linkage.EXTERNAL)
+    return builder.call(func, [dict])
