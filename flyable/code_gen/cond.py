@@ -12,6 +12,7 @@ import flyable.code_gen.ref_counter as ref_counter
 if TYPE_CHECKING:
     from flyable.parse.parser import ParserVisitor
 
+
 def value_to_cond(visitor: ParserVisitor, value_type: lang_type.LangType, value: int):
     """
     Convert the value into an integer usable into a conditional branching
@@ -54,8 +55,7 @@ def test_obj_true(visitor: ParserVisitor, value_type: lang_type.LangType, value:
 
     result = visitor.generate_entry_block_var(code_type.get_int1())
 
-    true_ptr = builder.global_var(code_gen.get_true())
-    true_value = builder.load(true_ptr)
+    true_value = builder.global_var(code_gen.get_true())
 
     is_true = builder.eq(value, true_value)
     true_block = builder.create_block("Object is True")
@@ -68,10 +68,7 @@ def test_obj_true(visitor: ParserVisitor, value_type: lang_type.LangType, value:
     builder.br(continue_block)
 
     builder.set_insert_block(test_true_with_call_block)
-
     cond_type, cond_value = caller.call_obj(visitor, "__bool__", value, value_type, [], [], {})
-    if cond_type is None or cond_value is None: 
-        raise Exception("Could not test object thruthy value")
 
     false_block = builder.create_block("Test is False")
     if cond_type.is_python_obj() or cond_type.is_collection() or cond_type.is_obj():
