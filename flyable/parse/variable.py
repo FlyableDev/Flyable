@@ -21,6 +21,20 @@ class Variable:
         self.__is_arg: bool = False
         self.__global: bool = False
         self.__context: Context | None = None
+        self.__is_module = False
+        self.__belongs_to_module = False
+
+    def belongs_to_module(self):
+        return self.__belongs_to_module
+
+    def set_belongs_to_module(self, belongs_to_module):
+        self.__belongs_to_module = belongs_to_module
+
+    def is_module(self):
+        return self.__is_module
+
+    def set_is_module(self, is_module):
+        self.__is_module = is_module
 
     def get_id(self):
         return self.__id
