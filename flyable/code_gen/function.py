@@ -87,7 +87,8 @@ def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, ar
     """
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
-    arg_list = tuple_call.python_tuple_new_alloca(visitor, len(args))
+    #TODO: replace the call to python_tuple_new with python_tuple_new_alloca when the later will be fixed
+    arg_list = tuple_call.python_tuple_new(code_gen, builder, builder.const_int64(len(args)))
     kwargs_list = builder.const_null(code_type.get_py_obj_ptr(code_gen))
 
     for i, e in enumerate(args):
