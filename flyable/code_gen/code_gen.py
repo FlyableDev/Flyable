@@ -395,7 +395,7 @@ class CodeGen:
             GlobalVar("PyMethod_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
 
         self.__tuple_type = self.add_global_var(
-            GlobalVar("PyTuple_Type", code_type.get_py_obj_ptr(self), Linkage.EXTERNAL))
+            GlobalVar("PyTuple_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))
 
         self.__method_type = self.add_global_var(
             GlobalVar("PyMethod_Type", code_type.get_py_obj(self), Linkage.EXTERNAL))

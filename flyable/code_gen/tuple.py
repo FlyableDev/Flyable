@@ -14,6 +14,7 @@ import flyable.code_gen.exception as excp
 if TYPE_CHECKING:
     from flyable.code_gen.code_builder import CodeBuilder
 
+
 def python_tuple_new(code_gen: gen.CodeGen, builder: CodeBuilder, size: int):
     """
     Generate the code to allocate a Python Tuple
@@ -30,22 +31,20 @@ def python_tuple_new_alloca(visitor: ParserVisitor, size: int):
     """
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
-    current_block = builder.get_current_block()
-    builder.set_insert_block(visitor.get_entry_block())
-    tuple_result = builder.alloca(code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), size + 10))
+
+    tuple_result = visitor.generate_entry_block_var(
+        code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), size + 10))
+
+    tuple_result = builder.ptr_cast(tuple_result, code_gen.get_py_tuple_struct().to_code_type().get_ptr_to())
 
     type_ptr = fly_obj.get_py_obj_type_ptr(builder, tuple_result)
     type_ptr = builder.ptr_cast(type_ptr, code_type.get_py_obj_ptr(code_gen).get_ptr_to())
-    builder.store(builder.load(builder.global_var(code_gen.get_tuple_type())), type_ptr)
-
-    tuple_result = builder.ptr_cast(tuple_result, code_gen.get_py_tuple_struct().to_code_type().get_ptr_to())
+    builder.store(builder.global_var(code_gen.get_tuple_type()), type_ptr)
 
     ref_counter.set_ref_count(builder, tuple_result, builder.const_int64(5))
     builder.store(builder.const_int64(size), python_tuple_get_size_ptr(visitor, tuple_result))
 
     tuple_result = builder.ptr_cast(tuple_result, code_type.get_py_obj_ptr(code_gen))
-
-    builder.set_insert_block(current_block)
 
     return tuple_result
 
@@ -80,19 +79,20 @@ def python_tuple_get_content_ptr(visitor: ParserVisitor, tuple: int):
     tuple = builder.ptr_cast(tuple, code_type.get_tuple_obj_ptr(visitor.get_code_gen()))
     return builder.gep(tuple, builder.const_int32(0), builder.const_int32(3))
 
+
 def python_tuple_get_item(visitor: ParserVisitor, tuple_type: lang_type.LangType, tuple: int, index: int):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     valid_index_block = builder.create_block("Tuple Valid Index")
     wrong_index_block = builder.create_block("Tuple Wrong Index")
     size = builder.load(python_tuple_get_size_ptr(visitor, tuple))
-    real_index = visitor.get_builder().mod(index, size)
-    valid_bounds = visitor.get_builder().lt(real_index, size)
+    real_index = builder.mod(index, size)
+    valid_bounds = builder.lt(real_index, size)
     builder.cond_br(valid_bounds, valid_index_block, wrong_index_block)
     builder.set_insert_block(valid_index_block)
-    content = python_tuple_get_content_ptr(visitor, tuple)
-    content = builder.load(content)
-    content = builder.ptr_cast(content, tuple_type.get_content().to_code_type(visitor.get_code_gen()).get_ptr_to())
-    content = builder.gep2(content, tuple_type.get_content().to_code_type(visitor.get_code_gen()), [index])
+    content = builder.ptr_cast(tuple, code_type.get_py_obj_ptr(code_gen).get_ptr_to())
+
+    # + 3 to skip the ref count, type and counts
+    content = builder.gep2(content, code_type.get_py_obj_ptr(code_gen), [index + 3])
     result = builder.load(content)
 
     builder.set_insert_block(wrong_index_block)
@@ -102,8 +102,8 @@ def python_tuple_get_item(visitor: ParserVisitor, tuple_type: lang_type.LangType
     builder.set_insert_block(valid_index_block)
     return result
 
+
 def python_tuple_get_size_ptr(visitor: ParserVisitor, tuple: int):
     builder = visitor.get_builder()
     tuple = builder.ptr_cast(tuple, code_type.get_tuple_obj_ptr(visitor.get_code_gen()))
     return builder.gep(tuple, builder.const_int32(0), builder.const_int32(2))
-

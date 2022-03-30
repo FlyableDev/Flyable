@@ -57,7 +57,8 @@ def call_py_func_vec_call(visitor: ParserVisitor, obj: int, func_to_call: int, a
         builder.store(arg, arg_gep)
 
     for i, kwarg in enumerate(kwargs.values()):
-        kwarg_gep = builder.gep2(args_stack_memory, code_type.get_py_obj_ptr(code_gen), [builder.const_int32(i + len(args))])
+        kwarg_gep = builder.gep2(args_stack_memory, code_type.get_py_obj_ptr(code_gen),
+                                 [builder.const_int32(i + len(args))])
         builder.store(kwarg, kwarg_gep)
 
     # Cast the stack memory to simplify the type
@@ -87,8 +88,7 @@ def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, ar
     """
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
-    #TODO: replace the call to python_tuple_new with python_tuple_new_alloca when the later will be fixed
-    arg_list = tuple_call.python_tuple_new(code_gen, builder, builder.const_int64(len(args)))
+    arg_list = tuple_call.python_tuple_new_alloca(visitor, len(args))
     kwargs_list = builder.const_null(code_type.get_py_obj_ptr(code_gen))
 
     for i, e in enumerate(args):
@@ -144,4 +144,3 @@ def is_py_obj_method(visit: ParserVisitor, obj: int):
     builder = visit.get_builder()
     obj_type = fly_obj.get_py_obj_type(builder, obj)
     return builder.eq(obj_type, builder.global_var(code_gen.get_method_type()))
-

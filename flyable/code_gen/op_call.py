@@ -311,7 +311,6 @@ def handle_op_cond_special_cases(
         # builder.neg(result)
         # builder.int_cast(result, code_type.get_int1())
         # result_type = lang_type.get_int_type()
-        builder.print_value_type(result)
 
     return lang_type.get_bool_type(), result
 
