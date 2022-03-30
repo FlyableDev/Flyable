@@ -22,7 +22,8 @@ Module related to the python number protocol
 """
 
 
-def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_type.LangType, obj: int, instance_type: int, args_types: list[lang_type.LangType], args: list[int]):
+def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_type.LangType, obj: int,
+                         instance_type: int, args_types: list[lang_type.LangType], args: list[int]):
     code_gen: CodeGen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
@@ -31,24 +32,14 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
 
     nb_args = len(args)
     if is_number_inquiry_func_valid(func_name, nb_args):
-        func_type = code_type.get_func(
-            code_type.get_int32(), [code_type.get_py_obj_ptr(code_gen)]
-        )
+        func_type = code_type.get_func(code_type.get_int32(), [code_type.get_py_obj_ptr(code_gen)])
         protocol_result = visitor.generate_entry_block_var(code_type.get_int32())
     elif is_number_binary_func_valid(func_name, nb_args):
-        func_type = code_type.get_func(
-            code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2
-        )
-        protocol_result = visitor.generate_entry_block_var(
-            code_type.get_py_obj_ptr(code_gen)
-        )
+        func_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 2)
+        protocol_result = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
     elif is_number_ternary_func_valid(func_name, nb_args):
-        func_type = code_type.get_func(
-            code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 3
-        )
-        protocol_result = visitor.generate_entry_block_var(
-            code_type.get_py_obj_ptr(code_gen)
-        )
+        func_type = code_type.get_func(code_type.get_py_obj_ptr(code_gen), [code_type.get_py_obj_ptr(code_gen)] * 3)
+        protocol_result = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
     else:
         raise TypeError(
             f"The given number of arguments ({args}) doesn't match the number of parameters required for {func_name}"
@@ -104,7 +95,7 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
     elif is_number_ternary_func_valid(func_name, args_size):
         basic_call_type, basic_call_value = caller.call_obj(visitor, func_name, obj, obj_type, num_call_args,
                                                             num_call_args_types, {}, False, False, False)
-        if basic_call_value is None: 
+        if basic_call_value is None:
             raise Exception("Could not call pow protocol")
         builder.store(basic_call_value, protocol_result)
     else:
@@ -120,7 +111,7 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
             False,
         )
 
-        if basic_call_value is None: 
+        if basic_call_value is None:
             raise Exception("Could not call fallback protocol")
 
         builder.store(basic_call_value, protocol_result)
@@ -232,7 +223,7 @@ def is_number_inquiry_func_valid(func_name: str, len_args: int) -> bool:
     """
     returns if the function name is a valid inquiry function from the number protocol
     """
-    return is_number_unary_func(func_name) and len_args == 0
+    return is_number_inquiry_func(func_name) and len_args == 0
 
 
 def handle_pow_func_special_case(func_name: str, args: list, args_type: list, visitor: ParserVisitor) -> bool:
