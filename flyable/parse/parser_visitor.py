@@ -207,13 +207,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         left_type, left_value = self.__visit_node(node.left)
         self.__reset_last()
         right_type, right_value = self.__visit_node(node.right)
-        self.__visit_node(node.op)
-
-        if isinstance(node.left.value, str) and isinstance(node.right.value, str):
-            self.__last_type = right_type
-            self.__last_value = runtime.unicode_concat(self.get_code_gen(), self.get_builder(), left_value, right_value)
-        else:    
-            self.__last_type, self.__last_value = op_call.bin_op(self, node.op, left_type, left_value, right_type,
+        self.__visit_node(node.op)   
+        self.__last_type, self.__last_value = op_call.bin_op(self, node.op, left_type, left_value, right_type,
                                                              right_value)
         ref_counter.ref_decr_incr(self, left_type, left_value)
         ref_counter.ref_decr_incr(self, right_type, right_value)
