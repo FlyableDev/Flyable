@@ -208,7 +208,12 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         self.__reset_last()
         right_type, right_value = self.__visit_node(node.right)
         self.__visit_node(node.op)
-        self.__last_type, self.__last_value = op_call.bin_op(self, node.op, left_type, left_value, right_type,
+
+        if isinstance(node.left.value, str) and isinstance(node.right.value, str):
+            self.__last_type = right_type
+            self.__last_value = runtime.unicode_concat(self.get_code_gen(), self.get_builder(), left_value, right_value)
+        else:    
+            self.__last_type, self.__last_value = op_call.bin_op(self, node.op, left_type, left_value, right_type,
                                                              right_value)
         ref_counter.ref_decr_incr(self, left_type, left_value)
         ref_counter.ref_decr_incr(self, right_type, right_value)
@@ -315,7 +320,15 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                 self.__last_type = copy.copy(found_var.get_type())
                 self.__last_value = self.__builder.load(variable_reference)
 
-                if self.__last_type.is_python_obj():
+                if self.__last_type.is_python_obj() and not found_var.is_module():
+                    self.__last_type = lang_type.get_python_obj_type()
+                    self.__last_type.add_hint(hint.TypeHintRefIncr())
+                    self.__last_value = fly_obj.py_obj_get_attr(self, self.__last_value, found_var.get_name())
+            elif isinstance(found_var, Variable) and found_var.belongs_to_module():
+                self.__last_type = copy.deepcopy(found_var.get_type())
+                self.__last_value = self.__builder.load(found_var.get_code_gen_value())
+
+                if self.__last_type.is_python_obj() and not found_var.is_module():
                     self.__last_type = lang_type.get_python_obj_type()
                     self.__last_type.add_hint(hint.TypeHintRefIncr())
                     self.__last_value = fly_obj.py_obj_get_attr(self, self.__last_value, found_var.get_name())
@@ -408,7 +421,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         module_lookup = ""
         attributes = []
-        node_copy = node
+        node_copy = copy.deepcopy(node)
 
         while isinstance(node_copy, ast.Attribute):
             attributes.append(node_copy.attr)
@@ -427,7 +440,14 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         module_prefix = "@flyable@global@module@"
         module_name = module_prefix + module_lookup
 
+        # check global imports
         module = self.__code_gen.get_global_var(module_name)
+        
+        # check local imports
+        if not module:
+            module = self.__find_active_var(module_lookup)
+        
+        node_copy.id = module_lookup
 
         if module is not None:
             # If we store the 'access level' module then we can return, no need to check the node attribute
@@ -442,8 +462,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             module_name = module_lookup
             for range_idx in range(len(attributes)):
                 module_name = '.'.join(attributes[:range_idx - 1])
-                module_lookup = module_prefix + module_name
-                module = self.__code_gen.get_global_var(module_lookup)
+                global_module_lookup = module_prefix + module_name
+                module = self.__code_gen.get_global_var(global_module_lookup)
                 node_copy.id = module_name
                 if module:
                     self.__last_type, self.__last_value = self.__visit_node(node_copy)
@@ -576,7 +596,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     self.__last_type, self.__last_value = caller.call_obj(self, name_call, module,
                                                                           lang_type.get_python_obj_type(), args,
                                                                           args_types, kwargs)
-            elif module_global_func_reference:
+            elif module_global_func_reference or (self.__find_active_var(name_call) and self.__find_active_var(name_call).belongs_to_module()):
                 # global module function
                 node.func.id = name_call
                 self.__last_type, self.__last_value = self.__visit_node(node.func)
@@ -584,6 +604,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     self.__last_type, self.__last_value = caller.call_obj(self, '__call__', self.__last_value,
                                                                           self.__last_type,
                                                                           args, args_types, kwargs)
+
             else:
                 if self.__last_type is None:
                     file = self.__func.get_parent_func().get_file()
@@ -1304,32 +1325,37 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
     def visit_Import(self, node: Import) -> Any:
         for e in node.names:
             import_name = e.asname or e.name
-            if self.__code_gen.get_global_var(f"@flyable@global@module@{import_name}"):
-                # module already imported
-                return
+            import_names = import_name.split('.')
+            import_hierarcy = 0
+            for i in range(len(import_names)):
+                to_import = '.'.join(import_names[:i+1])
+                if self.__code_gen.get_global_var(f"@flyable@global@module@{to_import}"):
+                    # module already imported
+                    continue
+                file = self.__data.get_file(to_import)
+                if file is None:  # Python module
+                    module_type = lang_type.get_python_obj_type()  # A Python module
+                    content = gen_module.import_py_module(self.__code_gen, self.__builder, to_import)
+                else:  # Flyable module
+                    module_type = lang_type.get_module_type(file.get_id())
+                    content = self.__builder.const_int32(file.get_id())
 
-            file = self.__data.get_file(import_name)
-            if file is None:  # Python module
-                module_type = lang_type.get_python_obj_type()  # A Python module
-                content = gen_module.import_py_module(self.__code_gen, self.__builder, import_name)
-            else:  # Flyable module
-                module_type = lang_type.get_module_type(file.get_id())
-                content = self.__builder.const_int32(file.get_id())
+                module_code_type = module_type.to_code_type(self.__code_gen)
 
-            module_code_type = module_type.to_code_type(self.__code_gen)
-
-            new_var = self.__func.get_context().add_var(import_name, module_type)
-            if self.__func.get_parent_func().is_global():
-                new_global_var = gen.GlobalVar("@flyable@global@module@" + import_name, module_code_type)
-                new_var.set_global(True)
-                new_var.set_code_gen_value(new_global_var)
-                self.__code_gen.add_global_var(new_global_var)
-                module_store = self.__builder.global_var(new_global_var)
-            else:
-                new_var_value = self.generate_entry_block_var(module_code_type)
-                new_var.set_code_gen_value(new_var_value)
-                module_store = new_var_value
-            self.__builder.store(content, module_store)
+                new_var = self.__func.get_context().add_var(to_import, module_type)
+                if self.__func.get_parent_func().is_global():
+                    new_global_var = gen.GlobalVar("@flyable@global@module@" + to_import, module_code_type)
+                    new_var.set_global(True)
+                    new_var.set_code_gen_value(new_global_var)
+                    self.__code_gen.add_global_var(new_global_var)
+                    module_store = self.__builder.global_var(new_global_var)
+                else:
+                    new_var_value = self.generate_entry_block_var(module_code_type)
+                    new_var.set_code_gen_value(new_var_value)
+                    new_var.set_belongs_to_module(True)
+                    new_var.set_is_module(True)
+                    module_store = new_var_value
+                self.__builder.store(content, module_store)
 
     def visit_ImportFrom(self, node: ImportFrom) -> Any:
         module_name = node.module
@@ -1338,7 +1364,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             file = self.__data.get_file(e.name)
             if file is None:  # Python module
                 module_type = lang_type.get_python_obj_type()  # A Python module
-                content = gen_module.import_py_module(self.__code_gen, self.__builder, module_name)
+                content = gen_module.import_py_module(self.__code_gen, self.__builder, f"{module_name}")
             else:  # Flyable module
                 module_type = lang_type.get_module_type(file.get_id())
                 content = self.__builder.const_int32(file.get_id())
@@ -1356,6 +1382,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             else:
                 new_var_value = self.generate_entry_block_var(module_code_type)
                 new_var.set_code_gen_value(new_var_value)
+                new_var.set_belongs_to_module(True)
                 module_store = new_var_value
             self.__builder.store(content, module_store)
 
