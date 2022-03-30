@@ -6,8 +6,7 @@ import flyable.code_gen.set as _set
 import flyable.code_gen.dict as _dict
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.code_type as code_type
-import flyable.code_gen.caller as caller
-import flyable.code_gen.ref_counter as ref_counter
+import flyable.code_gen.code_gen as _gen
 
 if TYPE_CHECKING:
     from flyable.parse.parser import ParserVisitor
@@ -45,48 +44,76 @@ def value_to_cond(visitor: ParserVisitor, value_type: lang_type.LangType, value:
 
 def test_obj_true(visitor: ParserVisitor, value_type: lang_type.LangType, value: int):
     """
-    This function implements quicker way to test if a condition is True.
-    - We first test if it's the true object.
-    - If it's not we call the __bool__ function
-    - We test if the return of that is true
+    This function implements quicker way to test if an python object is true
+
+    Here is the C code from CPython that does that :
+    int PyObject_IsTrue(PyObject *v)
+{
+    Py_ssize_t res;
+    if (v == Py_True)
+        return 1;
+    if (v == Py_False)
+        return 0;
+    if (v == Py_None)
+        return 0;
+    else if (Py_TYPE(v)->tp_as_number != NULL &&
+             Py_TYPE(v)->tp_as_number->nb_bool != NULL)
+        res = (*Py_TYPE(v)->tp_as_number->nb_bool)(v);
+    else if (Py_TYPE(v)->tp_as_mapping != NULL &&
+             Py_TYPE(v)->tp_as_mapping->mp_length != NULL)
+        res = (*Py_TYPE(v)->tp_as_mapping->mp_length)(v);
+    else if (Py_TYPE(v)->tp_as_sequence != NULL &&
+             Py_TYPE(v)->tp_as_sequence->sq_length != NULL)
+        res = (*Py_TYPE(v)->tp_as_sequence->sq_length)(v);
+    else
+        return 1;
+    /* if it is negative, it should be either -1 or -2 */
+    return (res > 0) ? 1 : Py_SAFE_DOWNCAST(res, Py_ssize_t, int);
+}
     """
+
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
-
-    result = visitor.generate_entry_block_var(code_type.get_int1())
-
-    true_value = builder.global_var(code_gen.get_true())
-
-    is_true = builder.eq(value, true_value)
-    true_block = builder.create_block("Object is True")
-    test_true_with_call_block = builder.create_block("Test __bool__ Call")
-    builder.cond_br(is_true, true_block, test_true_with_call_block)
-
-    builder.set_insert_block(true_block)
-    builder.store(builder.const_int1(True), result)
-    continue_block = builder.create_block("Test End")
-    builder.br(continue_block)
-
-    builder.set_insert_block(test_true_with_call_block)
-    cond_type, cond_value = caller.call_obj(visitor, "__bool__", value, value_type, [], [], {})
-
-    false_block = builder.create_block("Test is False")
-    if cond_type.is_python_obj() or cond_type.is_collection() or cond_type.is_obj():
-        is_true_2 = builder.eq(cond_value, true_value)
-        ref_counter.ref_decr_incr(visitor, cond_type, cond_value)
-        builder.cond_br(is_true_2, true_block, false_block)
-    elif cond_type.is_bool():
-        builder.cond_br(cond_value, true_block, false_block)
-    elif cond_type.is_int():
-        builder.cond_br(builder.int_cast(cond_value, code_type.get_int1()), true_block, false_block)
+    if value_type.is_int():
+        return builder.int_cast(value, code_type.get_int1())
+    elif value_type.is_dec():
+        return builder.eq(value, builder.const_float64(0.0))
+    elif value_type.is_list():
+        list_size = _list.python_list_len(visitor, value)
+        return builder.lt(list_size, builder.const_int64(0))
     else:
-        error_str = "__bool__ should return bool, returned '" + cond_type.to_str(code_gen.get_data()) + "' instead"
-        current_node = visitor.get_current_node()
-        visitor.get_parser().throw_error(error_str, current_node.lineno if current_node else None, 0)
+        is_true_func = code_gen.get_or_create_func("PyObject_IsTrue", code_type.get_int32(),
+                                                   [code_type.get_py_obj_ptr(code_gen)], _gen.Linkage.EXTERNAL)
+        is_true_value = builder.call(is_true_func, [value])
+        return builder.ne(is_true_value, builder.const_int32(0))
 
-    builder.set_insert_block(false_block)
-    builder.store(builder.const_int1(False), result)
-    builder.br(continue_block)
+    """
+    TODO: IMPLEMENT THE FULL TEST TO AVOID PyObject_IsTrue FUNCTION CALL
+    cond_result = visitor.generate_entry_block_var(code_gen, code_type.get_int1())
+    builder.store(cond_result, builder.const_int1(False))
 
-    builder.set_insert_block(continue_block)
-    return builder.load(result)
+    test_true_block = builder.create_block("Is the object True")
+    test_false_block = builder.create_block("Is the object False")
+    test_none_block = builder.create_block("Is the object None")
+    test_number_protocol_block = builder.create_block("Test with the number protocol")
+    test_mapping_protocol_block = builder.create_block("Test with the mapping protocol")
+    test_sequence_protocol_block = builder.create_block("Test with the sequence protocol")
+    value_true_block = builder.create_block("True block")
+    else_block = builder.create_block("Else block")
+    continue_block = builder.create_block("Continue block")
+
+    builder.br(test_true_block)
+    builder.set_insert_block(test_true_block)
+    true_value = builder.global_var(code_gen.get_true())
+    is_true = builder.eq(true_value, value)
+    builder.cond_br(is_true, value_true_block, test_false_block)
+
+    builder.set_insert_block(test_false_block)
+    false_value = builder.global_var(code_gen.get_true())
+    is_false = builder.eq(false_value, value)
+    builder.cond_br(is_false, continue_block, test_none_block)
+
+    builder.set_insert_block(test_none_block)
+    none_value = builder.global_var(code_gen.get_none())
+    is_none = builder.eq(none_value, test_none_block)
+    """
