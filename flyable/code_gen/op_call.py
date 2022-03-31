@@ -11,6 +11,7 @@ import flyable.data.lang_type as lang_type
 import flyable.parse.op as parse_op
 from flyable.code_gen import debug
 from flyable.parse import build_in
+import flyable.code_gen.fly_obj as fly_obj
 
 if TYPE_CHECKING:
     from flyable.parse.parser import ParserVisitor
@@ -248,6 +249,10 @@ def cond_op(
             apply_op = builder.gt
         case ast.GtE():
             apply_op = builder.gte
+        case ast.Is():
+            apply_op = builder.eq
+        case ast.IsNot():
+            apply_op = builder.ne
         case _:
             raise NotImplementedError("Compare op " + str(type(op)) + " not supported")
 
@@ -307,17 +312,9 @@ def handle_op_cond_special_cases(
         )
 
     elif op_type in {ast.Is, ast.IsNot}:
-        result = builder.eq(first_value, second_value)
+        result = builder.eq(fly_obj.get_py_obj_type_ptr(builder, first_value), fly_obj.get_py_obj_type_ptr(builder, second_value))
         if op_type is ast.IsNot:
             result = builder._not(result)
-
-        # result = builder.int_cast(result, code_type.get_int64())
-        result = builder.mul(result, builder.const_int1(True))
-        # result = builder._not(result)
-
-        # builder.neg(result)
-        # builder.int_cast(result, code_type.get_int1())
-        # result_type = lang_type.get_int_type()
 
     return lang_type.get_bool_type(), result
 
