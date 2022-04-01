@@ -687,22 +687,17 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         index_type, index_value = self.__visit_node(node.slice)
 
         if isinstance(node.ctx, ast.Store):
-            source = hint.get_type_source(value_type)
-            # TODO: find a better fix to support a store in a 2+D list (define types for a precise range)
-            if source is not None:
-                source_data = source.get_source()
-
             common_type = lang_type.get_most_common_type(self.__data, value_type, self.__assign_type)
 
             if common_type != value_type:
-                if isinstance(source_data, Variable):
-                    source_data.set_type(common_type)
-                    if source_data.is_global():
+                if isinstance(value, Variable):
+                    value.set_type(common_type)
+                    if value.is_global():
                         self.__data.set_changed(True)  # A modification of global variable means recompile globally
                     else:
                         self.__reset_visit = True  # A new type for local variable means a local new code generation
-                elif isinstance(source_data, _attribute.Attribute):
-                    source_data.set_type(common_type)
+                elif isinstance(value, _attribute.Attribute):
+                    value.set_type(common_type)
                     self.__data.set_changed(True)  # Need to take in account the new type of the attribute
 
         args_types = [index_type]
