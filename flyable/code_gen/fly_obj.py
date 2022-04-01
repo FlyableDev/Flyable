@@ -6,6 +6,7 @@ import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.debug as debug
 import flyable.data.lang_type as lang_type
+import flyable.code_gen.exception as excp
 from flyable.code_gen.code_builder import CodeBuilder
 
 if TYPE_CHECKING:
@@ -69,7 +70,12 @@ def py_obj_get_attr(visitor: ParserVisitor, obj: int, name: str, obj_type: int =
     builder.br(continue_block)
 
     builder.set_insert_block(continue_block)
-    return builder.load(attr_found_var)
+
+    attr_found_var = builder.load(attr_found_var)
+
+    excp.check_excp(visitor, attr_found_var)
+
+    return attr_found_var
 
 
 def py_obj_set_attr(visitor: ParserVisitor, obj: int, name: str, obj_set: int, obj_type: int = None):
