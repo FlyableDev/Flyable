@@ -178,11 +178,6 @@ def parse_handlers(
         obj_type, obj_type_value = visitor.visit_node(handler.type)
 
         type_match = builder.eq(obj_type_value, excp_type)
-        debug.flyable_debug_print_int64(
-            visitor.get_code_gen(),
-            builder,
-            builder.int_cast(type_match, code_type.get_int64()),
-        )
 
         other_block = (
             handlers_cond_block[i + 1]

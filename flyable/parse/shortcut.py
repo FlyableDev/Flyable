@@ -47,9 +47,11 @@ class ShortcutListCallGet(ShortcutObjCall):
         item = gen_list.python_list_array_get_item(visitor, caller_type, caller_value, args[0])
         return caller_type.get_content(), item
 
+
 """
 Tuple shortcuts
 """
+
 
 class ShortcutTupleCallGet(ShortcutObjCall):
 
@@ -61,6 +63,7 @@ class ShortcutTupleCallGet(ShortcutObjCall):
     def parse(self, visitor, caller_type, caller_value, args_type, args):
         item = gen_tuple.python_tuple_get_item(visitor, caller_type, caller_value, args[0])
         return caller_type.get_content(), item
+
 
 def get_obj_call_shortcuts(type_to_test, args_to_test, name):
     shortcuts = {

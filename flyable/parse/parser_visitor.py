@@ -9,6 +9,7 @@ import flyable.code_gen.caller as caller
 import flyable.code_gen.code_gen as gen
 import flyable.code_gen.cond as cond
 import flyable.code_gen.debug as debug
+import flyable.parse.exception.unsupported as unsupported
 import flyable.code_gen.dict as gen_dict
 import flyable.code_gen.exception as excp
 import flyable.code_gen.fly_obj as fly_obj
@@ -207,7 +208,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         left_type, left_value = self.__visit_node(node.left)
         self.__reset_last()
         right_type, right_value = self.__visit_node(node.right)
-        self.__visit_node(node.op)   
+        self.__visit_node(node.op)
         self.__last_type, self.__last_value = op_call.bin_op(self, node.op, left_type, left_value, right_type,
                                                              right_value)
         ref_counter.ref_decr_incr(self, left_type, left_value)
@@ -437,11 +438,11 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
         # check global imports
         module = self.__code_gen.get_global_var(module_name)
-        
+
         # check local imports
         if not module:
             module = self.__find_active_var(module_lookup)
-        
+
         node_copy.id = module_lookup
 
         if module is not None:
@@ -591,7 +592,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
                     self.__last_type, self.__last_value = caller.call_obj(self, name_call, module,
                                                                           lang_type.get_python_obj_type(), args,
                                                                           args_types, kwargs)
-            elif module_global_func_reference or (self.__find_active_var(name_call) and self.__find_active_var(name_call).belongs_to_module()):
+            elif module_global_func_reference or (
+                    self.__find_active_var(name_call) and self.__find_active_var(name_call).belongs_to_module()):
                 # global module function
                 node.func.id = name_call
                 self.__last_type, self.__last_value = self.__visit_node(node.func)
@@ -795,10 +797,7 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
 
     #  FIXME: issues #39 & #41 and then complete the visitor
     def visit_Nonlocal(self, node: Nonlocal) -> Any:
-        for name in node.names:
-            self.__func.get_context()
-            if self.__func.get_parent_func().is_global():
-                pass
+        raise unsupported.FlyableUnsupported()
 
     def visit_Pass(self, node: Pass) -> Any:
         pass
@@ -808,11 +807,6 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
             self.__last_type = lang_type.get_bool_type()
             self.__last_type.add_hint(hint.TypeHintConstBool(node.value))
             self.__last_value = self.__builder.const_int1(node.value)
-            # self.__last_value = (
-            #     self.__code_gen.get_true().get_id()
-            #     if node.value
-            #     else self.__code_gen.get_false().get_id()
-            # )
         elif isinstance(node.value, int):
             self.__last_type = lang_type.get_int_type()
             self.__last_value = self.__builder.const_int64(node.value)
@@ -1321,9 +1315,8 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
         for e in node.names:
             import_name = e.asname or e.name
             import_names = import_name.split('.')
-            import_hierarcy = 0
             for i in range(len(import_names)):
-                to_import = '.'.join(import_names[:i+1])
+                to_import = '.'.join(import_names[:i + 1])
                 if self.__code_gen.get_global_var(f"@flyable@global@module@{to_import}"):
                     # module already imported
                     continue
