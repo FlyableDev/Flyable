@@ -18,7 +18,7 @@ def value_to_cond(visitor: ParserVisitor, value_type: lang_type.LangType, value:
     """
 
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
-    if value_type.is_int():
+    if value_type.is_int() or value_type.is_none():
         return lang_type.get_bool_type(), builder.int_cast(value, code_type.get_int1())
     elif value_type.is_bool():  # bool doesn't need conversion
         return value_type, value

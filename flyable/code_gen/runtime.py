@@ -67,6 +67,13 @@ def py_runtime_init(code_gen: CodeGen, builder: CodeBuilder):
     init_func = code_gen.get_or_create_func("Py_Initialize", code_type.get_void(), [], _code_gen.Linkage.EXTERNAL)
     return builder.call(init_func, [])
 
+def py_object_is_true(code_gen: CodeGen, builder: CodeBuilder, value: int):
+    return_type = code_type.get_int64()
+    arg_types = [code_type.get_py_obj_ptr(code_gen)]
+
+    func = code_gen.get_or_create_func("PyObject_IsTrue", return_type, arg_types, _code_gen.Linkage.EXTERNAL)
+    result = builder.call(func, [value])
+    return builder.eq(result, builder.const_int64(1))
 
 def value_to_pyobj(code_gen: CodeGen, builder: CodeBuilder, value: int, value_type: LangType):
     result_type = lang_type.get_python_obj_type()
