@@ -26,7 +26,7 @@ def py_object_type_get_tp_as_number_ptr(visitor: ParserVisitor, type: int):
 
 def py_object_type_get_tp_richcompare_ptr(visitor: ParserVisitor, type: int):
     builder = visitor.get_builder()
-    return builder.gep(type, builder.const_int32(0), builder.const_int32(24))
+    return builder.gep(type, builder.const_int32(0), builder.const_int32(25))
 
 
 def py_object_type_get_iter_next(visitor: ParserVisitor, type: int):
