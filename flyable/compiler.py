@@ -4,19 +4,12 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from flyable.data.comp_data import CompData
     from flyable.parse.parser import Parser
-    from flyable.data.lang_func_impl import LangFuncImpl
 
 import flyable.code_gen.code_gen as gen
-import flyable.data.lang_class as lang_class
-import flyable.parse.adapter as adapter
 import flyable.parse.parser as par
 from flyable.code_gen.code_gen import CodeGen
 from flyable.data import comp_data, lang_file
 from flyable.data.error_thrower import ErrorThrower
-from flyable.parse.pre_parser import PreParser
-from flyable.debug.debug_flags import DebugFlag, value_if_debug, do_if_debug, flag_is_valid
-from flyable.debug.debug_flags_list import *
-from flyable.tool.utils import add_step, end_step, wrap_in_step
 
 
 class Compiler(ErrorThrower):
@@ -37,16 +30,8 @@ class Compiler(ErrorThrower):
         self._data.set_config("output", path)
 
     def compile(self):
-        if flag_is_valid(FLAG_SHOW_STEP_LEVEL, lambda level: level >= 2):
-            wrap_in_step("PreParsing", self.__pre_parse)
-        else:
-            self.__pre_parse()
 
-        if not self.has_error():
-            if flag_is_valid(FLAG_SHOW_STEP_LEVEL, lambda level: level >= 2):
-                wrap_in_step("Parsing", self.__parse)
-            else:
-                self.__parse()
+        self.__parse()
 
         self.throw_errors(self._parser.get_errors())
 
@@ -54,66 +39,12 @@ class Compiler(ErrorThrower):
             print(f"{e.message} [{e.line}, {e.row}]")
 
         if not self.has_error():
-            self._code_gen.setup_struct()
             self._code_gen.generate_main()
             self._code_gen.write()
-
-    def __pre_parse(self):
-        pre_parser = PreParser(self._data, self._code_gen)
-        pre_parser.parse(self._data)
-        self.__resolve_inheritance()
-        self.throw_errors(pre_parser.get_errors())
 
     def __parse(self):
         code_gen = self._code_gen
 
-        # Parse the code until it the compiler stop finding new data
-        while True:
-            self._data.clear_info()
-            code_gen.clear()
-            code_gen.setup()
-            self._data.set_changed(False)
-
-            try:
-
-                # Create a specialization for the main module to execute
-                self._main_impl = adapter.adapt_func(
-                    self._data.get_file(0).get_global_func(),
-                    [],
-                    self._data,
-                    self._parser,
-                )
-
-                # Then generate an implementation for all python methods / funcs
-                adapter.adapt_all_python_impl(self._data, self._parser)
-
-            except Exception as exception:
-                if (
-                        not self._parser.has_error()
-                ):  # If there is no error we launch the exception as a failure
-                    raise exception
-                break
-
-            # If there is an error or no compiler data has been modifier we're confident that the generate code is valid
-            if self._parser.has_error() or not self._data.is_changed():
-                break
-            else:
-                self._data.increment_current_iteration()
-
-        self.throw_errors(self._parser.get_errors())
-
-    def __resolve_inheritance(self):
-        for _class in self._data.classes_iter():
-            node = _class.get_node()
-            for e in node.bases:
-                file = _class.get_file()
-                if file:
-                    found_class = file.find_content_by_id(e.id)
-                    if isinstance(found_class, lang_class.LangClass):
-                        _class.add_inherit(found_class)
-                    else:
-                        self._parser.throw_error(
-                            str(e) + " not expected to inherits",
-                            node.lineno,
-                            node.end_col_offset,
-                        )
+        for i in range(self._data.get_files_count()):
+            file = self._data.get_file(i)
+            self._parser.parse_file(file)

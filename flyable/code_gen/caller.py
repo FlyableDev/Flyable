@@ -14,7 +14,6 @@ import flyable.code_gen.rich_compare as rich_compare
 import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as hint
-import flyable.parse.adapter as adapter
 import flyable.parse.shortcut as shortcut
 from flyable.parse.parser_visitor import ParserVisitor
 
@@ -30,6 +29,8 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
     - Python runtime method call
     """
     if obj_type.is_obj():
+        raise NotImplementedError("We don't do specialize call right now")
+        """
         # Traditional and direct obj call
         called_class = visitor.get_data().get_class(obj_type.get_id())
         called_func = called_class.get_func(func_name)
@@ -48,6 +49,7 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
         if code_func is None:
             raise Exception(f"Function {called_impl} has no code_func")
         return return_type, visitor.get_builder().call(code_func, [obj] + args)
+        """
     elif obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive():
         did_caller_conversion = False
         # The caller can be a primitive, convert if it's the case

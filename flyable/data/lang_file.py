@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import Union, List
-from ast import Module
-
+from typing import Union
 import flyable.data.lang_func as lang_func
-import flyable.data.lang_class as lang_class
 
 
 class LangFile:
@@ -16,17 +13,14 @@ class LangFile:
     def __init__(self, path: str = "", txt: str = ""):
         self.__path: str = path
         self.__text: str = txt
-        self.__classes: List[lang_class.LangClass] = []
-        self.__funcs: List[lang_func.LangFunc] = []
-        self.__global_func = None
-        self.__ast: Union[Module, None] = None
+        self.__funcs = []
 
     def read_from_path(self, path: str):
         with open(path, 'r', encoding='utf-8') as f:
             self.__path = os.path.abspath(path)
             self.__text = f.read()
 
-    def find_content_by_name(self, name: str) -> Union[lang_func.LangFunc, lang_class.LangClass, None]:
+    def find_content_by_name(self, name: str) -> Union[lang_func.LangFunc, None]:
         """
         Looks at the list of functions to return the first with a matching name.
         If no match was found, looks at the list of classes to return the first with a matching name.
@@ -38,13 +32,13 @@ class LangFile:
         Returns:
             the function or the class with the matching name or None if none was found
         """
-        funcs_and_classes: list[lang_func.LangFunc | lang_class.LangClass] = [*self.__funcs, *self.__classes]
+        funcs_and_classes: list[lang_func.LangFunc] = [*self.__funcs, *self.__classes]
         for e in funcs_and_classes:
             if e.get_name() == name:
                 return e
         return None
 
-    def find_content_by_id(self, id: int) -> Union[lang_func.LangFunc, lang_class.LangClass, None]:
+    def find_content_by_id(self, id: int) -> Union[lang_func.LangFunc, None]:
         """
         Looks at the list of functions to return the first with a matching id.
         If no match was found, looks at the list of classes to return the first with a matching id.
@@ -56,27 +50,13 @@ class LangFile:
         Returns:
             the function or the class with the matching id or None if none was found
         """
-        funcs_and_classes: list[lang_func.LangFunc | lang_class.LangClass] = [*self.__funcs, *self.__classes]
+        funcs_and_classes: list[lang_func.LangFunc] = [*self.__funcs, *self.__classes]
         for e in funcs_and_classes:
             if e.get_id() == id:
                 return e
         return None
 
-    def clear_info(self):
-        """
-        Calls `clear_info()` on all the classes contained in the list of classes and 
-        on all the functions contained in the list of functions.
-
-        Also, it calls `clear_info()` on the global function if there is one
-        """
-        funcs_and_classes: list[lang_func.LangFunc | lang_class.LangClass] = [*self.__funcs, *self.__classes]
-        for e in funcs_and_classes:
-            e.clear_info()
-
-        if self.__global_func is not None:
-            self.__global_func.clear_info()
-
-    def add_class(self, _class: lang_class.LangClass):
+    def add_class(self, _class):
         _class.set_file(self)
         self.__classes.append(_class)
 
@@ -93,14 +73,11 @@ class LangFile:
     def get_func(self, index: int):
         return self.__funcs[index]
 
-    def set_global_func(self, global_func: lang_func.LangFunc):
-        self.__global_func = global_func
-
-    def get_global_func(self):
-        return self.__global_func
-
     def get_funcs_count(self):
         return len(self.__funcs)
+
+    def funcs_iter(self):
+        return iter(self.__funcs)
 
     def get_qualified_name(self):
         return ""
@@ -110,9 +87,3 @@ class LangFile:
 
     def get_text(self):
         return self.__text
-
-    def set_ast(self, ast: Module):
-        self.__ast = ast
-
-    def get_ast(self):
-        return self.__ast

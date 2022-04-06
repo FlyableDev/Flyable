@@ -1,8 +1,6 @@
 from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING
-import flyable.data.lang_type as type
-import flyable.data.type_hint as hint
 
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import GlobalVar

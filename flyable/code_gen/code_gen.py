@@ -11,15 +11,11 @@ import flyable.code_gen.library_loader as loader
 import flyable.code_gen.module as gen_module
 import flyable.code_gen.runtime as runtime
 from flyable.data.comp_data import CompData
-from flyable.data.lang_class import LangClass
 import flyable.data.lang_func_impl as lang_func_impl
-import flyable.data.lang_type as lang_type
 from flyable.code_gen.code_builder import CodeBuilder
 from flyable.code_gen.code_type import CodeType
 from flyable.code_gen.code_writer import CodeWriter
-from flyable.debug.code_builder_analyser import CodeBuilderAnalyser
 from flyable.debug.debug_flags import DebugFlag, value_if_debug
-from flyable.debug.code_branch_viewer import BranchViewer
 import flyable.code_gen.ref_counter as ref_counter
 from flyable.debug.debug_flags_list import *
 
@@ -201,8 +197,7 @@ class CodeFunc:
         self.__args = []
         self.__return_type = CodeType()
         self.__blocks: list[CodeBlock] = []
-        self.__builder = value_if_debug(CodeBuilder(self), CodeBuilderAnalyser(self), FLAG_SHOW_OUTPUT_BUILDER)
-        self.__branch_viewer = BranchViewer(self.__builder) if FLAG_SHOW_BLOCK_BRANCHES else None
+        self.__builder = CodeBuilder(self)
 
     def set_linkage(self, link: Linkage):
         self.__linkage = link
@@ -403,9 +398,6 @@ class CodeGen:
         self.__build_in_module = self.add_global_var(
             GlobalVar("__flyable@BuildIn@Module@", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
 
-        for _class in self.__data.classes_iter():
-            self.gen_struct(_class)
-
     def clear(self):
         self.__global_vars.clear()
         self.__funcs.clear()
@@ -573,7 +565,7 @@ class CodeGen:
     def get_global_var(self, variable_name: str) -> GlobalVar:
         return self.__global_vars.get(variable_name, None)
 
-    def gen_struct(self, _class: LangClass):
+    def gen_struct(self, _class):
         """
         Create a structure from a class and creates the global variable that will hold the type instance of that class
         """
@@ -581,13 +573,6 @@ class CodeGen:
         new_struct = StructType("@flyable@__" + _class.get_name())
         _class.set_struct(new_struct)
         self.add_struct(new_struct)
-
-    def setup_struct(self):
-        for _class in self.__data.classes_iter():
-            _class.get_struct().add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
-            _class.get_struct().add_type(code_type.get_py_type(self).get_ptr_to())  # PyTypeObject * ob_type
-            for attribute in _class.attributes_iter():
-                _class.get_struct().add_type(attribute.get_type().to_code_type(self))
 
     def gen_func(self, impl: lang_func_impl.LangFuncImpl):
         """
@@ -711,48 +696,21 @@ class CodeGen:
             constant_var = builder.global_var(self.__py_constants[key])
             if isinstance(key, int):
                 value_to_convert = builder.const_int64(key)
-                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert,
-                                                                         lang_type.get_int_type())
+                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert)
             else:
                 value_to_convert = builder.const_float64(key)
-                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert,
-                                                                         lang_type.get_dec_type())
+                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert)
             builder.store(value_to_assign, constant_var)
 
         # Create all the implementations on Python side
-        for _class in self.__data.classes_iter():
-            for _func in _class.funcs_iter():
+        for _file in self.__data.files_iter():
+            for _func in _file.funcs_iter():
                 _func.generate_code_to_set_impl(self, builder)
-        for _func in self.__data.funcs_iter():
-            _func.generate_code_to_set_impl(self, builder)
 
+        # Start the CPython main
         func_to_call = self.get_or_create_func("Py_BytesMain", code_type.get_int32(),
                                                [code_type.get_int32(), code_type.get_int8_ptr().get_ptr_to()],
                                                Linkage.EXTERNAL)
 
         return_value = builder.call(func_to_call, [0, 1])
         builder.ret(return_value)
-
-    def convert_type(self, builder: CodeBuilder, code_gen: CodeGen, type_from: lang_type.LangType, value: int,
-                     type_to: lang_type.LangType):
-        if type_to.is_python_obj():
-            return runtime.value_to_pyobj(self, builder, value, type_from)[1]
-        elif type_to.is_obj():
-            return builder.ptr_cast(type_to.get_id(), code_type.get_py_obj(code_gen))
-        elif type_to.is_primitive():
-            if type_to.is_int():
-                return builder.int_cast(value, code_type.get_int64())
-            elif type_to.is_dec():
-                return builder.float_cast(value, code_type.get_double())
-        else:
-            raise ValueError("Impossible to convert the type")
-
-    def get_null_from_type(self, builder: CodeBuilder, code_gen: CodeGen, type: lang_type.LangType):
-        if type.is_int():
-            return builder.const_int64(0)
-        elif type.is_dec():
-            return builder.const_float64(0.0)
-        elif type.is_bool():
-            return builder.const_int1(False)
-        else:
-            return builder.const_null(type.to_code_type(code_gen))

@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Union
 from typing import Type as PyType
 from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_type as code_type
-import flyable.data.type_hint as hint
 import flyable.code_gen.code_gen as code_gen
 
 if TYPE_CHECKING:
@@ -77,15 +76,8 @@ def get_bool_type():
     return LangType(LangType.Type.BOOLEAN)
 
 
-def get_python_obj_type(obj_hint: Union[hint.TypeHint, list[hint.TypeHint]] = None):
+def get_python_obj_type():
     result = LangType(LangType.Type.PYTHON)
-
-    if isinstance(obj_hint, list):
-        for e in obj_hint:
-            result.add_hint(e)
-    elif isinstance(obj_hint, hint.TypeHint):
-        result.add_hint(obj_hint)
-
     return result
 
 
@@ -124,6 +116,7 @@ def get_dict_of_python_obj_type():
 def get_unknown_type():
     return LangType(LangType.Type.UNKNOWN)
 
+
 def from_code_type(code_type: CodeType):
     import flyable.data.lang_type as lang_type
     if code_type.get_type() == CodeType.CodePrimitive.INT64:
@@ -138,6 +131,7 @@ def from_code_type(code_type: CodeType):
         return lang_type.get_bool_type()
     elif code_type.get_type() == CodeType.CodePrimitive.VOID:
         return lang_type.get_none_type()
+
 
 class LangType:
     class Type(Enum):
