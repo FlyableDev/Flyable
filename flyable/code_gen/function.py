@@ -144,3 +144,13 @@ def is_py_obj_method(visit: ParserVisitor, obj: int):
     builder = visit.get_builder()
     obj_type = fly_obj.get_py_obj_type(builder, obj)
     return builder.eq(obj_type, builder.global_var(code_gen.get_method_type()))
+
+def py_function_get_globals(visitor: ParserVisitor, func_obj: int):
+    """Return the globals dictionary associated with the function object func_obj."""
+    code_gen = visitor.get_code_gen()
+    builder = visitor.get_builder()
+
+    func = builder.ptr_cast(func_obj, code_gen.get_python_function_object_struct().to_code_type().get_ptr_to())
+    gep_indices = [builder.const_int32(0), builder.const_int32(1)]
+
+    return builder.gep2(func, code_gen.get_python_function_object_type().to_code_type(), gep_indices)
