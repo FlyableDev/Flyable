@@ -118,13 +118,18 @@ def python_list_array_get_item(visitor: ParserVisitor, list_type: lang_type.Lang
 
 
 def python_list_array_get_item_unsafe(visitor: ParserVisitor, list_type: lang_type.LangType, list: int, index: int):
+    ptr = python_list_array_get_item_ptr_unsafe(visitor, list_type, list, index)
+    result = visitor.get_builder().load(ptr)
+    return result
+
+
+def python_list_array_get_item_ptr_unsafe(visitor: ParserVisitor, list_type: lang_type.LangType, list: int, index: int):
     builder = visitor.get_builder()
     content = python_list_get_content_ptr(visitor, list)
     content = builder.load(content)
     content = builder.ptr_cast(content, list_type.get_content().to_code_type(visitor.get_code_gen()).get_ptr_to())
     content = builder.gep2(content, list_type.get_content().to_code_type(visitor.get_code_gen()), [index])
-    result = builder.load(content)
-    return result
+    return content
 
 
 def python_list_len_ptr(visitor: ParserVisitor, list: int):

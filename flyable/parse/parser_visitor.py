@@ -72,40 +72,41 @@ class ParserVisitor:
                                                        signature, _gen.Linkage.INTERNAL)
 
         self.__func.set_code_func(code_func)
-        self.__entry_block = self.__get_code_func().add_block("Entry block")
+        self.__entry_block = self.__func.get_code_func().add_block("Entry block")
 
-        self.__builder = self.__get_code_func().get_builder()
+        self.__builder = self.__func.get_code_func().get_builder()
 
         self.__content_block = self.__builder.create_block()
         self.__builder.set_insert_block(self.__content_block)
 
     def __build_const(self):
         for const_obj in self.__code_obj.co_consts:
-            if const_obj is None:
-                new_const = self.__builder.global_var(self.__code_gen.get_none())
-            elif isinstance(const_obj, str):
-                new_const = self.__builder.global_var(self.__code_gen.get_or_insert_str(const_obj))
-                new_const = self.__builder.load(new_const)
-            elif isinstance(const_obj, bool):
-                if const_obj:
-                    bool_var = self.__code_gen.get_true()
-                else:
-                    bool_var = self.__code_gen.get_false()
-                new_const = self.__builder.global_var(bool_var)
-            elif isinstance(const_obj, int):
-                const_value = self.__builder.const_int64(const_obj)
-                new_const = runtime.value_to_pyobj(self.__code_gen, self.__builder, const_value,
-                                                   lang_type.get_int_type())
-                new_const = new_const[1]
-            elif isinstance(const_obj, tuple):
-                pass
-            elif type(const_obj).__name__ == "code":
-                new_const = None
-            else:
-                raise Exception(
-                    "Not supported const of type " + str(type(const_obj)) + "with content " + str(const_obj))
+            self.__consts.append(const_obj)
 
-            self.__consts.append(new_const)
+    def __gen_const(self, const_obj):
+        if const_obj is None:
+            new_const = self.__builder.global_var(self.__code_gen.get_none())
+        elif isinstance(const_obj, str):
+            new_const = self.__builder.global_var(self.__code_gen.get_or_insert_str(const_obj))
+            new_const = self.__builder.load(new_const)
+        elif isinstance(const_obj, bool):
+            if const_obj:
+                bool_var = self.__code_gen.get_true()
+            else:
+                bool_var = self.__code_gen.get_false()
+            new_const = self.__builder.global_var(bool_var)
+        elif isinstance(const_obj, int):
+            const_value = self.__builder.const_int64(const_obj)
+            new_const = runtime.value_to_pyobj(self.__code_gen, self.__builder, const_value,
+                                               lang_type.get_int_type())
+            new_const = new_const[1]
+        elif isinstance(const_obj, tuple):
+            pass
+        elif type(const_obj).__name__ == "code":
+            new_const = None
+        else:
+            raise Exception(
+                "Not supported const of type " + str(type(const_obj)) + "with content " + str(const_obj))
 
     def visit_nop(self, instr):
         pass
@@ -324,13 +325,29 @@ class ParserVisitor:
     """
 
     def visit_build_tuple(self, instr):
+        element_counts = instr.arg
         import flyable.code_gen.tuple as gen_tuple
-        count_type, count = self.pop()
-        result = gen_tuple.python_tuple_new(self.__code_gen, self.__builder, self.__builder.const_int64(instr.count))
-        self.push(None, result)
+        new_tuple = gen_tuple.python_tuple_new(self.__code_gen, self.__builder,
+                                               self.__builder.const_int64(element_counts))
+        for i in range(element_counts):
+            e_type, e_value = self.pop()
+            gen_tuple.python_tuple_set_unsafe(self, new_tuple, i, e_value)
+        self.push(None, new_tuple)
 
     def visit_build_list(self, instr):
-        raise NotImplementedError()
+        element_counts = instr.arg
+        import flyable.code_gen.list as gen_list
+        new_list = gen_list.instanciate_python_list(self.__code_gen, self.__builder,
+                                                    self.__builder.const_int64(element_counts))
+        element_counts = instr.arg
+        for i in range(element_counts):
+            e_type, e_value = self.pop()
+            obj_ptr = gen_list.python_list_array_get_item_ptr_unsafe(self, new_list, i, e_value)
+            self.__builder.sotre(e_value, obj_ptr)
+        self.push(None, new_list)
+
+    def visit_list_extend(self, instr):
+        pass
 
     def visit_build_set(self, instr):
         raise NotImplementedError()
@@ -414,12 +431,16 @@ class ParserVisitor:
         self.__builder.ret(value)
 
     def push(self, type, value):
+        if type is None:
+            type = lang_type.get_python_obj_type()
+
+        if not isinstance(value, int):
+            raise TypeError("Value expected to be a int instead of " + str(value))
+
         self.__stack.append((type, value))
 
     def pop(self):
         value_pop = self.__stack.pop(-1)
-        if value_pop[0] is None:
-            return lang_type.get_python_obj_type(), value_pop[1]
         return value_pop
 
     def push_block(self, block):
@@ -450,6 +471,6 @@ class ParserVisitor:
         if found_var is None:
             import flyable.data.variable as _var
             found_var = _var.Variable(var_name)
-            self.__context.add_var(found_var)
+            self.__context.add_var(found_var, lang_type.get_python_obj_type())
             found_var.set_code_value(self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen)))
         return found_var
