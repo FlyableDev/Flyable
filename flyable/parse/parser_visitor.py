@@ -10,6 +10,7 @@ import flyable.code_gen.fly_obj as fly_obj
 import flyable.code_gen.cond as _cond
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.data.lang_type as lang_type
+import flyable.code_gen.set as gen_set
 import flyable.parse.exception.unsupported as unsupported
 
 
@@ -500,13 +501,27 @@ class ParserVisitor:
         self.push(None, new_list)
 
     def visit_list_extend(self, instr):
-        pass
+        index = instr.arg
+        iter_type, iter_value = self.pop()
+        list_type, list_value = self.__stack(-index)
+        extend_func = self.__code_gen.get_or_create_func("_PyList_Extend", code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(extend_func, [list_value, iter_value])
 
     def visit_list_to_tuple(self, instr):
         raise unsupported.FlyableUnsupported
 
     def visit_build_set(self, instr):
-        raise NotImplementedError()
+        counts = instr.arg
+        iter_value = self.__builder.const_null(lang_type.get_python_obj_type().to_code_type(self.__code_gen))
+        # Iter is NULL in this case
+        new_set = gen_set.instanciate_python_set(self, iter_value)
+
+        for i in range(counts):
+            element_type, element_value = self.pop()
+            gen_set.python_set_add(self, new_set, element_value)
+        self.push(None, new_set)
 
     def visit_set_update(self, instr):
         raise unsupported.FlyableUnsupported
