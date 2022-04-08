@@ -7,6 +7,7 @@ from typing import Type as PyType
 from flyable.code_gen.code_type import CodeType
 import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as code_gen
+import flyable.data.type_hint as hint
 
 if TYPE_CHECKING:
     from flyable.data.comp_data import CompData

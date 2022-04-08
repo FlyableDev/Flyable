@@ -17,6 +17,8 @@ from flyable.code_gen.code_type import CodeType
 from flyable.code_gen.code_writer import CodeWriter
 from flyable.debug.debug_flags import DebugFlag, value_if_debug
 import flyable.code_gen.ref_counter as ref_counter
+import flyable.data.lang_type as lang_type
+import flyable.code_gen.tuple as gen_tuple
 from flyable.debug.debug_flags_list import *
 
 if TYPE_CHECKING:
@@ -287,8 +289,7 @@ class CodeGen:
         self.__structs: list[StructType] = []
         self.__funcs: OrderedDict[str, CodeFunc] = OrderedDict()
         self.__data = comp_data
-        self.__global_strings: dict[str, GlobalVar] = {}
-        self.__py_constants: dict[Any, GlobalVar] = {}  # Global variable containing python constants
+        self.__py_constants: OrderedDict[Any, GlobalVar] = OrderedDict()  # Global variable containing python constants
 
         self.__true_var: Optional[GlobalVar] = None
         self.__false_var: Optional[GlobalVar] = None
@@ -525,14 +526,7 @@ class CodeGen:
         return global_var
 
     def get_or_insert_str(self, value: str):
-        if value in self.__global_strings:
-            return self.__global_strings[value]
-
-        new_var = GlobalVar("@flyable@str" + str(len(self.__global_strings)), code_type.get_py_obj_ptr(self),
-                            Linkage.INTERNAL)
-        self.add_global_var(new_var)
-        self.__global_strings[value] = new_var
-        return new_var
+        return self.get_or_insert_const(value)
 
     def get_or_insert_const(self, value: Any):
         try:
@@ -540,12 +534,17 @@ class CodeGen:
         except KeyError:
             pass
 
-        if not isinstance(value, int) and not isinstance(value, float):
+        if not isinstance(value, int) and not isinstance(value, float) and not isinstance(value, tuple) \
+                and not isinstance(value, str):
             raise ValueError("Const type " + str(type(value)) + " not expected")
 
-        var_type = code_type.get_int64()
+        if isinstance(value, tuple):
+            for content_value in value:
+                self.get_or_insert_const(content_value)
+
         name = f"@flyable@const@{len(self.__py_constants)}"
         new_var = GlobalVar(name, code_type.get_py_obj_ptr(self), Linkage.INTERNAL)
+
         self.add_global_var(new_var)
         self.__py_constants[value] = new_var
         return new_var
@@ -640,6 +639,8 @@ class CodeGen:
         # Write if it's a debug build or not
         if FLAG_SHOW_OPCODE_ON_EXEC.is_enabled:
             writer.add_int32(1)
+        elif FLAG_SHOW_OPCODE_ON_GEN.is_enabled:
+            writer.add_int32(2)
         else:
             writer.add_int32(0)
 
@@ -681,11 +682,6 @@ class CodeGen:
         init_func = self.get_or_create_func("Py_Initialize", code_type.get_void(), [], Linkage.EXTERNAL)
         builder.call(init_func, [])
 
-        # Create all the static Python string that we need
-        for global_str in self.__global_strings.items():
-            new_str = runtime.py_runtime_get_string(self, builder, global_str[0])
-            builder.store(new_str, builder.global_var(global_str[1]))
-
         # Initialize all global vars
         # Set the build-in module
         build_in_module = gen_module.import_py_module(self, builder, "builtins")
@@ -696,10 +692,26 @@ class CodeGen:
             constant_var = builder.global_var(self.__py_constants[key])
             if isinstance(key, int):
                 value_to_convert = builder.const_int64(key)
-                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert)
-            else:
+                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert,
+                                                                         lang_type.get_int_type())
+            elif isinstance(key, float):
                 value_to_convert = builder.const_float64(key)
-                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert)
+                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert,
+                                                                         lang_type.get_dec_type())
+            elif isinstance(key, tuple):
+                tuple_size = builder.const_int64(len(key))
+                value_to_assign = gen_tuple.python_tuple_new(self, builder, tuple_size)
+                import flyable.parse.parser_visitor as ps
+                for i, const_in_key in enumerate(key):
+                    tuple_content = self.__py_constants[const_in_key]
+                    tuple_content_ptr = builder.global_var(tuple_content)
+                    tupe_content_value = builder.load(tuple_content_ptr)
+                    item_ptr = gen_tuple.python_tuple_get_unsafe_item_ptr(ps.DuckParserVisitor(self, builder),
+                                                                          lang_type.get_python_obj_type(),
+                                                                          value_to_assign, builder.const_int64(i))
+                    builder.store(tupe_content_value, item_ptr)
+            elif isinstance(key, str):
+                value_to_assign = runtime.py_runtime_get_string(self, builder, key)
             builder.store(value_to_assign, constant_var)
 
         # Create all the implementations on Python side

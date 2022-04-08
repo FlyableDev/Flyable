@@ -11,6 +11,19 @@ import flyable.code_gen.cond as _cond
 import flyable.data.lang_type as lang_type
 import flyable.parse.exception.unsupported as unsupported
 
+class DuckParserVisitor:
+
+    def __init__(self, codegen, builder):
+        self.__builder = builder
+        self.__code_gen = codegen
+
+    def get_builder(self):
+        return self.__builder
+
+    def get_code_gen(self):
+        return self.__code_gen
+
+
 class ParserVisitor:
 
     def __init__(self, parser, code_gen, func_impl):
@@ -81,9 +94,9 @@ class ParserVisitor:
 
     def __build_const(self):
         for const_obj in self.__code_obj.co_consts:
-            self.__consts.append(const_obj)
+            self.__consts.append(self.__gen_const_value(const_obj))
 
-    def __gen_const(self, const_obj):
+    def __gen_const_value(self, const_obj):
         if const_obj is None:
             new_const = self.__builder.global_var(self.__code_gen.get_none())
         elif isinstance(const_obj, str):
@@ -97,16 +110,18 @@ class ParserVisitor:
             new_const = self.__builder.global_var(bool_var)
         elif isinstance(const_obj, int):
             const_value = self.__builder.const_int64(const_obj)
-            new_const = runtime.value_to_pyobj(self.__code_gen, self.__builder, const_value,
-                                               lang_type.get_int_type())
+            new_const = runtime.value_to_pyobj(self.__code_gen, self.__builder, const_value, lang_type.get_int_type())
             new_const = new_const[1]
         elif isinstance(const_obj, tuple):
-            pass
+            global_tuple = self.__code_gen.get_or_insert_const(const_obj)
+            new_const = self.__builder.global_var(global_tuple)
+            new_const = self.__builder.load(new_const)
         elif type(const_obj).__name__ == "code":
             new_const = None
         else:
             raise Exception(
                 "Not supported const of type " + str(type(const_obj)) + "with content " + str(const_obj))
+        return new_const
 
     """"
     General instructions
@@ -474,8 +489,10 @@ class ParserVisitor:
         element_counts = instr.arg
         for i in range(element_counts):
             e_type, e_value = self.pop()
-            obj_ptr = gen_list.python_list_array_get_item_ptr_unsafe(self, new_list, i, e_value)
-            self.__builder.sotre(e_value, obj_ptr)
+            obj_ptr = gen_list.python_list_array_get_item_ptr_unsafe(self, lang_type.get_python_obj_type(), new_list, i)
+            self.__builder.print_value_type(e_value)
+            self.__builder.print_value_type(obj_ptr)
+            self.__builder.store(e_value, obj_ptr)
         self.push(None, new_list)
 
     def visit_list_extend(self, instr):

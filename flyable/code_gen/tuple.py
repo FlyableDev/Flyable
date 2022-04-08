@@ -103,6 +103,16 @@ def python_tuple_get_item(visitor: ParserVisitor, tuple_type: lang_type.LangType
     return result
 
 
+def python_tuple_get_unsafe_item_ptr(visitor: ParserVisitor, tuple_type: lang_type.LangType, tuple: int, index: int):
+    builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
+    content = builder.ptr_cast(tuple, code_type.get_py_obj_ptr(code_gen).get_ptr_to())
+
+    # + 3 to skip the ref count, type and counts
+    gep_index = builder.add(index, builder.const_int64(3))
+    content = builder.gep2(content, code_type.get_py_obj_ptr(code_gen), [gep_index])
+    return content
+
+
 def python_tuple_get_size_ptr(visitor: ParserVisitor, tuple: int):
     builder = visitor.get_builder()
     tuple = builder.ptr_cast(tuple, code_type.get_tuple_obj_ptr(visitor.get_code_gen()))

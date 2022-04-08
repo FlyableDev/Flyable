@@ -24,6 +24,8 @@ FLAG_SHOW_OUTPUT_BUILDER: DebugFlag = DebugFlag()
 FLAG_SHOW_OPCODE_ON_EXEC: DebugFlag = DebugFlag()
 """Used to tell it's a debug build or not"""
 
+FLAG_SHOW_OPCODE_ON_GEN: DebugFlag = DebugFlag()
+
 FLAG_SHOW_BLOCK_BRANCHES: DebugFlag[str] = DebugFlag(default_value="basic")
 """Precision level: "all" | "basic" """
 
