@@ -524,7 +524,13 @@ class ParserVisitor:
         self.push(None, new_set)
 
     def visit_set_update(self, instr):
-        raise unsupported.FlyableUnsupported
+        index = instr.arg
+        iter_type, iter_value = self.pop()
+        list_type, list_value = self.__stack(-index)
+        extend_func = self.__code_gen.get_or_create_func("_PySet_Update", code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(extend_func, [list_value, iter_value])
 
     def visit_build_map(self, instr):
         raise unsupported.FlyableUnsupported
