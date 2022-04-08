@@ -151,6 +151,6 @@ def py_function_get_globals(visitor: ParserVisitor, func_obj: int):
     builder = visitor.get_builder()
 
     func = builder.ptr_cast(func_obj, code_gen.get_python_function_object_struct().to_code_type().get_ptr_to())
-    gep_indices = [builder.const_int32(0), builder.const_int32(1)]
+    gep_indices = [builder.const_int32(0), builder.const_int32(2)]
 
     return builder.gep2(func, code_gen.get_python_function_object_type().to_code_type(), gep_indices)
