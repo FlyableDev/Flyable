@@ -9,6 +9,7 @@ import flyable.code_gen.dict as dict_call
 import flyable.code_gen.type as gen_type
 import flyable.code_gen.debug as debug
 import flyable.code_gen.ref_counter as ref_counter
+import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
 from flyable.parse.parser import ParserVisitor
 
@@ -154,3 +155,13 @@ def py_function_get_globals(visitor: ParserVisitor, func_obj: int):
     gep_indices = [builder.const_int32(0), builder.const_int32(2)]
 
     return builder.gep2(func, code_gen.get_python_function_object_type().to_code_type(), gep_indices)
+
+def py_dict_get_item(visitor: ParserVisitor, d: int, k: int):
+    """Gets the value associated with key from the dictionary.
+
+    Args:
+        visitor (ParserVisitor): Parser visitor
+        d (int): Dictionary
+        k (int): Key
+    """
+    return runtime.pydict_getitem(d, k)
