@@ -8,8 +8,10 @@ import flyable.code_gen.runtime as runtime
 import flyable.code_gen.caller as caller
 import flyable.code_gen.fly_obj as fly_obj
 import flyable.code_gen.cond as _cond
+import flyable.code_gen.ref_counter as ref_counter
 import flyable.data.lang_type as lang_type
 import flyable.parse.exception.unsupported as unsupported
+
 
 class DuckParserVisitor:
 
@@ -64,6 +66,9 @@ class ParserVisitor:
 
         self.__builder.set_insert_block(self.__entry_block)
         self.__builder.br(self.__content_block)
+
+        if len(self.__stack):
+            raise ValueError("Stack is left with data")
 
     def __visit_instr(self, instr):
         print(instr.opname)
@@ -380,8 +385,6 @@ class ParserVisitor:
     def visit_contains_op(self, instr):
         raise unsupported.FlyableUnsupported
 
-
-
     """
     Call
     """
@@ -421,7 +424,9 @@ class ParserVisitor:
         self.pop_block()
 
     def visit_load_const(self, instr):
-        self.push(None, self.__consts[instr.arg])
+        const_value = self.__consts[instr.arg]
+        ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), const_value)
+        self.push(None, const_value)
 
     def visit_load_name(self, instr):
         raise unsupported.FlyableUnsupported
@@ -478,7 +483,8 @@ class ParserVisitor:
                                                self.__builder.const_int64(element_counts))
         for i in range(element_counts):
             e_type, e_value = self.pop()
-            gen_tuple.python_tuple_set_unsafe(self, new_tuple, i, e_value)
+            index_value = self.__builder.const_int64(i)
+            gen_tuple.python_tuple_set_unsafe(self, new_tuple, index_value, e_value)
         self.push(None, new_tuple)
 
     def visit_build_list(self, instr):
@@ -490,8 +496,6 @@ class ParserVisitor:
         for i in range(element_counts):
             e_type, e_value = self.pop()
             obj_ptr = gen_list.python_list_array_get_item_ptr_unsafe(self, lang_type.get_python_obj_type(), new_list, i)
-            self.__builder.print_value_type(e_value)
-            self.__builder.print_value_type(obj_ptr)
             self.__builder.store(e_value, obj_ptr)
         self.push(None, new_list)
 
@@ -609,7 +613,8 @@ class ParserVisitor:
     def visit_load_fast(self, instr):
         var_name = self.__code_obj.co_varnames[instr.arg]
         found_var = self.get_or_gen_var(var_name)
-        self.push(lang_type.get_python_obj_type(), self.__builder.load(found_var.get_code_value()))
+        value = self.__builder.load(found_var.get_code_value())
+        self.push(lang_type.get_python_obj_type(), value)
 
     def visit_store_fast(self, instr):
         var_name = self.__code_obj.co_varnames[instr.arg]

@@ -67,10 +67,7 @@ def python_tuple_set_unsafe(visitor: ParserVisitor, tuple: int, index: int, item
     """
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
-    tuple = builder.ptr_cast(tuple, code_gen.get_py_tuple_struct().to_code_type().get_ptr_to())
-    content_type = code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), index + 1).get_ptr_to()
-    content = builder.ptr_cast(python_tuple_get_content_ptr(visitor, tuple), content_type)
-    content = builder.gep(content, builder.const_int32(0), builder.const_int32(index))
+    content = python_tuple_get_unsafe_item_ptr(visitor, lang_type.get_python_obj_type(), tuple, index)
     builder.store(item, content)
 
 
