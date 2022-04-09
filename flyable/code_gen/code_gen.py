@@ -385,20 +385,20 @@ class CodeGen:
         self.__python_function_object_struct.add_type(code_type.get_int64()) # Py_ssize_t ob_refcnt
         self.__python_type_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyTypeObject * ob_type
 
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_globals
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_builtins
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_name
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_qualname
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_code
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_defaults
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_kwdefaults
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_closure 
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_doc 
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_dict
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_weakreflist
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_module 
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_annotattions 
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func 
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_globals
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_builtins
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_name
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_qualname
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_code
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_defaults
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_kwdefaults
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_closure
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_doc
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_dict
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_weakreflist
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_module
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func_annotattions
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self)) # PyObject * func
         self.__python_function_object_struct.add_type(code_type.get_int8_ptr()) # vectorcallfunc vectorcall
         self.__python_function_object_struct.add_type(code_type.get_int32()) # uint32_t func_version
         

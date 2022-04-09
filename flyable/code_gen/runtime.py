@@ -38,14 +38,14 @@ def create_unicode(code_gen: CodeGen, builder: CodeBuilder, str: int):
                                               [CodeType(CodeType.CodePrimitive.INT8).get_ptr_to()])
     return builder.call(from_string, [str])
 
+
 def pydict_getitem(code_gen: CodeGen, builder: CodeBuilder, d: int, k: int):
     """
     Get value associated with key from the dictionary
     """
     return_type = code_type.get_py_obj_ptr(code_gen)
     args_types = [code_type.get_py_obj_ptr(code_gen), code_type.get_py_obj_ptr(code_gen)]
-    func = code_gen.get_or_create_func("PyDict_GetItem", return_type, args_types)
-
+    func = code_gen.get_or_create_func("PyDict_GetItem", return_type, args_types, _code_gen.Linkage.EXTERNAL)
     return builder.call(func, [d, k])
 
 

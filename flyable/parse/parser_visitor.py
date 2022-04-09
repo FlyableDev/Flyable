@@ -12,6 +12,7 @@ import flyable.code_gen.ref_counter as ref_counter
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.set as gen_set
 import flyable.code_gen.function as func
+
 import flyable.parse.exception.unsupported as unsupported
 
 
@@ -39,6 +40,8 @@ class ParserVisitor:
         self.__bytecode = None
         self.__context = func_impl.get_context()
 
+        self.__frame_ptr_value = None
+
         self.__jumps_instr = {}
         self.__instructions = []
         self.__entry_block = None
@@ -54,6 +57,7 @@ class ParserVisitor:
         self.__bytecode = dis.Bytecode(self.__func.get_parent_func().get_source_code())
         self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0])
         self.__code_obj = self.__bytecode.codeobj
+        self.__frame_ptr_value = 0
 
         self.__build_const()
 
@@ -649,7 +653,12 @@ class ParserVisitor:
         new_value_type, new_value = caller.call_obj(self, "__next__", value, value_type, [value_1], [value_type_1])
 
     def visit_load_global(self, instr):
-        pass
+        var_name = self.__code_obj.co_names[instr.arg]
+        str_name_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(var_name))
+        str_name_value = self.__builder.load(str_name_value)
+        global_dict_value = func.py_function_get_globals(self, self.__frame_ptr_value)
+        global_value = func.py_dict_get_item(self, global_dict_value, str_name_value)
+        self.push(None, global_value)
 
     def visit_setup_finally(self, instr):
         pass
