@@ -303,6 +303,7 @@ class CodeGen:
         self.__python_tuple_struct = None
         self.__python_func_struct = None
         self.__python_type_struct: StructType | None = None
+        self.__python_function_object_struct: StructType | None = None
         self.__strings: dict[str, GlobalVar] = {}
 
     def setup(self):
@@ -312,6 +313,9 @@ class CodeGen:
 
         self.__python_type_struct = StructType("__flyable_py_type")
         self.add_struct(self.__python_type_struct)
+
+        self.__python_function_object_struct = StructType("__flyable_py_function_object")
+        self.add_struct(self.__python_function_object_struct)
 
         self.__python_obj_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
         self.__python_obj_struct.add_type(code_type.get_py_type(self).get_ptr_to())  # PyTypeObject * ob_type
@@ -375,6 +379,29 @@ class CodeGen:
         self.__python_type_struct.add_type(code_type.get_int32())  # tp_version_tag
         self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_finalize
         self.__python_type_struct.add_type(code_type.get_int8_ptr())  # tp_vectorcall
+
+        # PyFunctionObject struct
+        # PyObject ob_base
+        self.__python_function_object_struct.add_type(code_type.get_int64()) # Py_ssize_t ob_refcnt
+        self.__python_type_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyTypeObject * ob_type
+
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_globals
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_builtins
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_name
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_qualname
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_code
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_defaults
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_kwdefaults
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_closure 
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_doc 
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_dict
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_weakreflist
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_module 
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_annotattions 
+        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func 
+        self.__python_function_object_struct.add_type(code_type.get_int8_ptr()) # vectorcallfunc vectorcall
+        self.__python_function_object_struct.add_type(code_type.get_int32()) # uint32_t func_version
+        
 
         self.__none_var = self.add_global_var(
             GlobalVar("_Py_NoneStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
@@ -496,6 +523,12 @@ class CodeGen:
         if self.__python_type_struct is None:
             raise Exception("Setup was not called on CodeGen")
         return self.__python_type_struct
+
+    def get_python_function_object_struct(self):
+        """
+        returns the variable containing Python's PyFunctionObject struct type
+        """
+        return self.__python_function_object_struct or Exception("Setup was not called on CodeGen")
 
     def get_or_create_func(self, name: str, return_type: CodeType, args_type: list[CodeType] = None,
                            link=Linkage.INTERNAL):
