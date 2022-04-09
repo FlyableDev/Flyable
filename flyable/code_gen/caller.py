@@ -148,12 +148,10 @@ def _handle_default(visitor: ParserVisitor, func_name: str, obj: int, obj_type: 
     return result
 
 
-# https://docs.python.org/3/c-api/method.html
-def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args: list[int], kwargs: dict[int, int]):
+def call_callable(visitor: ParserVisitor, obj: int, args: list[int], kwargs: dict[int, int]):
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
 
-    # the found attribute is the callable function
-    func_to_call = fly_obj.py_obj_get_attr(visitor, obj, func_name)
+    func_to_call = obj
 
     call_result_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
 
@@ -192,6 +190,13 @@ def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args:
     result = builder.load(call_result_var)
     ref_counter.ref_decr(visitor, lang_type.get_python_obj_type(), func_to_call)
 
-    excp.check_excp(visitor, result)
+    # excp.check_excp(visitor, result)
 
     return result
+
+
+# https://docs.python.org/3/c-api/method.html
+def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args: list[int], kwargs: dict[int, int]):
+    code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
+    obj_callable = fly_obj.py_obj_get_attr(visitor, obj, func_name)
+    call_callable(visitor, obj_callable, args, kwargs)

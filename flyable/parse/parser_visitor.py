@@ -11,6 +11,7 @@ import flyable.code_gen.cond as _cond
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.set as gen_set
+import flyable.code_gen.function as func
 import flyable.parse.exception.unsupported as unsupported
 
 
@@ -399,16 +400,37 @@ class ParserVisitor:
             args.insert(0, new_arg)
             arg_types.insert(0, arg_types)
         callable_type, callable = self.pop()
-        caller.call_obj(self, )
+        call_result_type, call_result_value = caller.call_callable(self, callable, args, {})
+        self.push(call_result_type, call_result_value)
 
     def visit_call_function_kw(self, instr):
-        raise unsupported.FlyableUnsupported
+        args_count = instr.a
+        tuple_type, tuple_args = self.pop()
+        args = []
+        arg_types = []
+        for i in range(args_count):
+            new_arg_type, new_arg = self.pop()
+            args.insert(0, new_arg)
+            arg_types.insert(0, arg_types)
+        call_result_type, call_result_value = caller.call_callable(self, callable, args, {})
 
     def visit_load_method(self, instr):
-        raise unsupported.FlyableUnsupported
+        str_value = self.__consts[instr.arg]
+        value_type, value = self.pop()
+        found_attr = fly_obj.py_obj_get_attr(self, value, str_value, None)
+        self.push(None, found_attr)
 
     def visit_call_method(self, instr):
-        raise unsupported.FlyableUnsupported
+        args_count = instr.arg
+        args = []
+        arg_types = []
+        for i in range(args_count):
+            new_arg_type, new_arg = self.pop()
+            args.insert(0, new_arg)
+            arg_types.insert(0, arg_types)
+        callable_type, callable = self.pop()
+        call_result_type, call_result_value = caller.call_callable(self, callable, args, {})
+        self.push(call_result_type, call_result_value)
 
     def visit_make_function(self, instr):
         raise unsupported.FlyableUnsupported
@@ -435,7 +457,8 @@ class ParserVisitor:
     def visit_load_attr(self, instr):
         str_value = self.__consts[instr.arg]
         value_type, value = self.pop()
-        fly_obj.py_obj_get_attr(self, value, str_value, None)
+        found_attr = fly_obj.py_obj_get_attr(self, value, str_value, None)
+        self.push(None, found_attr)
 
     def visit_make_function(self, instr):
         pass
