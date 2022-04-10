@@ -404,8 +404,8 @@ class ParserVisitor:
             args.insert(0, new_arg)
             arg_types.insert(0, arg_types)
         callable_type, callable = self.pop()
-        call_result_type, call_result_value = caller.call_callable(self, callable, args, {})
-        self.push(call_result_type, call_result_value)
+        call_result_value = caller.call_callable(self, callable, args, {})
+        self.push(None, call_result_value)
 
     def visit_call_function_kw(self, instr):
         args_count = instr.a
