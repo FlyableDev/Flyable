@@ -73,7 +73,7 @@ def py_obj_get_attr(visitor: ParserVisitor, obj: int, name: str, obj_type: int =
 
     attr_found_var = builder.load(attr_found_var)
 
-    excp.check_excp(visitor, attr_found_var)
+    #excp.check_excp(visitor, attr_found_var)
 
     return attr_found_var
 

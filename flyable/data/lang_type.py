@@ -77,7 +77,7 @@ def get_bool_type():
     return LangType(LangType.Type.BOOLEAN)
 
 
-def get_python_obj_type():
+def get_python_obj_type(type_hint=None):
     result = LangType(LangType.Type.PYTHON)
     return result
 

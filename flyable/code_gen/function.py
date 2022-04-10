@@ -93,7 +93,7 @@ def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, ar
     kwargs_list = builder.const_null(code_type.get_py_obj_ptr(code_gen))
 
     for i, e in enumerate(args):
-        tuple_call.python_tuple_set_unsafe(visitor, arg_list, i, e)
+        tuple_call.python_tuple_set_unsafe(visitor, arg_list, builder.const_int64(i), e)
 
     if kwargs:
         kwargs_list = dict_call.python_dict_new(visitor)
