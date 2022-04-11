@@ -67,8 +67,8 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
     as_number = builder.load(as_number)
     as_number = builder.ptr_cast(as_number, code_type.get_int8_ptr().get_ptr_to())
     is_number_null = builder.eq(as_number, builder.const_null(code_type.get_int8_ptr().get_ptr_to()))
-
     builder.cond_br(is_number_null, basic_call_block, number_call_block)
+
     builder.set_insert_block(number_call_block)
     func_to_call = builder.gep2(as_number, code_type.get_int8_ptr(), [slot])
     func_to_call = builder.load(func_to_call)

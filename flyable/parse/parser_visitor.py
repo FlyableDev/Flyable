@@ -163,7 +163,7 @@ class ParserVisitor:
         self.__stack[-4] = buffer
 
     def visit_rot_n(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_dup_top(self, instr):
         self.__stack.append(self.__stack[-1])
@@ -171,6 +171,9 @@ class ParserVisitor:
     def visit_dup_top_two(self, instr):
         self.__stack.append(self.__stack[-2])
         self.__stack.append(self.__stack[-2])
+
+    def visit_push_null(self):
+        self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
 
     """"
     Unary operations
@@ -386,14 +389,17 @@ class ParserVisitor:
         self.push(None, new_value)
 
     def visit_is_op(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_contains_op(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     """
     Call
     """
+
+    def visit_precall(self, instr):
+        raise unsupported.FlyableUnsupported()
 
     def visit_call_function(self, instr):
         args_count = instr.arg
@@ -437,7 +443,7 @@ class ParserVisitor:
         self.push(call_result_type, call_result_value)
 
     def visit_make_function(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     """
     Block stack
@@ -456,7 +462,7 @@ class ParserVisitor:
         self.push(None, const_value)
 
     def visit_load_name(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_load_attr(self, instr):
         str_value = self.__consts[instr.arg]
@@ -473,7 +479,7 @@ class ParserVisitor:
         self.__name = self.__builder.global_var(str_value)
 
     def visit_delete_name(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_store_attr(self, instr):
         name = self.__code_obj.co_names[instr.namei]
@@ -483,22 +489,22 @@ class ParserVisitor:
         fly_obj.py_obj_set_attr(self, value, str_value, self.__name, None)
 
     def visit_delete_attr(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_store_global(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_delete_global(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_setup_with(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_unpack_sequence(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_unpack_ex(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     """
     Data structure
@@ -537,7 +543,7 @@ class ParserVisitor:
         self.__builder.call(extend_func, [list_value, iter_value])
 
     def visit_list_to_tuple(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_build_set(self, instr):
         counts = instr.arg
@@ -560,43 +566,43 @@ class ParserVisitor:
         self.__builder.call(extend_func, [list_value, iter_value])
 
     def visit_build_map(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_dict_update(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_dict_merge(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_const_key_map(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_set_add(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_list_append(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_map_add(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_copy_dict_without_keys(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_get_len(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_match_mapping(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_match_sequence(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_match_keys(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_build_slice(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     """
     Attr
@@ -615,7 +621,7 @@ class ParserVisitor:
     """
 
     def visit_jump_forward(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_pop_jump_if_true(self, instr):
         instr_to_jump = self.__instructions[instr.arg]
@@ -667,6 +673,7 @@ class ParserVisitor:
         var_name = self.__code_obj.co_varnames[instr.arg]
         found_var = self.get_or_gen_var(var_name)
         value = self.__builder.load(found_var.get_code_value())
+        ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), value)
         self.push(lang_type.get_python_obj_type(), value)
 
     def visit_store_fast(self, instr):
@@ -682,81 +689,81 @@ class ParserVisitor:
         self.__builder.store(null_value, found_var.get_code_value())
 
     def visit_load_closure(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_load_deref(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_load_classderef(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_store_deref(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_delete_deref(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_return_value(self, instr):
         value_type, value = self.pop()
         self.__builder.ret(value)
 
     def visit_yield_value(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_yield_from(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     """
     Miscellaneous opcodes
     """
 
     def visit_print_expr(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_setup_annotations(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_import_star(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_import_name(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_import_from(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_reraise(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_raise_varargs(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_with_except_start(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_load_assertion_error(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_load_build_class(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_build_string(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_extended_args(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_format_value(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_match_class(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_gen_start(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     def visit_have_argument(self, instr):
-        raise unsupported.FlyableUnsupported
+        raise unsupported.FlyableUnsupported()
 
     """
     Visitor methods
