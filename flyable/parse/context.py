@@ -16,30 +16,13 @@ class Context:
         return new_var
 
     def get_var(self, value: str | int) -> Variable | None:
-        """
-        Deprecated:
-            you should call `get_var_by_idx` or `get_var_by_name` instead
-        """
         if isinstance(value, str):  # search by name
             return self.get_var_by_name(value)
         else:  # search by index
-            return self.get_var_by_idx(value)
+            return self.get_var_by_id(value)
 
-    def get_var_by_idx(self, idx: int) -> Variable | None:
-        """Finds the variable at the matching index
-
-        Args:
-            idx (int): the index where the variable is
-
-        Returns:
-            Union[var.Variable, None]: the variable or None if the index is
-            out of bounds
-        """
-        # the `- 1` in `abs(idx) - 1` is necessary because if we have a list
-        # of length n and want to access the 0th element with negative idx,
-        # it will be index -n but the abs(-n) == n. Therefore it wouldn't pass
-        # the test abs(idx) < len(list) if one wasn't substracted from it
-        return self.__vars[idx] if abs(idx) - 1 < len(self.__vars) else None
+    def get_var_by_id(self, id: int) -> Variable | None:
+        return self.__vars[id]
 
     def get_var_by_name(self, name: str) -> Variable | None:
         """Finds the variable with the matching name

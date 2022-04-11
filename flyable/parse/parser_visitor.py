@@ -42,6 +42,7 @@ class ParserVisitor:
 
         self.__frame_ptr_value = None
 
+        self.__kw_names = {}
         self.__jumps_instr = {}
         self.__instructions = []
         self.__entry_block = None
@@ -401,8 +402,27 @@ class ParserVisitor:
     Call
     """
 
+    def visit_kw_names(self, instr):
+        self.__kw_names = self.__code_obj.co_consts[instr.arg]
+
     def visit_precall(self, instr):
-        raise unsupported.FlyableUnsupported()
+        pass
+
+    def visit_call(self, instr):
+        args_count = instr.arg
+
+        first_type, first_value = self.pop()  # Either NULL or the callable
+        second_type, second_value = self.pop()  # Either self or the callable
+        arg_types = []
+        arg_values = []
+        for i in range(args_count - 1):
+            new_type, new_value = self.pop()
+            arg_types.append(new_type)
+            arg_values.append(new_value)
+
+        call_result_value = caller.call_callable(self, second_value, arg_values, self.__kw_names)
+        self.push(None, call_result_value)
+        self.__kw_names = {}
 
     def visit_call_function(self, instr):
         args_count = instr.arg
@@ -428,7 +448,7 @@ class ParserVisitor:
         call_result_type, call_result_value = caller.call_callable(self, callable, args, {})
 
     def visit_load_method(self, instr):
-        str_value = self.__consts[instr.arg]
+        str_value = self.__code_obj.co_names[instr.arg]
         value_type, value = self.pop()
         found_attr = fly_obj.py_obj_get_attr(self, value, str_value, None)
         self.push(None, found_attr)
@@ -683,6 +703,7 @@ class ParserVisitor:
         var_name = self.__code_obj.co_varnames[instr.arg]
         store_type, store_value = self.pop()
         found_var = self.get_or_gen_var(var_name)
+        ref_counter.ref_incr(self.__builder, store_type, store_value)
         self.__builder.store(store_value, found_var.get_code_value())
 
     def visit_delete_fast(self, instr):
@@ -811,8 +832,6 @@ class ParserVisitor:
     def get_or_gen_var(self, var_name):
         found_var = self.__context.get_var(var_name)
         if found_var is None:
-            import flyable.data.variable as _var
-            found_var = _var.Variable(var_name)
-            self.__context.add_var(found_var, lang_type.get_python_obj_type())
+            found_var = self.__context.add_var(var_name, lang_type.get_python_obj_type())
             found_var.set_code_value(self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen)))
         return found_var

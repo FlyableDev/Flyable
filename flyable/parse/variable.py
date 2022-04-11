@@ -69,10 +69,10 @@ class Variable:
     def is_arg(self):
         return self.__is_arg
 
-    def set_code_gen_value(self, value: int | GlobalVar):
+    def set_code_value(self, value: int | GlobalVar):
         self.__code_gen_value = value
 
-    def get_code_gen_value(self):
+    def get_code_value(self):
         return self.__code_gen_value
 
     def is_global(self):
