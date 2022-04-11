@@ -141,6 +141,9 @@ class ParserVisitor:
     def visit_nop(self, instr):
         pass
 
+    def visit_resume(self, instr):
+        pass
+
     def visit_pop_top(self, instr):
         self.pop()
 
