@@ -1,116 +1,108 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from flyable.data import lang_type
-
 if TYPE_CHECKING:
     from flyable.parse.parser_visitor import ParserVisitor
 
-import ast
 import flyable.code_gen.caller as caller
 from flyable.data.lang_type import *
 import flyable.data.type_hint as hint
 import flyable.code_gen.list as gen_list
-import flyable.code_gen.dict as gen_dict
+import flyable.code_gen.tuple as gen_tuple
 import flyable.code_gen.exception as excp
 import flyable.code_gen.ref_counter as ref_counter
-import flyable.parse.exception.unsupported as unsupported
-import flyable.code_gen.code_gen as gen
-import flyable.code_gen.debug as debug
 
-def unpack_assignation(visitor: ParserVisitor, targets, value_type, value, node):
-    for target in targets:
-        if isinstance(target, ast.Starred):
-            raise unsupported.FlyableUnsupported()
-    if value_type.is_list() or value_type.is_tuple():
-        unpack_list_or_tuple_assignation(visitor, targets, value_type, value, node)
-    elif value_type.is_dict():
-        value = gen_dict.python_dict_get_keys(visitor, value)
-        value_type = lang_type.get_list_of_python_obj_type()
-        unpack_list_or_tuple_assignation(visitor, targets, value_type, value, node)
-    else:
-        unpack_iterable_assignation(visitor, targets, value_type, value, node)
-
-def unpack_list_or_tuple_assignation(visitor: ParserVisitor, targets, value_type, value, node):
+def unpack_list_or_tuple(visitor: ParserVisitor, seq_type, seq, instr):
     builder = visitor.get_builder()
+    size = instr.arg
     unpack_block = builder.create_block("Unpack")
-    error_block = builder.create_block("Unpack Error")
+    # error_block = builder.create_block("Unpack Error")
     continue_block = builder.create_block("After Unpack")
 
-    len_targets = builder.const_int64(len(targets))
-    len_value = gen_list.python_list_len(visitor, value)
+    # size_value = builder.const_int64(size)
+    # len_value = None
+    if seq_type.is_tuple():
+        len_value = gen_tuple.python_tuple_len(visitor, seq)
+    elif seq_type.is_list():
+        len_value = gen_list.python_list_len(visitor, seq)
 
-    test = builder.eq(len_value, len_targets)
-    builder.cond_br(test, unpack_block, error_block)
+    # test = builder.eq(len_value, size_value)
+    # builder.cond_br(test, unpack_block, error_block)
     builder.set_insert_block(unpack_block)
 
-    for i, target in enumerate(targets):
+    for i in reversed(range(size)):
         index_type = get_int_type()
         index_type.add_hint(hint.TypeHintConstInt(i))
         index_value = builder.const_int64(i)
         args_types = [index_type]
         args = [index_value]
-        value_type_i, value_i = caller.call_obj(visitor, "__getitem__", value, value_type, args, args_types, {})
+        value_type_i, value_i = caller.call_obj(visitor, "__getitem__", seq, seq_type, args, args_types, {})
         if not hint.is_incremented_type(value_type_i):
             ref_counter.ref_incr(builder, value_type_i, value_i)
-        do_assignation(visitor, target, value_type_i, value_i, node)
-        ref_counter.ref_decr(visitor, value_type_i, value_i)
+        visitor.push(value_type_i, value_i)
 
     builder.br(continue_block)
 
-    builder.set_insert_block(error_block)
-    excp.raise_index_error(visitor)     # value doesn't have as many elements as targets
+    # builder.set_insert_block(error_block)
+    # visitor.visit_unpack_sequence(instr)
 
     builder.set_insert_block(continue_block)
-    ref_counter.ref_decr(visitor, value_type, value)
 
-def unpack_iterable_assignation(visitor: ParserVisitor, targets, value_type, value, node):
+def unpack_iterable(visitor: ParserVisitor, seq_type, seq, size):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
-    error_block = builder.create_block("Unpack Error")
+    # not_enough_values_error_block = builder.create_block("Not Enough Values Unpack Error")
+    # too_many_values_error_block = builder.create_block("Too Many Values Unpack Error")
+    # not_an_iterator_error_block = builder.create_block("Not An Iterator Error")
+    unpack_block = builder.create_block("Unpack")
     continue_block = builder.create_block("After Unpack")
+    test_next = builder.create_block("Test Next")
 
-    iterable_type, iterator = caller.call_obj(visitor, "__iter__", value, value_type, [], [], {})
+    iterable_type, iterator = caller.call_obj(visitor, "__iter__", seq, seq_type, [], [], {})
+    # null_ptr = builder.const_null(code_type.get_py_obj_ptr(code_gen))
+    # test = builder.eq(iterator, null_ptr)
+    # builder.cond_br(test, not_an_iterator_error_block, unpack_block)
 
-    for i, target in enumerate(targets):
-        test_next = builder.create_block("Test Next")
+    builder.br(unpack_block)
+    builder.set_insert_block(unpack_block)
+
+    temp_stack = []
+
+    for i in range(size):
         builder.br(test_next)
         builder.set_insert_block(test_next)
 
         next_type, next_value = caller.call_obj(visitor, "__next__", iterator, iterable_type, [], [], {})
+        temp_stack.append((next_type, next_value))
 
-        null_ptr = builder.const_null(code_type.get_py_obj_ptr(code_gen))
-        excp.py_runtime_clear_error(code_gen, builder)
-        test = builder.eq(next_value, null_ptr)
-        unpack_block = builder.create_block("Unpack")
-        builder.cond_br(test, error_block, unpack_block)
+        # excp.py_runtime_clear_error(code_gen, builder)
+        # test = builder.eq(next_value, null_ptr)
+        # test_next = builder.create_block("Test Next")
+        # builder.cond_br(test, not_enough_values_error_block, test_next)
+        if i != size - 1:
+            test_next = builder.create_block("Test Next")
+            builder.br(test_next)
 
-        builder.set_insert_block(unpack_block)
-        do_assignation(visitor, target, next_type, next_value, node)
+        if i == size - 1:
+            # builder.set_insert_block(test_next)
+            # next_type, next_value = caller.call_obj(visitor, "__next__", iterator, iterable_type, [], [], {})
+            # excp.py_runtime_clear_error(code_gen, builder)
+            # test = builder.eq(next_value, null_ptr)
+            # builder.cond_br(test, continue_block, too_many_values_error_block)
+            builder.br(continue_block)  # to replace with a condbr when we will have a better support for exception
 
-        if i == len(targets) - 1:
-            next_type, next_value = caller.call_obj(visitor, "__next__", iterator, iterable_type, [], [], {})
-            null_ptr = builder.const_null(code_type.get_py_obj_ptr(code_gen))
-            excp.py_runtime_clear_error(code_gen, builder)
-            test = builder.eq(next_value, null_ptr)
-            builder.cond_br(test, continue_block, error_block)
-
-    builder.set_insert_block(error_block)
-    excp.raise_index_error(visitor)     # iterable returns more or less values then there are elements in targets
+    # builder.set_insert_block(not_an_iterator_error_block)
+    # # "cannot unpack non_iterable object"
+    # excp.raise_index_error(visitor) #TODO: give more info when raising the error
+    #
+    # builder.set_insert_block(not_enough_values_error_block)
+    # # "not enough values to unpack (expected " + size + ", got " + i+1 + ")"
+    # excp.raise_index_error(visitor) #TODO: give more info when raising the error
+    #
+    # builder.set_insert_block(too_many_values_error_block)
+    # # "too many values to unpack (expected " + size + ")"
+    # excp.raise_index_error(visitor) #TODO: give more info when raising the error
 
     builder.set_insert_block(continue_block)
-    ref_counter.ref_decr(visitor, value_type, value)
-
-
-def do_assignation(visitor: ParserVisitor, target, value_type, value, node):
-    if isinstance(target, ast.Tuple) or isinstance(target, ast.List):
-        new_targets = []
-        for t in target.elts:
-            new_targets.append(t)
-        unpack_assignation(visitor, new_targets, value_type, value, node)
-    elif isinstance(target, ast.Name) or isinstance(target, ast.Subscript):
-        visitor.set_assign_type(value_type)
-        visitor.set_assign_value(value)
-        visitor.visit_node(target)
-    else:
-        visitor.get_parser().throw_error("Incorrect target type encountered when unpacking ", node.lineno,
-                                         node.end_col_offset)
+    for i in range(size):
+        type, value = temp_stack.pop(-1)
+        visitor.push(type, value)

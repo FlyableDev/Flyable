@@ -12,6 +12,9 @@ import flyable.code_gen.ref_counter as ref_counter
 import flyable.data.lang_type as lang_type
 import flyable.code_gen.set as gen_set
 import flyable.code_gen.function as func
+import flyable.code_gen.unpack as unpack
+import flyable.code_gen.list as gen_list
+import flyable.code_gen.tuple as gen_tuple
 
 import flyable.parse.exception.unsupported as unsupported
 
@@ -167,7 +170,12 @@ class ParserVisitor:
         self.__stack[-4] = buffer
 
     def visit_rot_n(self, instr):
-        raise unsupported.FlyableUnsupported()
+        buffer = self.__stack[-1]
+        for i in range(instr.arg):
+            if i + 1 == instr.arg:
+                self.__stack[-instr.arg] = buffer
+            else:
+                self.__stack[-i-1] = self.__stack[-i-2]
 
     def visit_dup_top(self, instr):
         self.__stack.append(self.__stack[-1])
@@ -524,10 +532,35 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_unpack_sequence(self, instr):
-        raise unsupported.FlyableUnsupported()
+        seq_type, seq = self.pop()
+        unpack.unpack_iterable(self, seq_type, seq, instr.arg)
+        ref_counter.ref_decr(self, seq_type, seq)
+
+    def visit_unpack_sequence_adaptive(self, instr):
+        raise unsupported.FlyableUnsupported
+
+    def visit_unpack_sequence_two_tuple(self, instr):
+        raise unsupported.FlyableUnsupported
+
+    def visit_unpack_sequence_tuple(self, instr):
+        seq_type, seq = self.__stack[-1]
+        if not seq_type.is_tuple():
+            self.visit_unpack_sequence(instr)
+        unpack.unpack_list_or_tuple(self, seq_type, seq, instr)
+        ref_counter.ref_decr(self, seq_type, seq)
+
+    def visit_unpack_sequence_list(self, instr):
+        seq_type, seq = self.__stack[-1]
+        if not seq_type.is_list():
+            self.visit_unpack_sequence(instr)
+        unpack.unpack_list_or_tuple(self, seq_type, seq, instr)
+        ref_counter.ref_decr(self, seq_type, seq)
 
     def visit_unpack_ex(self, instr):
-        raise unsupported.FlyableUnsupported()
+        # nb_args_before_list = instr.arg & 0xFF
+        # nb_args_after_list = instr.arg >> 8
+        # total_args = 1 + nb_args_before_list + nb_args_after_list
+        raise unsupported.FlyableUnsupported
 
     """
     Data structure
