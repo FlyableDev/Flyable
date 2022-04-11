@@ -550,9 +550,11 @@ class ParserVisitor:
         new_list = gen_list.instanciate_python_list(self.__code_gen, self.__builder,
                                                     self.__builder.const_int64(element_counts))
         element_counts = instr.arg
-        for i in range(element_counts):
+        for i in reversed(range(element_counts)):
             e_type, e_value = self.pop()
-            obj_ptr = gen_list.python_list_array_get_item_ptr_unsafe(self, lang_type.get_python_obj_type(), new_list, i)
+            index_value = self.__builder.const_int64(i)
+            obj_ptr = gen_list.python_list_array_get_item_ptr_unsafe(self, lang_type.get_python_obj_type(), new_list,
+                                                                     index_value)
             self.__builder.store(e_value, obj_ptr)
         self.push(None, new_list)
 
@@ -632,11 +634,9 @@ class ParserVisitor:
     """
 
     def visit_load_attr(self, instr):
-        name = self.__code_obj.co_names[instr.namei]
-        str_value = self.__code_gen.get_or_insert_str(name)
-        self.__name = self.__builder.global_var(str_value)
+        name = self.__code_obj.co_names[instr.arg]
         value_type, value = self.pop()
-        new_attr = fly_obj.py_obj_get_attr(self, value, self.__name, None)
+        new_attr = fly_obj.py_obj_get_attr(self, value, name, None)
         self.push(None, new_attr)
 
     """
