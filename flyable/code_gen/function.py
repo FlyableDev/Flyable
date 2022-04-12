@@ -125,16 +125,14 @@ def py_obj_type_get_tp_call(visitor: ParserVisitor, func_type: int):
     func_type = visitor.get_builder().ptr_cast(func_type,
                                                visitor.get_code_gen().get_python_type().to_code_type().get_ptr_to())
     gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(16)]
-    return visitor.get_builder().gep2(func_type, visitor.get_code_gen().get_python_type().to_code_type(),
-                                      gep_indices)
+    return visitor.get_builder().gep2(func_type, visitor.get_code_gen().get_python_type().to_code_type(), gep_indices)
 
 
 def py_obj_type_get_tp_flag_ptr(visitor: ParserVisitor, func_type: int):
     func_type = visitor.get_builder().ptr_cast(func_type,
                                                visitor.get_code_gen().get_python_type().to_code_type().get_ptr_to())
     gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(21)]
-    return visitor.get_builder().gep2(func_type, visitor.get_code_gen().get_python_type().to_code_type(),
-                                      gep_indices)
+    return visitor.get_builder().gep2(func_type, visitor.get_code_gen().get_python_type().to_code_type(), gep_indices)
 
 
 def is_py_obj_method(visit: ParserVisitor, obj: int):

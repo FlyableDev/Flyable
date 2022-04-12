@@ -415,12 +415,12 @@ class ParserVisitor:
         second_type, second_value = self.pop()  # Either self or the callable
         arg_types = []
         arg_values = []
-        for i in range(args_count - 1):
+        for i in range(args_count):
             new_type, new_value = self.pop()
             arg_types.append(new_type)
             arg_values.append(new_value)
 
-        call_result_value = caller.call_callable(self, second_value, arg_values, self.__kw_names)
+        call_result_value = caller.call_callable(self, first_value, second_value, arg_values, self.__kw_names)
         self.push(None, call_result_value)
         self.__kw_names = {}
 
@@ -452,6 +452,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         found_attr = fly_obj.py_obj_get_attr(self, value, str_value, None)
         self.push(None, found_attr)
+        self.push(value_type, value)
 
     def visit_call_method(self, instr):
         args_count = instr.arg
@@ -561,7 +562,7 @@ class ParserVisitor:
     def visit_list_extend(self, instr):
         index = instr.arg
         iter_type, iter_value = self.pop()
-        list_type, list_value = self.__stack(-index)
+        list_type, list_value = self.__stack[-index]
         extend_func = self.__code_gen.get_or_create_func("_PyList_Extend", code_type.get_py_obj_ptr(self.__code_gen),
                                                          [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                          _gen.Linkage.EXTERNAL)
@@ -805,6 +806,9 @@ class ParserVisitor:
     def pop(self):
         value_pop = self.__stack.pop(-1)
         return value_pop
+
+    def top(self):
+        return self.__stack[-1]
 
     def push_block(self, block):
         self.__blocks_stack.append(block)

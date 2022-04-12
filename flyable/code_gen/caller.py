@@ -145,10 +145,10 @@ def _handle_default(visitor: ParserVisitor, func_name: str, obj: int, obj_type: 
     return result
 
 
-def call_callable(visitor: ParserVisitor, obj: int, args: list[int], kwargs: dict[int, int]):
+def call_callable(visitor: ParserVisitor, obj: int, callable: int, args: list[int], kwargs: dict[int, int]):
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
 
-    func_to_call = obj
+    func_to_call = callable
 
     call_result_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
 
@@ -196,4 +196,4 @@ def call_callable(visitor: ParserVisitor, obj: int, args: list[int], kwargs: dic
 def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args: list[int], kwargs: dict[int, int]):
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
     obj_callable = fly_obj.py_obj_get_attr(visitor, obj, func_name)
-    return call_callable(visitor, obj_callable, args, kwargs)
+    return call_callable(visitor, obj, obj_callable, args, kwargs)
