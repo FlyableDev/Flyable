@@ -175,7 +175,7 @@ class ParserVisitor:
             if i + 1 == instr.arg:
                 self.__stack[-instr.arg] = buffer
             else:
-                self.__stack[-i-1] = self.__stack[-i-2]
+                self.__stack[-i - 1] = self.__stack[-i - 2]
 
     def visit_dup_top(self, instr):
         self.__stack.append(self.__stack[-1])
@@ -419,14 +419,15 @@ class ParserVisitor:
     def visit_call(self, instr):
         args_count = instr.arg
 
-        first_type, first_value = self.pop()  # Either NULL or the callable
-        second_type, second_value = self.pop()  # Either self or the callable
         arg_types = []
         arg_values = []
         for i in range(args_count):
             new_type, new_value = self.pop()
             arg_types.append(new_type)
             arg_values.append(new_value)
+
+        first_type, first_value = self.pop()  # Either NULL or the callable
+        second_type, second_value = self.pop()  # Either self or the callable
 
         call_result_value = caller.call_callable(self, first_value, second_value, arg_values, self.__kw_names)
         self.push(None, call_result_value)
