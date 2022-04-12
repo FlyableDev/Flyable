@@ -426,6 +426,9 @@ class ParserVisitor:
             arg_types.append(new_type)
             arg_values.append(new_value)
 
+        arg_types.reverse()
+        arg_values.reverse()
+
         first_type, first_value = self.pop()  # Either NULL or the callable
         second_type, second_value = self.pop()  # Either self or the callable
 
