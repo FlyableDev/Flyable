@@ -114,3 +114,9 @@ def python_tuple_get_size_ptr(visitor: ParserVisitor, tuple: int):
     builder = visitor.get_builder()
     tuple = builder.ptr_cast(tuple, code_type.get_tuple_obj_ptr(visitor.get_code_gen()))
     return builder.gep(tuple, builder.const_int32(0), builder.const_int32(2))
+
+def python_tuple_len(visitor: ParserVisitor, tuple: int):
+    """
+    Generate the code that returns the len of the tuple
+    """
+    return visitor.get_builder().load(python_tuple_get_size_ptr(visitor, tuple))
