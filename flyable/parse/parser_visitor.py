@@ -102,7 +102,7 @@ class ParserVisitor:
                 arg_var.set_code_value(item_ptr)
 
     def __visit_instr(self, instr):
-        print(instr.opname)
+        print(instr.opname, instr.offset)
         if instr in self.__jumps_instr:
             insert_block = self.__jumps_instr[instr]
             self.__builder.br(insert_block)
@@ -204,6 +204,16 @@ class ParserVisitor:
     def visit_dup_top_two(self, instr):
         self.__stack.append(self.__stack[-2])
         self.__stack.append(self.__stack[-2])
+
+    def visit_copy(self, instr):
+        index = instr.arg
+        # self.push(*self.peek(index))
+
+    def visit_swap(self, instr):
+        index = instr.arg
+        buffer = self.__stack[-1]
+        self.__stack[-1] = self.__stack[-index - 1]
+        self.__stack[-index - 1] = buffer
 
     def visit_push_null(self, instr):
         self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
@@ -439,10 +449,19 @@ class ParserVisitor:
     """
 
     def visit_compare_op(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value = caller.call_callable(self, value, [value_1], {})
-        self.push(None, new_value)
+        right_type, right_value = self.pop()
+        left_type, left_value = self.pop()
+
+        compare_func = self.__code_gen.get_or_create_func("PyObject_RichCompare",
+                                                          code_type.get_py_obj_ptr(self.__code_gen),
+                                                          [code_type.get_py_obj_ptr(self.__code_gen),
+                                                           code_type.get_py_obj_ptr(self.__code_gen),
+                                                           code_type.get_int32()],
+                                                          _gen.Linkage.EXTERNAL)
+
+        compare_value = self.__builder.call(compare_func, [left_value, right_value])
+
+        self.push(None, compare_value)
 
     def visit_is_op(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -533,8 +552,7 @@ class ParserVisitor:
         self.pop_block()
 
     def visit_pop_except(self, instr):
-        raise NotImplementedError()
-        self.pop_block()
+        self.pop()
 
     def visit_load_const(self, instr):
         const_value = self.__consts[instr.arg]
@@ -763,7 +781,7 @@ class ParserVisitor:
         self.__builder.set_insert_block(else_block)
 
     def visit_jump_if_not_exc_match(self, instr):
-        pass
+        self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
 
     def visit_jump_if_true_or_pop(self, instr):
         pass
@@ -855,7 +873,13 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_reraise(self, instr):
-        raise unsupported.FlyableUnsupported()
+        has_lasti = instr.arg
+
+        # val_type, val_value = self.pop()
+
+        # new_re_func = self.__code_gen.get_or_create_func("Py_NewRef", code_type.get_py_obj_ptr(self.__code_gen),
+        #                                                 [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+        #                                                 _gen.Linkage.EXTERNAL)
 
     def visit_raise_varargs(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -887,6 +911,21 @@ class ParserVisitor:
     def visit_have_argument(self, instr):
         raise unsupported.FlyableUnsupported()
 
+    def visit_push_exc_info(self, instr):
+        self.__blocks_stack.append(None)
+        self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
+
+    def visit_check_exc_match(self, instr):
+        right_type, right_value = self.pop()
+        left_type, left_value = self.top()
+        excp_math_func = self.__code_gen.get_or_create_func("PyErr_GivenExceptionMatches", code_type.get_int32(),
+                                                            [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                            _gen.Linkage.EXTERNAL)
+        excp_match = self.__builder.call(excp_math_func, [left_value, right_value])
+        match_type, match_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, excp_match,
+                                                         lang_type.get_int_type())
+        self.push(None, match_value)
+
     """
     Visitor methods
     """
@@ -907,11 +946,14 @@ class ParserVisitor:
     def top(self):
         return self.__stack[-1]
 
+    def peek(self, index):
+        return self.__stack[-index - 1]
+
     def push_block(self, block):
         self.__blocks_stack.append(block)
 
     def pop_block(self):
-        return self.__blocks_stack.pop(-1)
+        return self.__blocks_stack.pop()
 
     def __get_code_func(self):
         code_func = self.__func.get_code_func()
