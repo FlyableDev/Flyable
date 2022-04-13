@@ -68,7 +68,7 @@ class ParserVisitor:
         self.__build_const()
 
         for instr in self.__bytecode:
-            print(instr.opname, instr.offset)
+            print(instr.opname)
             self.__instructions.append(instr)
             if instr.is_jump_target:
                 new_block = self.__builder.create_block()
@@ -502,15 +502,22 @@ class ParserVisitor:
 
     def visit_call_function(self, instr):
         args_count = instr.arg
-        args = []
+
         arg_types = []
+        arg_values = []
         for i in range(args_count):
-            new_arg_type, new_arg = self.pop()
-            args.insert(0, new_arg)
-            arg_types.insert(0, arg_types)
-        callable_type, callable = self.pop()
-        call_result_value = caller.call_callable(self, callable, args, {})
+            new_type, new_value = self.pop()
+            arg_types.append(new_type)
+            arg_values.append(new_value)
+
+        arg_types.reverse()
+        arg_values.reverse()
+
+        second_type, second_value = self.pop()  # Either self or the callable
+
+        call_result_value = caller.call_callable(self, second_value, second_value, arg_values, self.__kw_names)
         self.push(None, call_result_value)
+        self.__kw_names = {}
 
     def visit_call_function_kw(self, instr):
         args_count = instr.a
@@ -790,12 +797,19 @@ class ParserVisitor:
         pass
 
     def visit_jump_absolute(self, instr):
-        pass
+        block_to_jump = self.get_block_to_jump_to(instr.arg)
+        self.__builder.br(block_to_jump)
 
     def visit_for_iter(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__next__", value, value_type, [value_1], [value_type_1])
+        iterable_type, iterator = self.pop()
+        next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [], {})
+        self.push(next_type, next_value)
+        null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        test = self.__builder.eq(next_value, null_ptr)
+        continue_block = self.get_block_to_jump_by(instr.offset, instr.arg)
+        next_block = self.__builder.create_block("Next Block")
+        self.__builder.cond_br(test, continue_block, next_block)
+        self.__builder.set_insert_block(next_block)
 
     def visit_load_global(self, instr):
         var_name = self.__code_obj.co_names[instr.arg]
@@ -956,6 +970,14 @@ class ParserVisitor:
                 block_to_reach = self.__jumps_instr[instr]
                 return block_to_reach
         raise ValueError("Didn't find an instruction for the offset to reach " + str(x))
+
+    def get_block_to_jump_by(self, current_offset, x):
+        offset_to_reach = current_offset + x * 2 + 2    # We add 2 to get to the next instruction
+        for instr in self.__instructions:
+            if instr.offset == offset_to_reach:
+                block_to_reach = self.__jumps_instr[instr]
+                return block_to_reach
+        raise ValueError("Didn't find an instruction for the offset to reach " + str(offset_to_reach))
 
     def push_block(self, block):
         self.__blocks_stack.append(block)
