@@ -82,8 +82,8 @@ class ParserVisitor:
         self.__builder.set_insert_block(self.__entry_block)
         self.__builder.br(self.__content_block)
 
-        if len(self.__stack):
-            raise ValueError("Stack is left with data : " + str(len(self.__stack)))
+        #if len(self.__stack):
+        #    raise ValueError("Stack is left with data : " + str(len(self.__stack)))
 
     def __setup_argument(self):
         callable_value = 0
@@ -212,8 +212,8 @@ class ParserVisitor:
     def visit_swap(self, instr):
         index = instr.arg
         buffer = self.__stack[-1]
-        self.__stack[-1] = self.__stack[-index - 1]
-        self.__stack[-index - 1] = buffer
+        self.__stack[-1] = self.__stack[-index]
+        self.__stack[-index] = buffer
 
     def visit_push_null(self, instr):
         self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
@@ -771,6 +771,10 @@ class ParserVisitor:
     def visit_jump_forward(self, instr):
         raise unsupported.FlyableUnsupported()
 
+    def visit_jump_backward(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        self.__builder.br(block_to_jump)
+
     def visit_pop_jump_if_true(self, instr):
         block_to_jump = self.get_block_to_jump_to(instr.arg)
         else_block = self.__builder.create_block()
@@ -972,7 +976,7 @@ class ParserVisitor:
         raise ValueError("Didn't find an instruction for the offset to reach " + str(x))
 
     def get_block_to_jump_by(self, current_offset, x):
-        offset_to_reach = current_offset + x * 2 + 2    # We add 2 to get to the next instruction
+        offset_to_reach = current_offset + x * 2 + 2  # We add 2 to get to the next instruction
         for instr in self.__instructions:
             if instr.offset == offset_to_reach:
                 block_to_reach = self.__jumps_instr[instr]
