@@ -703,7 +703,18 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_build_slice(self, instr):
-        raise unsupported.FlyableUnsupported()
+        slices_count = instr.arg
+        if slices_count == 3:
+            step_type, step = self.pop()
+        else:
+            step_type, step = None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        stop_type, stop = self.pop()
+        start_type, start = self.pop()
+        new_slice_func = self.__code_gen.get_or_create_func("PySlice_New", code_type.get_py_obj_ptr(self.__code_gen),
+                                                            [code_type.get_py_obj_ptr(self.__code_gen)] * 3,
+                                                            _gen.Linkage.EXTERNAL)
+        new_slice = self.__builder.call(new_slice_func, [start, stop, step])
+        self.push(None, new_slice)
 
     """
     Attr
