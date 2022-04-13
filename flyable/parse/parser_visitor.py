@@ -10,9 +10,11 @@ import flyable.code_gen.fly_obj as fly_obj
 import flyable.code_gen.cond as _cond
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.data.lang_type as lang_type
+import flyable.data.lang_func_impl as func_impl
 import flyable.code_gen.set as gen_set
 import flyable.code_gen.function as func
 import flyable.code_gen.unpack as unpack
+import flyable.code_gen.op_call as op_call
 import flyable.code_gen.list as gen_list
 import flyable.code_gen.tuple as gen_tuple
 
@@ -71,6 +73,8 @@ class ParserVisitor:
                 new_block = self.__builder.create_block()
                 self.__jumps_instr[instr] = new_block
 
+        self.__setup_argument()
+
         for instr in self.__instructions:
             self.__visit_instr(instr)
 
@@ -79,6 +83,23 @@ class ParserVisitor:
 
         if len(self.__stack):
             raise ValueError("Stack is left with data")
+
+    def __setup_argument(self):
+        callable_value = 0
+        args_value = 1
+        kwargs = 2
+        if self.__func.get_impl_type() == func_impl.FuncImplType.TP_CALL:
+            for i, arg in enumerate(self.__func.get_parent_func().get_node().args.args):
+                arg_var = self.get_or_gen_var(arg.arg)
+                index = self.__builder.const_int64(i)
+                item_ptr = gen_tuple.python_tuple_get_unsafe_item_ptr(self, lang_type.get_python_obj_type(), 1, index)
+                arg_var.set_code_value(item_ptr)
+        elif self.__func.get_impl_type() == func_impl.FuncImplType.VEC_CALL:
+            for i, arg in enumerate(self.__func.get_parent_func().get_node().args.args):
+                arg_var = self.get_or_gen_var(arg.arg)
+                item_ptr = self.__builder.gep2(args_value, code_type.get_py_obj_ptr(self.__code_gen),
+                                               [self.__builder.const_int64(i)])
+                arg_var.set_code_value(item_ptr)
 
     def __visit_instr(self, instr):
         print(instr.opname)
@@ -222,6 +243,19 @@ class ParserVisitor:
     """"
     Binary operations
     """
+
+    def visit_binary_op(self, instr):
+        op_type = instr.arg
+
+        left_type, left_value = self.pop()
+        right_type, right_value = self.pop()
+
+        op_func = self.__code_gen.get_or_create_func(op_call.get_binary_op_func_to_call(op_type),
+                                                     code_type.get_py_obj_ptr(self.__code_gen),
+                                                     [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                     _gen.Linkage.EXTERNAL)
+        op_result = self.__builder.call(op_func, [left_value, right_value])
+        self.push(None, op_result)
 
     def visit_binary_power(self, instr):
         value_type, value = self.pop()

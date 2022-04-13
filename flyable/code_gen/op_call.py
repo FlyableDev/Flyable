@@ -18,14 +18,38 @@ if TYPE_CHECKING:
     from flyable.data.lang_type import LangType
 
 
-def __convert_type_to_match(
-        visitor: ParserVisitor,
-        op: ast.operator,
-        type_left: LangType,
-        value_left,
-        type_right,
-        value_right,
-):
+def get_binary_op_func_to_call(op):
+    func_op = ["PyNumber_Add",
+               "PyNumber_And",
+               "PyNumber_FloorDivide",
+               "PyNumber_Lshift",
+               "PyNumber_MatrixMultiply",
+               "PyNumber_Multiply",
+               "PyNumber_Remainder",
+               "PyNumber_Or",
+               "_PyNumber_PowerNoMod",
+               "PyNumber_Rshift",
+               "PyNumber_Subtract",
+               "PyNumber_TrueDivide",
+               "PyNumber_Xor",
+               "PyNumber_InPlaceAdd",
+               "PyNumber_InPlaceAnd",
+               "PyNumber_InPlaceFloorDivide",
+               "PyNumber_InPlaceLshift",
+               "PyNumber_InPlaceMatrixMultiply",
+               "PyNumber_InPlaceMultiply",
+               "PyNumber_InPlaceRemainder",
+               "PyNumber_InPlaceOr",
+               "_PyNumber_InPlacePowerNoMod",
+               "PyNumber_InPlaceRshift",
+               "PyNumber_InPlaceSubtract",
+               "PyNumber_InPlaceTrueDivide",
+               "PyNumber_InPlaceXor"]
+    return func_op[op]
+
+
+def __convert_type_to_match(visitor: ParserVisitor, type_left: LangType, value_left, type_right,
+                            value_right):
     # Check the primitive type conversion
     if type_left.is_dec():
         # If left type is decimal, the right type must also be to return a decimal
@@ -73,14 +97,8 @@ def __convert_type_to_match(
     return type_left, value_left, type_right, value_right
 
 
-def bin_op(
-        visitor: ParserVisitor,
-        op: ast.operator,
-        type_left: LangType,
-        value_left: int,
-        type_right: LangType,
-        value_right: int,
-):
+def bin_op(visitor: ParserVisitor, op: ast.operator, type_left: LangType, value_left: int, type_right: LangType,
+           value_right: int, ):
     builder = visitor.get_builder()
 
     # Check the primitive type conversion
@@ -312,7 +330,8 @@ def handle_op_cond_special_cases(
         )
 
     elif op_type in {ast.Is, ast.IsNot}:
-        result = builder.eq(fly_obj.get_py_obj_type_ptr(builder, first_value), fly_obj.get_py_obj_type_ptr(builder, second_value))
+        result = builder.eq(fly_obj.get_py_obj_type_ptr(builder, first_value),
+                            fly_obj.get_py_obj_type_ptr(builder, second_value))
         if op_type is ast.IsNot:
             result = builder._not(result)
 
