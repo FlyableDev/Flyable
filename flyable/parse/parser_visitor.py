@@ -205,7 +205,7 @@ class ParserVisitor:
         self.__stack.append(self.__stack[-2])
         self.__stack.append(self.__stack[-2])
 
-    def visit_push_null(self):
+    def visit_push_null(self, instr):
         self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
 
     """"
@@ -247,8 +247,8 @@ class ParserVisitor:
     def visit_binary_op(self, instr):
         op_type = instr.arg
 
-        left_type, left_value = self.pop()
         right_type, right_value = self.pop()
+        left_type, left_value = self.pop()
 
         op_func = self.__code_gen.get_or_create_func(op_call.get_binary_op_func_to_call(op_type),
                                                      code_type.get_py_obj_ptr(self.__code_gen),
@@ -310,10 +310,14 @@ class ParserVisitor:
         self.push(new_value_type, new_value)
 
     def visit_binary_subscr(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__get_item__", value, value_type, [value_1], [value_type_1])
-        self.push(new_value_type, new_value)
+        sub_type, sub_value = self.pop()
+        container_type, container_value = self.pop()
+        get_item_func = self.__code_gen.get_or_create_func("PyObject_GetItem",
+                                                           code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                           _gen.Linkage.EXTERNAL)
+        get_value = self.__builder.call(get_item_func, [container_value, sub_value])
+        self.push(None, get_value)
 
     def visit_binary_lshift(self, instr):
         value_type, value = self.pop()
