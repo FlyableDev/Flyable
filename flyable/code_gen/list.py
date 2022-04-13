@@ -42,45 +42,57 @@ def python_list_set(visitor: ParserVisitor, list: int, index: int, item):
 
 
 def python_list_append(visitor: ParserVisitor, list: int, item_type: lang_type.LangType, item: int):
-    """
-    Generate the code to set an element in a Python List
-    """
-
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
-
     item_type, item = runtime.value_to_pyobj(code_gen, builder, item, item_type)
+    args_types = [code_type.get_py_obj_ptr(code_gen), code_type.get_py_obj_ptr(code_gen)]
+    func = code_gen.get_or_create_func("PyList_Append", code_type.get_py_obj_ptr(code_gen),
+                                                args_types, gen.Linkage.EXTERNAL)
+    builder.call(func, [list, item])
 
-    if not hint.is_incremented_type(item_type):
-        ref_counter.ref_incr(visitor.get_builder(), item_type, item)
+"""
+The following commented function calls python_list_resize which is not an external cpython symbole
+"""
 
-    new_alloca_block = builder.create_block("List New Allocation")
-    continue_block = builder.create_block("After List")
-
-    list = builder.ptr_cast(list, code_type.get_list_obj_ptr(visitor.get_code_gen()))
-    capacity = python_list_capacity_ptr(visitor, list)
-    capacity = builder.load(capacity)
-
-    size_ptr = python_list_len_ptr(visitor, list)
-    size = builder.load(size_ptr)
-    new_size = builder.add(size, builder.const_int64(1))
-
-    need_new_alloca = builder.eq(capacity, size)
-    builder.cond_br(need_new_alloca, new_alloca_block, continue_block)
-
-    builder.set_insert_block(new_alloca_block)
-    resize_args_types = [code_type.get_list_obj_ptr(code_gen), code_type.get_int64()]
-    resize_func = code_gen.get_or_create_func("python_list_resize", code_type.get_int32(), resize_args_types,
-                                              gen.Linkage.EXTERNAL)
-
-    builder.call(resize_func, [list, new_size])
-    builder.br(continue_block)
-
-    builder.set_insert_block(continue_block)
-    content = builder.load(python_list_get_content_ptr(visitor, list))
-    content = builder.ptr_cast(content, code_type.get_py_obj_ptr(code_gen).get_ptr_to())
-    item_ptr = builder.gep2(content, code_type.get_py_obj_ptr(code_gen), [size])
-    builder.store(item, item_ptr)  # Set the item in the buffer
-    builder.store(new_size, size_ptr)  # Set the new size in case it didn't enter the resize
+# def python_list_append(visitor: ParserVisitor, list: int, item_type: lang_type.LangType, item: int):
+#     """
+#     Generate the code to set an element in a Python List
+#     """
+#
+#     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
+#
+#     item_type, item = runtime.value_to_pyobj(code_gen, builder, item, item_type)
+#
+#     if not hint.is_incremented_type(item_type):
+#         ref_counter.ref_incr(visitor.get_builder(), item_type, item)
+#
+#     new_alloca_block = builder.create_block("List New Allocation")
+#     continue_block = builder.create_block("After List")
+#
+#     list = builder.ptr_cast(list, code_type.get_list_obj_ptr(visitor.get_code_gen()))
+#     capacity = python_list_capacity_ptr(visitor, list)
+#     capacity = builder.load(capacity)
+#
+#     size_ptr = python_list_len_ptr(visitor, list)
+#     size = builder.load(size_ptr)
+#     new_size = builder.add(size, builder.const_int64(1))
+#
+#     need_new_alloca = builder.eq(capacity, size)
+#     builder.cond_br(need_new_alloca, new_alloca_block, continue_block)
+#
+#     builder.set_insert_block(new_alloca_block)
+#     resize_args_types = [code_type.get_list_obj_ptr(code_gen), code_type.get_int64()]
+#     resize_func = code_gen.get_or_create_func("python_list_resize", code_type.get_int32(), resize_args_types,
+#                                               gen.Linkage.EXTERNAL)
+#
+#     builder.call(resize_func, [list, new_size])
+#     builder.br(continue_block)
+#
+#     builder.set_insert_block(continue_block)
+#     content = builder.load(python_list_get_content_ptr(visitor, list))
+#     content = builder.ptr_cast(content, code_type.get_py_obj_ptr(code_gen).get_ptr_to())
+#     item_ptr = builder.gep2(content, code_type.get_py_obj_ptr(code_gen), [size])
+#     builder.store(item, item_ptr)  # Set the item in the buffer
+#     builder.store(new_size, size_ptr)  # Set the new size in case it didn't enter the resize
 
 
 def python_list_capacity_ptr(visitor: ParserVisitor, list: int):

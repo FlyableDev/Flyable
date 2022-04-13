@@ -587,7 +587,7 @@ class ParserVisitor:
 
     def visit_unpack_sequence(self, instr):
         seq_type, seq = self.pop()
-        unpack.unpack_iterable(self, seq_type, seq, instr.arg)
+        unpack.unpack_iterable(self, seq_type, seq, instr.arg, -1)
         ref_counter.ref_decr(self, seq_type, seq)
 
     def visit_unpack_sequence_adaptive(self, instr):
@@ -611,10 +611,11 @@ class ParserVisitor:
         ref_counter.ref_decr(self, seq_type, seq)
 
     def visit_unpack_ex(self, instr):
-        # nb_args_before_list = instr.arg & 0xFF
-        # nb_args_after_list = instr.arg >> 8
-        # total_args = 1 + nb_args_before_list + nb_args_after_list
-        raise unsupported.FlyableUnsupported
+        seq_type, seq = self.pop()
+        nb_args_before_list = instr.arg & 0xFF
+        nb_args_after_list = instr.arg >> 8
+        unpack.unpack_iterable(self, seq_type, seq, nb_args_before_list, nb_args_after_list)
+        ref_counter.ref_decr(self, seq_type, seq)
 
     """
     Data structure
@@ -625,7 +626,7 @@ class ParserVisitor:
         import flyable.code_gen.tuple as gen_tuple
         new_tuple = gen_tuple.python_tuple_new(self.__code_gen, self.__builder,
                                                self.__builder.const_int64(element_counts))
-        for i in range(element_counts):
+        for i in reversed(range(element_counts)):
             e_type, e_value = self.pop()
             index_value = self.__builder.const_int64(i)
             gen_tuple.python_tuple_set_unsafe(self, new_tuple, index_value, e_value)
@@ -872,8 +873,8 @@ class ParserVisitor:
     def visit_build_string(self, instr):
         raise unsupported.FlyableUnsupported()
 
-    def visit_extended_args(self, instr):
-        raise unsupported.FlyableUnsupported()
+    def visit_extended_arg(self, instr):
+        pass
 
     def visit_format_value(self, instr):
         raise unsupported.FlyableUnsupported()
