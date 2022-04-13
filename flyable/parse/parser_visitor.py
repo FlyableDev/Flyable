@@ -68,6 +68,7 @@ class ParserVisitor:
         self.__build_const()
 
         for instr in self.__bytecode:
+            print(instr.opname, instr.offset)
             self.__instructions.append(instr)
             if instr.is_jump_target:
                 new_block = self.__builder.create_block()
@@ -102,7 +103,6 @@ class ParserVisitor:
                 arg_var.set_code_value(item_ptr)
 
     def __visit_instr(self, instr):
-        print(instr.opname, instr.offset)
         if instr in self.__jumps_instr:
             insert_block = self.__jumps_instr[instr]
             self.__builder.br(insert_block)
@@ -459,7 +459,8 @@ class ParserVisitor:
                                                            code_type.get_int32()],
                                                           _gen.Linkage.EXTERNAL)
 
-        compare_value = self.__builder.call(compare_func, [left_value, right_value])
+        compare_value = self.__builder.call(compare_func,
+                                            [left_value, right_value, self.__builder.const_int32(instr.arg)])
 
         self.push(None, compare_value)
 
@@ -764,8 +765,7 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_pop_jump_if_true(self, instr):
-        instr_to_jump = self.__instructions[instr.arg]
-        block_to_jump = self.__jumps_instr[instr_to_jump]
+        block_to_jump = self.get_block_to_jump_to(instr.arg)
         else_block = self.__builder.create_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
@@ -773,8 +773,7 @@ class ParserVisitor:
         self.__builder.set_insert_block(else_block)
 
     def visit_pop_jump_if_false(self, instr):
-        instr_to_jump = self.__instructions[instr.arg]
-        block_to_jump = self.__jumps_instr[instr_to_jump]
+        block_to_jump = self.get_block_to_jump_to(instr.arg)
         else_block = self.__builder.create_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
@@ -949,6 +948,14 @@ class ParserVisitor:
 
     def peek(self, index):
         return self.__stack[-index - 1]
+
+    def get_block_to_jump_to(self, x):
+        offset_to_reach = x * 2
+        for instr in self.__instructions:
+            if instr.offset == offset_to_reach:
+                block_to_reach = self.__jumps_instr[instr]
+                return block_to_reach
+        raise ValueError("Didn't find an instruction for the offset to reach " + str(x))
 
     def push_block(self, block):
         self.__blocks_stack.append(block)
