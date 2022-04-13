@@ -801,7 +801,7 @@ class ParserVisitor:
         self.__builder.br(block_to_jump)
 
     def visit_for_iter(self, instr):
-        iterable_type, iterator = self.pop()
+        iterable_type, iterator = self.__stack[-1]
         next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [], {})
         self.push(next_type, next_value)
         null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
