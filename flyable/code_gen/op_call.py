@@ -224,7 +224,7 @@ def cond_op(
         )
 
     # If the op is not And or Or, we cast the values to make their type match
-    if not isinstance(op, (ast.And, ast.BitAnd, ast.Or, ast.BitOr)):
+    if not isinstance(op, (ast.And, ast.BitAnd, ast.Or, ast.BitOr, ast.Is, ast.IsNot)):
         # Need to do the primitive type conversion
         _, first_value, _, second_value = __convert_type_to_match(
             visitor, op, type_left, first_value, type_right, second_value
@@ -250,9 +250,15 @@ def cond_op(
         case ast.GtE():
             apply_op = builder.gte
         case ast.Is():
-            apply_op = builder.eq
+            apply_op = lambda v1, v2: builder.eq(
+                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v1, type_left)[1],
+                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v2, type_right)[1]
+            )
         case ast.IsNot():
-            apply_op = builder.ne
+            apply_op = lambda v1, v2: builder.ne(
+                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v1, type_left)[1],
+                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v2, type_right)[1]
+            )
         case _:
             raise NotImplementedError("Compare op " + str(type(op)) + " not supported")
 
@@ -312,7 +318,11 @@ def handle_op_cond_special_cases(
         )
 
     elif op_type in {ast.Is, ast.IsNot}:
-        result = builder.eq(fly_obj.get_py_obj_type_ptr(builder, first_value), fly_obj.get_py_obj_type_ptr(builder, second_value))
+        print(f"using is for {type_left} and {type_right}")
+        result = builder.eq(
+            runtime.value_to_pyobj(visitor.get_code_gen(), builder, first_value, type_left)[1],
+            runtime.value_to_pyobj(visitor.get_code_gen(), builder, second_value, type_right)[1]
+        )
         if op_type is ast.IsNot:
             result = builder._not(result)
 

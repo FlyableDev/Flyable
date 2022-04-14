@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import logging
 from ast import And, Compare, BitAnd
 from functools import reduce
@@ -28,8 +29,9 @@ def parse_compare(visitor: ParserVisitor, node: Compare):
         right_type, right_val = comparison
 
         result = op_call.cond_op(
-            visitor, BitAnd(), left_type, left_val, right_type, right_val
+            visitor, ast.BitAnd(), left_type, left_val, right_type, right_val
         )
+        debug.flyable_debug_print_ptr(visitor.get_code_gen(), visitor.get_builder(), result[1])
         ref_counter.ref_decr_incr(visitor, right_type, right_val)
         return result
 
@@ -52,6 +54,9 @@ def parse_compare(visitor: ParserVisitor, node: Compare):
     comparators = [
         visitor.visit_node(comparator) for comparator in (node.left, *node.comparators)
     ]
+
+    if len(node.ops) == 1:
+        return do_cond_op(None, (comparators[0], node.ops[0], comparators[1]))
 
     pairs = [
         (comparator[0], node.ops[idx], comparator[1])
