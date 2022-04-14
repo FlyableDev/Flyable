@@ -465,10 +465,37 @@ class ParserVisitor:
         self.push(None, compare_value)
 
     def visit_is_op(self, instr):
-        raise unsupported.FlyableUnsupported()
+        right_type, right_value = self.pop()
+        left_type, left_value = self.pop()
+
+        result_val = self.__builder.eq(fly_obj.get_py_obj_type_ptr(self.__builder, left_value),
+                                       fly_obj.get_py_obj_type_ptr(self.__builder, right_value))
+        ref_counter.ref_decr(left_value)
+        ref_counter.ref_decr(right_value)
+
+        if instr.arg == 1:
+            result_val = self.__builder._not(result_val)
+        result_type = lang_type.get_bool_type()
+        self.push(result_type, result_val)
 
     def visit_contains_op(self, instr):
-        raise unsupported.FlyableUnsupported()
+        right_type, right_value = self.pop()
+        left_type, left_value = self.pop()
+
+        """
+        CPython has a special case for __contains__ where the left and right args are reversed
+        ex: "a" in "abc" --> "abc".__contains__("a")
+        """
+        args_types = [left_type]
+        args = [left_value]
+        result_type, result_val = caller.call_obj(self, "__contains__", right_value, right_type, args, args_types, {})
+        ref_counter.ref_decr(left_value)
+        ref_counter.ref_decr(right_value)
+
+        if instr.arg == 1:
+            result_val = self.__builder._not(result_val)
+        result_type = lang_type.get_bool_type()
+        self.push(result_type, result_val)
 
     """
     Call
@@ -575,9 +602,6 @@ class ParserVisitor:
         value_type, value = self.pop()
         found_attr = fly_obj.py_obj_get_attr(self, value, str_value, None)
         self.push(None, found_attr)
-
-    def visit_make_function(self, instr):
-        pass
 
     def visit_store_name(self, instr):
         name = self.__code_obj.co_names[instr.arg]
@@ -705,7 +729,32 @@ class ParserVisitor:
         self.__builder.call(extend_func, [list_value, iter_value])
 
     def visit_build_map(self, instr):
-        raise unsupported.FlyableUnsupported()
+        import flyable.code_gen.dict as gen_dict
+        new_dict = gen_dict.python_dict_new(self)
+        for i in range(instr.arg):
+            value_type, value_value = self.pop()
+            key_type, key_value = self.pop()
+
+            key_type, key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
+            value_type, value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
+
+            gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
+
+        self.push(lang_type.get_dict_of_python_obj_type(), new_dict)
+
+    def visit_build_const_key_map(self, instr):
+        import flyable.code_gen.dict as gen_dict
+        import flyable.code_gen.tuple as gen_tuple
+        new_dict = gen_dict.python_dict_new(self)
+        keys_type, keys_value = self.pop()
+        for i in range(instr.arg):
+            value_type, value_value = self.pop()
+            value_type, value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
+            key_value = gen_tuple.python_tuple_get_item(self, keys_type, keys_value, self.__builder.const_int64(i))
+
+            gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
+
+        self.push(lang_type.get_dict_of_python_obj_type(), new_dict)
 
     def visit_dict_update(self, instr):
         raise unsupported.FlyableUnsupported()
