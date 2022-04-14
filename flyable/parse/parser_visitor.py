@@ -82,7 +82,7 @@ class ParserVisitor:
         self.__builder.set_insert_block(self.__entry_block)
         self.__builder.br(self.__content_block)
 
-        #if len(self.__stack):
+        # if len(self.__stack):
         #    raise ValueError("Stack is left with data : " + str(len(self.__stack)))
 
     def __setup_argument(self):
@@ -769,7 +769,8 @@ class ParserVisitor:
     """
 
     def visit_jump_forward(self, instr):
-        raise unsupported.FlyableUnsupported()
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        self.__builder.br(block_to_jump)
 
     def visit_jump_backward(self, instr):
         block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
@@ -886,11 +887,29 @@ class ParserVisitor:
 
     def visit_import_name(self, instr):
         raise unsupported.FlyableUnsupported()
+        name = self.__code_obj.co_names[instr.arg]
+        name_global_var = self.__code_gen.get_or_insert_str(name)
+        name_str = self.__builder.global_var(name_global_var)
+        name_str = self.__builder.load(name_str)
+        from_type, from_value = self.pop()
+        level_type, level_value = self.pop()
+
+        import_call = self.__code_gen.get_or_create_func("flyable_import_name",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 3,
+                                                         _gen.Linkage.EXTERNAL)
+
+        import_value = self.__builder.call(import_call, [name_str, from_value, level_value])
+
+        self.push(None, import_value)
 
     def visit_import_from(self, instr):
         raise unsupported.FlyableUnsupported()
+        name_type, name_value = self.pop()
+        from_type, from_value = self.pop()
 
     def visit_reraise(self, instr):
+        raise unsupported.FlyableUnsupported()
         has_lasti = instr.arg
 
         # val_type, val_value = self.pop()
