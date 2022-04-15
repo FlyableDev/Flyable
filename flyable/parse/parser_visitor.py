@@ -491,15 +491,20 @@ class ParserVisitor:
         CPython has a special case for __contains__ where the left and right args are reversed
         ex: "a" in "abc" --> "abc".__contains__("a")
         """
-        args_types = [left_type]
-        args = [left_value]
-        result_type, result_val = caller.call_obj(self, "__contains__", right_value, right_type, args, args_types, {})
-        ref_counter.ref_decr(left_value)
-        ref_counter.ref_decr(right_value)
 
-        if instr.arg == 1:
-            result_val = self.__builder._not(result_val)
-        result_type = lang_type.get_bool_type()
+        contains_func = self.__code_gen.get_or_create_func( "PySequence_Contains", code_type.get_int32(),
+                                                                      [code_type.get_py_obj_ptr(self.__code_gen)]*2,
+                                                                      _gen.Linkage.EXTERNAL)
+        result_val = self.__builder.call(contains_func, [right_value, left_value])
+        one = self.__builder.const_int32(1)
+
+        if instr.arg:
+            result_val = self.__builder.ne(result_val, one)
+        else:
+            result_val = self.__builder.eq(result_val, one)
+
+        result_type, result_val = runtime.value_to_pyobj(self, result_val, lang_type.get_bool_type())
+
         self.push(result_type, result_val)
 
     """
@@ -744,10 +749,14 @@ class ParserVisitor:
     def visit_build_map(self, instr):
         import flyable.code_gen.dict as gen_dict
         new_dict = gen_dict.python_dict_new(self)
+        keys = []
+        values = []
         for i in range(instr.arg):
-            value_type, value_value = self.pop()
-            key_type, key_value = self.pop()
-
+            values.append((self.pop()))
+            keys.append((self.pop()))
+        for i in reversed(range(instr.arg)):
+            key_type, key_value = keys[i]
+            value_type, value_value = values[i]
             key_type, key_value = runtime.value_to_pyobj(self, key_value, key_type)
             value_type, value_value = runtime.value_to_pyobj(self, value_value, value_type)
 
@@ -760,8 +769,12 @@ class ParserVisitor:
         import flyable.code_gen.tuple as gen_tuple
         new_dict = gen_dict.python_dict_new(self)
         keys_type, keys_value = self.pop()
+        values = []
         for i in range(instr.arg):
-            value_type, value_value = self.pop()
+            values.append((self.pop()))
+        values.reverse()
+        for i in range(instr.arg):
+            value_type, value_value = values[i]
             value_type, value_value = runtime.value_to_pyobj(self, value_value, value_type)
             key_value = gen_tuple.python_tuple_get_unsafe_item_ptr(self, keys_type, keys_value,
                                                                    self.__builder.const_int64(i))
