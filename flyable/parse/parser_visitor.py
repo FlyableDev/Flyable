@@ -736,10 +736,14 @@ class ParserVisitor:
     def visit_build_map(self, instr):
         import flyable.code_gen.dict as gen_dict
         new_dict = gen_dict.python_dict_new(self)
+        keys = []
+        values = []
         for i in range(instr.arg):
-            value_type, value_value = self.pop()
-            key_type, key_value = self.pop()
-
+            values.append((self.pop()))
+            keys.append((self.pop()))
+        for i in reversed(range(instr.arg)):
+            key_type, key_value = keys[i]
+            value_type, value_value = values[i]
             key_type, key_value = runtime.value_to_pyobj(self, key_value, key_type)
             value_type, value_value = runtime.value_to_pyobj(self, value_value, value_type)
 
@@ -752,8 +756,12 @@ class ParserVisitor:
         import flyable.code_gen.tuple as gen_tuple
         new_dict = gen_dict.python_dict_new(self)
         keys_type, keys_value = self.pop()
+        values = []
         for i in range(instr.arg):
-            value_type, value_value = self.pop()
+            values.append((self.pop()))
+        values.reverse()
+        for i in range(instr.arg):
+            value_type, value_value = values[i]
             value_type, value_value = runtime.value_to_pyobj(self, value_value, value_type)
             key_value = gen_tuple.python_tuple_get_unsafe_item_ptr(self, keys_type, keys_value,
                                                                    self.__builder.const_int64(i))
