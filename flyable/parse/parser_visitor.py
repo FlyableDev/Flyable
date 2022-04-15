@@ -152,6 +152,10 @@ class ParserVisitor:
             global_tuple = self.__code_gen.get_or_insert_const(const_obj)
             new_const = self.__builder.global_var(global_tuple)
             new_const = self.__builder.load(new_const)
+        elif isinstance(const_obj, frozenset):
+            global_set = self.__code_gen.get_or_insert_const(const_obj)
+            new_const = self.__builder.global_var(global_set)
+            new_const = self.__builder.load(new_const)
         elif type(const_obj).__name__ == "code":
             new_const = None
         else:
@@ -283,7 +287,7 @@ class ParserVisitor:
         raise NotImplementedError()
         value_type, value = self.pop()
         value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__pow__", value, value_type, [value_1], [value_type_1])
+        new_value_type, new_value = caller.call_obj(self, "__matmul__", value, value_type, [value_1], [value_type_1])
         self.push(new_value_type, new_value)
 
     def visit_binary_floor_divide(self, instr):
@@ -710,19 +714,20 @@ class ParserVisitor:
 
     def visit_build_set(self, instr):
         counts = instr.arg
-        iter_value = self.__builder.const_null(lang_type.get_python_obj_type().to_code_type(self.__code_gen))
+        iter_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
         # Iter is NULL in this case
         new_set = gen_set.instanciate_python_set(self, iter_value)
 
         for i in range(counts):
             element_type, element_value = self.pop()
+            element_type, element_value = runtime.value_to_pyobj(self, element_value, element_type)
             gen_set.python_set_add(self, new_set, element_value)
-        self.push(None, new_set)
+        self.push(lang_type.get_set_of_python_obj_type(), new_set)
 
     def visit_set_update(self, instr):
         index = instr.arg
         iter_type, iter_value = self.pop()
-        list_type, list_value = self.__stack(-index)
+        list_type, list_value = self.__stack[-index]
         extend_func = self.__code_gen.get_or_create_func("_PySet_Update", code_type.get_py_obj_ptr(self.__code_gen),
                                                          [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                          _gen.Linkage.EXTERNAL)
