@@ -567,10 +567,10 @@ class CodeGen:
             pass
 
         if not isinstance(value, int) and not isinstance(value, float) and not isinstance(value, tuple) \
-                and not isinstance(value, str):
+                and not isinstance(value, str) and not isinstance(value, frozenset):
             raise ValueError("Const type " + str(type(value)) + " not expected")
 
-        if isinstance(value, tuple):
+        if isinstance(value, tuple) or isinstance(value, frozenset):
             for content_value in value:
                 self.get_or_insert_const(content_value)
 
@@ -708,8 +708,8 @@ class CodeGen:
                                             Linkage.EXTERNAL)
 
         builder = CodeBuilder(main_func)
-        import flyable.parse.parser as ps
-        visitor = ps.DuckParserVisitor(self, builder)
+        import flyable.parse.parser_visitor as pv
+        visitor = pv.DuckParserVisitor(self, builder)
         entry_block = builder.create_block("Main Function Block")
         builder.set_insert_block(entry_block)
 
