@@ -492,9 +492,9 @@ class ParserVisitor:
         ex: "a" in "abc" --> "abc".__contains__("a")
         """
 
-        contains_func = self.__code_gen.get_or_create_func( "PySequence_Contains", code_type.get_int32(),
-                                                                      [code_type.get_py_obj_ptr(self.__code_gen)]*2,
-                                                                      _gen.Linkage.EXTERNAL)
+        contains_func = self.__code_gen.get_or_create_func("PySequence_Contains", code_type.get_int32(),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                           _gen.Linkage.EXTERNAL)
         result_val = self.__builder.call(contains_func, [right_value, left_value])
         one = self.__builder.const_int32(1)
 
