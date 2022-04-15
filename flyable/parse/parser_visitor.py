@@ -16,6 +16,7 @@ import flyable.code_gen.function as func
 import flyable.code_gen.unpack as unpack
 import flyable.code_gen.op_call as op_call
 import flyable.code_gen.list as gen_list
+import flyable.code_gen.dict as gen_dict
 import flyable.code_gen.tuple as gen_tuple
 
 import flyable.parse.exception.unsupported as unsupported
@@ -599,7 +600,9 @@ class ParserVisitor:
         self.push(None, const_value)
 
     def visit_load_name(self, instr):
-        raise unsupported.FlyableUnsupported()
+        name = self.__code_obj.co_names[instr.arg]
+        var = self.get_or_gen_var(name)
+        self.push(None, self.__builder.load(var.get_code_gen_value()))
 
     def visit_load_attr(self, instr):
         str_value = self.__consts[instr.arg]
@@ -634,7 +637,12 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_delete_global(self, instr):
-        raise unsupported.FlyableUnsupported()
+        str_name = self.__code_obj[instr.arg]
+        str_var = self.__code_gen.get_or_insert_str(str_name)
+        str_var = self.__builder.global_var(str_var)
+        global_map = func.py_function_get_globals(self, 0)
+        null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        gen_dict.python_dict_set_item(self, global_map, str_var, null_value)
 
     def visit_setup_with(self, instr):
         raise unsupported.FlyableUnsupported()
