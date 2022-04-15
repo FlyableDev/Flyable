@@ -735,7 +735,21 @@ class CodeGen:
             elif isinstance(key, tuple):
                 tuple_size = builder.const_int64(len(key))
                 value_to_assign = gen_tuple.python_tuple_new(self, builder, tuple_size)
-                import flyable.parse.parser_visitor as ps
+                for i, const_in_key in enumerate(key):
+                    tuple_content = self.__py_constants[const_in_key]
+                    tuple_content_ptr = builder.global_var(tuple_content)
+                    tupe_content_value = builder.load(tuple_content_ptr)
+                    item_ptr = gen_tuple.python_tuple_get_unsafe_item_ptr(visitor,
+                                                                          lang_type.get_python_obj_type(),
+                                                                          value_to_assign, builder.const_int64(i))
+                    builder.store(tupe_content_value, item_ptr)
+            elif isinstance(key, frozenset):
+                """
+                Because we found no easy way to generate a const fronzen set, we generate a tuple instead.
+                CPython get tricked since it saw it as a iterable anyway
+                """
+                tuple_size = builder.const_int64(len(key))
+                value_to_assign = gen_tuple.python_tuple_new(self, builder, tuple_size)
                 for i, const_in_key in enumerate(key):
                     tuple_content = self.__py_constants[const_in_key]
                     tuple_content_ptr = builder.global_var(tuple_content)
