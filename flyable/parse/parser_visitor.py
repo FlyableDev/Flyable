@@ -68,7 +68,6 @@ class ParserVisitor:
         self.__build_const()
 
         for instr in self.__bytecode:
-            print(instr.opname)
             self.__instructions.append(instr)
             if instr.is_jump_target:
                 new_block = self.__builder.create_block()
@@ -77,6 +76,7 @@ class ParserVisitor:
         self.__setup_argument()
 
         for instr in self.__instructions:
+            print(instr.opname)
             self.__visit_instr(instr)
 
         self.__builder.set_insert_block(self.__entry_block)
@@ -750,8 +750,9 @@ class ParserVisitor:
         for i in range(instr.arg):
             value_type, value_value = self.pop()
             value_type, value_value = runtime.value_to_pyobj(self, value_value, value_type)
-            key_value = gen_tuple.python_tuple_get_item(self, keys_type, keys_value, self.__builder.const_int64(i))
-
+            key_value = gen_tuple.python_tuple_get_unsafe_item_ptr(self, keys_type, keys_value,
+                                                                   self.__builder.const_int64(i))
+            key_value = self.__builder.load(key_value)
             gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
 
         self.push(lang_type.get_dict_of_python_obj_type(), new_dict)
