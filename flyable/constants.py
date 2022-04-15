@@ -11,3 +11,5 @@ LINKER_EXEC = os.path.join(LINKER_DIRECTORY, "gcc.exe")
 PYTHON_3_11 = "python311.lib" if platform.system() == "Windows" else "python3.11.a" if platform.system() == "Linux" else "libpython3.11.dylib"
 PYTHON_3_11_PATH = os.path.join(BUILD_FILES_DIRECTORY, PYTHON_3_11)
 PYTHON_3_11_DLL_PATH = os.path.join(BUILD_FILES_DIRECTORY, "python311.dll")
+
+RUNTIME_PATH = os.path.join(BUILD_FILES_DIRECTORY, "libruntime.a")

@@ -43,7 +43,7 @@ def python_list_set(visitor: ParserVisitor, list: int, index: int, item):
 
 def python_list_append(visitor: ParserVisitor, list: int, item_type: lang_type.LangType, item: int):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
-    item_type, item = runtime.value_to_pyobj(code_gen, builder, item, item_type)
+    item_type, item = runtime.value_to_pyobj(visitor, item, item_type)
     args_types = [code_type.get_py_obj_ptr(code_gen), code_type.get_py_obj_ptr(code_gen)]
     func = code_gen.get_or_create_func("PyList_Append", code_type.get_py_obj_ptr(code_gen),
                                                 args_types, gen.Linkage.EXTERNAL)

@@ -58,7 +58,7 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
         # The caller can be a primitive, convert if it's the case
         if obj_type.is_primitive():
             did_caller_conversion = True
-            obj_type, obj = runtime.value_to_pyobj(code_gen, builder, obj, obj_type)
+            obj_type, obj = runtime.value_to_pyobj(visitor, obj, obj_type)
         # the args for the different handlers
         handlers_args = [visitor, func_name, obj, obj_type, args, args_type, kwargs]
         nb_args = len(args)
@@ -134,9 +134,7 @@ def _handle_default(visitor: ParserVisitor, func_name: str, obj: int, obj_type: 
     args_type = copy.copy(args_type)
 
     for i, (arg, arg_type) in enumerate(zip(py_args, args_type)):
-        args_type[i], py_args[i] = runtime.value_to_pyobj(
-            visitor.get_code_gen(), visitor.get_builder(), arg, arg_type
-        )
+        args_type[i], py_args[i] = runtime.value_to_pyobj(visitor, arg, arg_type)
 
     return_type = lang_type.get_python_obj_type()
     return_type.add_hint(hint.TypeHintRefIncr())

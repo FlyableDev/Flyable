@@ -41,7 +41,7 @@ def call_rich_compare_protocol(visitor: ParserVisitor, func_name: str, obj_type:
     num_call_args_types = []
 
     for i, e in enumerate(args):
-        new_type, new_value = runtime.value_to_pyobj(code_gen, builder, args[i], args_types[i])
+        new_type, new_value = runtime.value_to_pyobj(visitor, args[i], args_types[i])
         num_call_args.append(new_value)
         num_call_args_types.append(new_type)
 

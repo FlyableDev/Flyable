@@ -31,7 +31,6 @@ Pass a flag alone to enable it or pass a tuple to also give it a value
 
 def main(file: str, output_dir: str = ".", exec_name: str = "a"):
     add_step("Compiling")
-
     compiler = com.Compiler()
     compiler.add_file(file)
     compiler.set_output_path(f"{output_dir}/output.o")
@@ -48,7 +47,7 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
         # Now link the code
         # On windows, since no compiler is provide we link with the linker provided with flyable
         link_path = constants.LINKER_EXEC if platform.system() == "Windows" else "gcc"
-        linker_args = [link_path, "-flto", constants.PYTHON_3_11_PATH, "output.o"]
+        linker_args = [link_path, "-flto", "output.o", constants.PYTHON_3_11_PATH, constants.RUNTIME_PATH]
 
         if platform.system() == "Windows":
             linker_args.append(constants.PYTHON_3_11_DLL_PATH)

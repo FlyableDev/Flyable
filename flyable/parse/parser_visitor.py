@@ -146,7 +146,7 @@ class ParserVisitor:
             new_const = self.__builder.global_var(bool_var)
         elif isinstance(const_obj, int):
             const_value = self.__builder.const_int64(const_obj)
-            new_const = runtime.value_to_pyobj(self.__code_gen, self.__builder, const_value, lang_type.get_int_type())
+            new_const = runtime.value_to_pyobj(self, const_value, lang_type.get_int_type())
             new_const = new_const[1]
         elif isinstance(const_obj, tuple):
             global_tuple = self.__code_gen.get_or_insert_const(const_obj)
@@ -470,13 +470,13 @@ class ParserVisitor:
 
         result_val = self.__builder.eq(fly_obj.get_py_obj_type_ptr(self.__builder, left_value),
                                        fly_obj.get_py_obj_type_ptr(self.__builder, right_value))
-        ref_counter.ref_decr(left_value)
-        ref_counter.ref_decr(right_value)
 
-        if instr.arg == 1:
-            result_val = self.__builder._not(result_val)
-        result_type = lang_type.get_bool_type()
-        self.push(result_type, result_val)
+        if instr.arg:
+            self.__builder.neg(result_val)
+
+        result_type, result_value = runtime.value_to_pyobj(self, result_val, lang_type.get_bool_type())
+
+        self.push(result_type, result_value)
 
     def visit_contains_op(self, instr):
         right_type, right_value = self.pop()
@@ -735,8 +735,8 @@ class ParserVisitor:
             value_type, value_value = self.pop()
             key_type, key_value = self.pop()
 
-            key_type, key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
-            value_type, value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
+            key_type, key_value = runtime.value_to_pyobj(self, key_value, key_type)
+            value_type, value_value = runtime.value_to_pyobj(self, value_value, value_type)
 
             gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
 
@@ -749,7 +749,7 @@ class ParserVisitor:
         keys_type, keys_value = self.pop()
         for i in range(instr.arg):
             value_type, value_value = self.pop()
-            value_type, value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
+            value_type, value_value = runtime.value_to_pyobj(self, value_value, value_type)
             key_value = gen_tuple.python_tuple_get_item(self, keys_type, keys_value, self.__builder.const_int64(i))
 
             gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
@@ -1008,8 +1008,7 @@ class ParserVisitor:
                                                             [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                             _gen.Linkage.EXTERNAL)
         excp_match = self.__builder.call(excp_math_func, [left_value, right_value])
-        match_type, match_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, excp_match,
-                                                         lang_type.get_int_type())
+        match_type, match_value = runtime.value_to_pyobj(self, excp_match, lang_type.get_int_type())
         self.push(None, match_value)
 
     """

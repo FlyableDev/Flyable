@@ -14,6 +14,7 @@ import flyable.code_gen.exception as excp
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.runtime as runtime
 
+
 def unpack_list_or_tuple(visitor: ParserVisitor, seq_type, seq, instr):
     builder = visitor.get_builder()
     arg_count = instr.arg
@@ -50,6 +51,7 @@ def unpack_list_or_tuple(visitor: ParserVisitor, seq_type, seq, instr):
 
     builder.set_insert_block(continue_block)
 
+
 def unpack_iterable(visitor: ParserVisitor, seq_type, seq, arg_count, arg_count_after):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     # not_an_iterator_error_block = builder.create_block("Not An Iterator Error")
@@ -81,7 +83,8 @@ def unpack_iterable(visitor: ParserVisitor, seq_type, seq, arg_count, arg_count_
         for j in reversed(range(1, arg_count_after + 1)):
             index_to_subtract = builder.const_int64(j)
             index_value = builder.sub(array_length, index_to_subtract)
-            arg_after_type, arg_after_value = caller.call_obj(visitor, "__getitem__", array, array_type, [index_value], [get_int_type()], {})
+            arg_after_type, arg_after_value = caller.call_obj(visitor, "__getitem__", array, array_type, [index_value],
+                                                              [get_int_type()], {})
             temp_stack.append((arg_after_type, arg_after_value))
 
         ref_counter.ref_decr(visitor, array_type, array)
@@ -145,7 +148,7 @@ def unpack_rest_of_iterator_to_list(args_after, iterable_type, iterator, visitor
     builder.cond_br(test, args_after, append_list)
 
     builder.set_insert_block(append_list)
-    py_obj_type, py_obj = runtime.value_to_pyobj(code_gen, builder, next_value, next_type)
+    py_obj_type, py_obj = runtime.value_to_pyobj(visitor, next_value, next_type)
     gen_list.python_list_append(visitor, array, py_obj_type, py_obj)
     builder.br(unpack_rest_of_iterator)
 
@@ -157,9 +160,9 @@ def get_sub_list(arg_count_after, array, array_type, array_length, visitor):
     sub_list_length = builder.sub(array_length, builder.const_int64(arg_count_after))
     # If the list length is smaller than arg_count_after, then we should throw an error
     # "not enough values to unpack (expected at least 'arg_count_after', got 'list length')"
-    lower_type, lower_value = runtime.value_to_pyobj(code_gen, builder, builder.const_int64(0), get_int_type())
-    upper_type, upper_value = runtime.value_to_pyobj(code_gen, builder, sub_list_length, get_int_type())
-    step_type, step_value = runtime.value_to_pyobj(code_gen, builder, builder.const_int64(1), get_int_type())
+    lower_type, lower_value = runtime.value_to_pyobj(visitor, builder.const_int64(0), get_int_type())
+    upper_type, upper_value = runtime.value_to_pyobj(visitor, sub_list_length, get_int_type())
+    step_type, step_value = runtime.value_to_pyobj(visitor, builder.const_int64(1), get_int_type())
     slice_value = gen_slice.py_slice_new(visitor, lower_value, upper_value, step_value)
     sub_list_type, sub_list_value = caller.call_obj(visitor, "__getitem__", array, array_type, [slice_value],
                                                     [get_python_obj_type()], {})

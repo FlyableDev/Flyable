@@ -56,7 +56,7 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
     num_call_args_types = []
 
     for i, (arg, arg_type) in enumerate(zip(args, args_types, strict=True)):
-        new_type, new_value = runtime.value_to_pyobj(code_gen, builder, arg, arg_type)
+        new_type, new_value = runtime.value_to_pyobj(visitor, arg, arg_type)
         num_call_args.append(new_value)
         num_call_args_types.append(new_type)
 
