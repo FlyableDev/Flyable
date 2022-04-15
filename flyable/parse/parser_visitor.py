@@ -872,10 +872,19 @@ class ParserVisitor:
         self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
 
     def visit_jump_if_true_or_pop(self, instr):
-        pass
+        self.visit_pop_jump_if_true(instr)
 
     def visit_jump_if_false_or_pop(self, instr):
-        pass
+        self.visit_pop_jump_if_false(instr)
+
+    def visit_pop_jump_if_not_none(self, instr):
+        block_to_jump = self.get_block_to_jump_to(instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.ne(none_value, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
 
     def visit_jump_absolute(self, instr):
         block_to_jump = self.get_block_to_jump_to(instr.arg)
