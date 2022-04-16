@@ -18,6 +18,7 @@ import flyable.code_gen.op_call as op_call
 import flyable.code_gen.list as gen_list
 import flyable.code_gen.dict as gen_dict
 import flyable.code_gen.tuple as gen_tuple
+import flyable.parse.version as version
 
 import flyable.parse.exception.unsupported as unsupported
 
@@ -51,6 +52,7 @@ class ParserVisitor:
         self.__kw_names = {}
         self.__jumps_instr = {}
         self.__instructions = []
+        self.__current_instr_index = - 1
         self.__entry_block = None
         self.__content_block = None
         self.__name = None  # Contains the value that contains the ptr to the name
@@ -76,15 +78,13 @@ class ParserVisitor:
 
         self.__setup_argument()
 
-        for instr in self.__instructions:
+        for i, instr in enumerate(self.__instructions):
             print(instr.opname)
+            self.__current_instr_index = i
             self.__visit_instr(instr)
 
         self.__builder.set_insert_block(self.__entry_block)
         self.__builder.br(self.__content_block)
-
-        # if len(self.__stack):
-        #    raise ValueError("Stack is left with data : " + str(len(self.__stack)))
 
     def __setup_argument(self):
         callable_value = 0
@@ -518,6 +518,7 @@ class ParserVisitor:
         pass
 
     def visit_call(self, instr):
+
         args_count = instr.arg
 
         arg_types = []
@@ -902,7 +903,10 @@ class ParserVisitor:
         self.__builder.set_insert_block(next_block)
 
     def visit_load_global(self, instr):
-        var_name = self.__code_obj.co_names[instr.arg]
+        namei = instr.arg
+        if version.get_python_version() >= version.PythonVersion.VERSION_3_11:
+            namei = namei >> 1
+        var_name = self.__code_obj.co_names[namei]
         str_name_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(var_name))
         str_name_value = self.__builder.load(str_name_value)
         global_dict_value = func.py_function_get_globals(self, self.__frame_ptr_value)

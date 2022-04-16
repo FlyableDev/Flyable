@@ -1,6 +1,8 @@
+import enum
 import os
 import pathlib
 import platform
+
 
 ROOT_DIRECTORY = pathlib.Path(__file__).absolute().parent.parent
 RESOURCES_DIRECTORY = os.path.join(ROOT_DIRECTORY, "resources")
