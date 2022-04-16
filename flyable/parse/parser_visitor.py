@@ -557,6 +557,9 @@ class ParserVisitor:
         self.push(None, call_result_value)
         self.__kw_names = {}
 
+    def visit_call_function_ex(self):
+        raise unsupported.FlyableUnsupported()
+
     def visit_call_function_kw(self, instr):
         args_count = instr.a
         tuple_type, tuple_args = self.pop()
@@ -724,7 +727,12 @@ class ParserVisitor:
         self.__builder.call(extend_func, [list_value, iter_value])
 
     def visit_list_to_tuple(self, instr):
-        raise unsupported.FlyableUnsupported()
+        list_type, list_value = self.pop()
+        list_as_tuple_func = self.__code_gen.get_or_create_func("PyList_AsTuple", code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        new_tuple_value = self.__builder.call(list_as_tuple_func, [list_value])
+        self.push(None, new_tuple_value)
 
     def visit_build_set(self, instr):
         counts = instr.arg
@@ -785,28 +793,53 @@ class ParserVisitor:
         self.push(lang_type.get_dict_of_python_obj_type(), new_dict)
 
     def visit_dict_update(self, instr):
-        raise unsupported.FlyableUnsupported()
+        index = instr.arg
+        update_type, update_value = self.pop()
+        dict_type, dict_value = self.__stack[-index]
+        update_func = self.__code_gen.get_or_create_func("PyDict_Update", code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(update_func, [dict_value, update_value])
 
     def visit_dict_merge(self, instr):
         raise unsupported.FlyableUnsupported()
 
-    def visit_const_key_map(self, instr):
-        raise unsupported.FlyableUnsupported()
-
     def visit_set_add(self, instr):
-        raise unsupported.FlyableUnsupported()
+        item_type, item_value = self.pop()
+        set_type, set_value = self.__stack[-instr.arg]
+        gen_set.python_set_add(self, set_value, item_value)
 
     def visit_list_append(self, instr):
-        raise unsupported.FlyableUnsupported()
+        item_type, item_value = self.pop()
+        list_type, list_value = self.__stack[-instr.arg]
+        gen_list.python_list_append(self, list_value, item_type, item_value)
 
     def visit_map_add(self, instr):
-        raise unsupported.FlyableUnsupported()
+        value_type, value_value = self.pop()
+        key_type, key_value = self.pop()
+        dict_type, dict_value = self.__stack[-instr.arg]
+        gen_dict.python_dict_set_item(self, dict_value, key_value, value_value)
 
     def visit_copy_dict_without_keys(self, instr):
         raise unsupported.FlyableUnsupported()
 
     def visit_get_len(self, instr):
-        raise unsupported.FlyableUnsupported()
+        top_type, top_value = self.__stack[-1]
+        if top_type.is_list():
+            len = gen_list.python_list_len(self, top_value)
+        elif top_type.is_tuple():
+            len = gen_tuple.python_tuple_len(self, top_value)
+        elif top_type.is_set():
+            len = gen_set.python_set_len(self, top_value)
+        elif top_type.is_dict():
+            len = gen_dict.python_dict_len(self, top_value)
+        else:
+            len_func = self.__code_gen.get_or_create_func("PyObject_Length", code_type.get_int64(),
+                                                             [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                             _gen.Linkage.EXTERNAL)
+            len = self.__builder.call(len_func, [top_value])
+
+        self.push(lang_type.get_int_type(), len)
 
     def visit_match_mapping(self, instr):
         raise unsupported.FlyableUnsupported()
