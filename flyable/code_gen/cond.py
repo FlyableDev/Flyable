@@ -82,38 +82,30 @@ def test_obj_true(visitor: ParserVisitor, value_type: lang_type.LangType, value:
         list_size = _list.python_list_len(visitor, value)
         return builder.lt(list_size, builder.const_int64(0))
     else:
+        is_true_alloca = visitor.generate_entry_block_var(code_type.get_int1())
+
+        if_false_block = builder.create_block()
+        else_block = builder.create_block()
+        continue_block = builder.create_block()
+
+        true_var = builder.global_var(code_gen.get_true())
+        is_true = builder.eq(true_var, value)
+        builder.store(is_true, is_true_alloca)
+        builder.cond_br(is_true, continue_block, if_false_block)
+
+        builder.set_insert_block(if_false_block)
+        false_var = builder.global_var(code_gen.get_false())
+        if_false = builder.eq(false_var, value)
+        builder.store(if_false, is_true_alloca)
+        builder.cond_br(if_false, continue_block, else_block)
+
+        builder.set_insert_block(else_block)
         is_true_func = code_gen.get_or_create_func("PyObject_IsTrue", code_type.get_int32(),
                                                    [code_type.get_py_obj_ptr(code_gen)], _gen.Linkage.EXTERNAL)
         is_true_value = builder.call(is_true_func, [value])
-        return builder.ne(is_true_value, builder.const_int32(0))
+        is_true = builder.ne(is_true_value, builder.const_int32(0))
+        builder.store(is_true, is_true_alloca)
+        builder.br(continue_block)
 
-    """
-    TODO: IMPLEMENT THE FULL TEST TO AVOID PyObject_IsTrue FUNCTION CALL
-    cond_result = visitor.generate_entry_block_var(code_gen, code_type.get_int1())
-    builder.store(cond_result, builder.const_int1(False))
-
-    test_true_block = builder.create_block("Is the object True")
-    test_false_block = builder.create_block("Is the object False")
-    test_none_block = builder.create_block("Is the object None")
-    test_number_protocol_block = builder.create_block("Test with the number protocol")
-    test_mapping_protocol_block = builder.create_block("Test with the mapping protocol")
-    test_sequence_protocol_block = builder.create_block("Test with the sequence protocol")
-    value_true_block = builder.create_block("True block")
-    else_block = builder.create_block("Else block")
-    continue_block = builder.create_block("Continue block")
-
-    builder.br(test_true_block)
-    builder.set_insert_block(test_true_block)
-    true_value = builder.global_var(code_gen.get_true())
-    is_true = builder.eq(true_value, value)
-    builder.cond_br(is_true, value_true_block, test_false_block)
-
-    builder.set_insert_block(test_false_block)
-    false_value = builder.global_var(code_gen.get_true())
-    is_false = builder.eq(false_value, value)
-    builder.cond_br(is_false, continue_block, test_none_block)
-
-    builder.set_insert_block(test_none_block)
-    none_value = builder.global_var(code_gen.get_none())
-    is_none = builder.eq(none_value, test_none_block)
-    """
+        builder.set_insert_block(continue_block)
+        return builder.load(is_true_alloca)
