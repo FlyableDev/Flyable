@@ -11,7 +11,6 @@ from flyable.code_gen.code_builder import CodeBuilder
 
 if TYPE_CHECKING:
     from flyable.parse.parser_visitor import ParserVisitor
-    from flyable.data.lang_class import LangClass
 
 """
 module to handle flyable object info
@@ -180,7 +179,7 @@ def get_py_obj_type_setattr_ptr(visitor: ParserVisitor, obj: int):
     return visitor.get_builder().gep(obj, builder.const_int32(0), builder.const_int32(9))
 
 
-def allocate_flyable_instance(visitor: ParserVisitor, lang_class: LangClass):
+def allocate_flyable_instance(visitor: ParserVisitor, lang_class):
     builder = visitor.get_builder()
     class_lang_type = lang_class.get_lang_type()
     ptr_type = class_lang_type.to_code_type(visitor.get_code_gen())

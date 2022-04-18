@@ -60,6 +60,7 @@ class ParserVisitor:
         self.__stack = []
         self.__blocks_stack = []
         self.__stack_states = []
+        self.__load_method_stack_point = -1
 
     def run(self):
         self.__setup()
@@ -79,7 +80,6 @@ class ParserVisitor:
         self.__setup_argument()
 
         for i, instr in enumerate(self.__instructions):
-            print(instr.opname)
             self.__current_instr_index = i
             self.__visit_instr(instr)
 
@@ -104,6 +104,7 @@ class ParserVisitor:
                 arg_var.set_code_value(item_ptr)
 
     def __visit_instr(self, instr):
+        print(instr.opname)
         if instr in self.__jumps_instr:
             insert_block = self.__jumps_instr[instr]
             self.__builder.br(insert_block)
@@ -534,7 +535,8 @@ class ParserVisitor:
         first_type, first_value = self.pop()  # Either NULL or the callable
         second_type, second_value = self.pop()  # Either self or the callable
 
-        call_result_value = caller.call_callable(self, first_value, second_value, arg_values, self.__kw_names)
+        call_result_value = caller.call_callable(self, first_value, second_value, [first_value] + arg_values,
+                                                 self.__kw_names)
         self.push(None, call_result_value)
         self.__kw_names = {}
 
@@ -572,10 +574,22 @@ class ParserVisitor:
         call_result_type, call_result_value = caller.call_callable(self, callable, args, {})
 
     def visit_load_method(self, instr):
+        found_attr = self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen))
         str_value = self.__code_obj.co_names[instr.arg]
+        str_var = self.__code_gen.get_or_insert_str(str_value)
+        str_var = self.__builder.load(self.__builder.global_var(str_var))
+
         value_type, value = self.pop()
-        found_attr = fly_obj.py_obj_get_attr(self, value, str_value, None)
-        self.push(None, found_attr)
+
+        get_method_func = self.__code_gen.get_or_create_func("_PyObject_GetMethod",
+                                                             code_type.get_int32(),
+                                                             ([code_type.get_py_obj_ptr(self.__code_gen)] * 2) +
+                                                             [code_type.get_py_obj_ptr(self.__code_gen).get_ptr_to()],
+                                                             _gen.Linkage.EXTERNAL)
+
+        is_method = self.__builder.call(get_method_func, [value, str_var, found_attr])
+        self.__load_method_stack_point = self.stack_size()
+        self.push(None, self.__builder.load(found_attr))
         self.push(value_type, value)
 
     def visit_call_method(self, instr):
@@ -728,9 +742,10 @@ class ParserVisitor:
 
     def visit_list_to_tuple(self, instr):
         list_type, list_value = self.pop()
-        list_as_tuple_func = self.__code_gen.get_or_create_func("PyList_AsTuple", code_type.get_py_obj_ptr(self.__code_gen),
-                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
-                                                         _gen.Linkage.EXTERNAL)
+        list_as_tuple_func = self.__code_gen.get_or_create_func("PyList_AsTuple",
+                                                                code_type.get_py_obj_ptr(self.__code_gen),
+                                                                [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                                _gen.Linkage.EXTERNAL)
         new_tuple_value = self.__builder.call(list_as_tuple_func, [list_value])
         self.push(None, new_tuple_value)
 
@@ -835,8 +850,8 @@ class ParserVisitor:
             len = gen_dict.python_dict_len(self, top_value)
         else:
             len_func = self.__code_gen.get_or_create_func("PyObject_Length", code_type.get_int64(),
-                                                             [code_type.get_py_obj_ptr(self.__code_gen)],
-                                                             _gen.Linkage.EXTERNAL)
+                                                          [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                          _gen.Linkage.EXTERNAL)
             len = self.__builder.call(len_func, [top_value])
 
         self.push(lang_type.get_int_type(), len)
@@ -1106,6 +1121,9 @@ class ParserVisitor:
 
     def peek(self, index):
         return self.__stack[-index - 1]
+
+    def stack_size(self):
+        return len(self.__stack)
 
     def get_block_to_jump_to(self, x):
         offset_to_reach = x * 2
