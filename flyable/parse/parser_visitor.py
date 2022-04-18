@@ -613,12 +613,6 @@ class ParserVisitor:
         var = self.get_or_gen_var(name)
         self.push(None, self.__builder.load(var.get_code_gen_value()))
 
-    def visit_load_attr(self, instr):
-        str_value = self.__consts[instr.arg]
-        value_type, value = self.pop()
-        found_attr = fly_obj.py_obj_get_attr(self, value, str_value, None)
-        self.push(None, found_attr)
-
     def visit_store_name(self, instr):
         name = self.__code_obj.co_names[instr.arg]
         str_value = self.__code_gen.get_or_insert_str(name)
@@ -728,9 +722,10 @@ class ParserVisitor:
 
     def visit_list_to_tuple(self, instr):
         list_type, list_value = self.pop()
-        list_as_tuple_func = self.__code_gen.get_or_create_func("PyList_AsTuple", code_type.get_py_obj_ptr(self.__code_gen),
-                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
-                                                         _gen.Linkage.EXTERNAL)
+        list_as_tuple_func = self.__code_gen.get_or_create_func("PyList_AsTuple",
+                                                                code_type.get_py_obj_ptr(self.__code_gen),
+                                                                [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                                _gen.Linkage.EXTERNAL)
         new_tuple_value = self.__builder.call(list_as_tuple_func, [list_value])
         self.push(None, new_tuple_value)
 
@@ -835,8 +830,8 @@ class ParserVisitor:
             len = gen_dict.python_dict_len(self, top_value)
         else:
             len_func = self.__code_gen.get_or_create_func("PyObject_Length", code_type.get_int64(),
-                                                             [code_type.get_py_obj_ptr(self.__code_gen)],
-                                                             _gen.Linkage.EXTERNAL)
+                                                          [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                          _gen.Linkage.EXTERNAL)
             len = self.__builder.call(len_func, [top_value])
 
         self.push(lang_type.get_int_type(), len)
@@ -848,7 +843,49 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_match_keys(self, instr):
-        raise unsupported.FlyableUnsupported()
+        keys_type, keys_value = self.__stack[-1]
+        subject_type, subject_value = self.__stack[-2]
+        keys_size = gen_tuple.python_tuple_len(self, keys_value)
+        new_tuple_value = gen_tuple.python_tuple_new(self.__code_gen, self.__builder, keys_size)
+        new_tuple = self.generate_entry_block_var(code_type.get_tuple_obj_ptr(self.__code_gen))
+        self.__builder.store(new_tuple_value, new_tuple)
+        index_value = self.generate_entry_block_var(code_type.get_int64())
+        self.__builder.store(self.__builder.const_int64(0), index_value)
+
+        next_block = self.__builder.create_block("Next Block")
+        check_index_block = self.__builder.create_block("Check Index Block")
+        set_item_block = self.__builder.create_block("Set Item Block")
+        null_block = self.__builder.create_block("Null Block")
+        continue_block = self.__builder.create_block("Continue Block")
+        self.__builder.br(check_index_block)
+
+        self.__builder.set_insert_block(check_index_block)
+        test = self.__builder.lt(index_value, keys_size)
+        self.__builder.cond_br(test, next_block, continue_block)
+
+        self.__builder.set_insert_block(next_block)
+        args_types = [lang_type.get_int_type()]
+        args = [index_value]
+        item_type, item_value = caller.call_obj(self, "__getitem__", keys_value, keys_type, args, args_types, {})
+        # TODO: we should check that item_value has no duplicates in keys
+        dict_value = gen_dict.python_dict_get_item(self, subject_value, item_value)
+        null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        test = self.__builder.eq(dict_value, null_ptr)
+        self.__builder.cond_br(test, null_block, set_item_block)
+
+        self.__builder.set_insert_block(set_item_block)
+        gen_tuple.python_tuple_set_unsafe(self, new_tuple, index_value, dict_value)
+        incr_index = self.__builder.add(index_value, self.__builder.const_int64(1))
+        self.__builder.store(incr_index, index_value)
+        self.__builder.br(check_index_block)
+
+        self.__builder.set_insert_block(null_block)
+        self.__builder.store(null_ptr, new_tuple)
+        self.__builder.br(continue_block)
+
+        self.__builder.set_insert_block(continue_block)
+        self.push(lang_type.get_tuple_of_python_obj_type(), new_tuple)
+
 
     def visit_build_slice(self, instr):
         slices_count = instr.arg
@@ -1056,10 +1093,42 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_extended_arg(self, instr):
+        # the disassembler takes care of this one
         pass
 
     def visit_format_value(self, instr):
-        raise unsupported.FlyableUnsupported()
+        which_conversion = instr.arg & 0x3
+        have_fmt_spec = (instr.arg & 0x4) == 0x4
+
+        fmt_spec = self.pop()[1] if have_fmt_spec else self.__builder.const_null(
+            code_type.get_py_obj_ptr(self.__code_gen))
+        value_type, value_value = self.pop()
+
+        match which_conversion:
+            case 0x0:
+                conv_fn = None
+            case 0x1:
+                conv_fn = "PyObject_Str"
+            case 0x2:
+                conv_fn = "PyObject_Repr"
+            case 0x3:
+                conv_fn = "PyObject_ASCII"
+            case _:
+                conv_fn = None
+                self.__parser.throw_error("unexpected conversion flag " + str(which_conversion), None, None)
+
+        if conv_fn != None:
+            conv_func = self.__code_gen.get_or_create_func(conv_fn, code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                           _gen.Linkage.EXTERNAL)
+            value_value = self.__builder.call(conv_func, [value_value])
+        else:
+            conv_func = self.__code_gen.get_or_create_func("PyObject_Format", code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                           _gen.Linkage.EXTERNAL)
+            value_value = self.__builder.call(conv_func, [value_value, fmt_spec])
+
+        self.push(value_type, value_value)
 
     def visit_match_class(self, instr):
         raise unsupported.FlyableUnsupported()

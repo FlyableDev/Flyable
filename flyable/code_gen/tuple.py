@@ -49,7 +49,7 @@ def python_tuple_new_alloca(visitor: ParserVisitor, size: int):
     return tuple_result
 
 
-def python_tuple_set(code_gen: gen.CodeGen, builder: CodeBuilder, list: int, index: int, item: int):
+def python_tuple_set(code_gen: gen.CodeGen, builder: CodeBuilder, tuple: int, index: int, item: int):
     """
     Generate the code to set an element in a Python Tuple
     """
@@ -57,7 +57,7 @@ def python_tuple_set(code_gen: gen.CodeGen, builder: CodeBuilder, list: int, ind
                            code_type.get_py_obj_ptr(code_gen)]
     set_item_func = code_gen.get_or_create_func("PyTuple_SetItem", code_type.get_int32(),
                                                 set_item_args_types, gen.Linkage.EXTERNAL)
-    return builder.call(set_item_func, [list, index, item])
+    return builder.call(set_item_func, [tuple, index, item])
 
 
 def python_tuple_set_unsafe(visitor: ParserVisitor, tuple: int, index: int, item: int):
