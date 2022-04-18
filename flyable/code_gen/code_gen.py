@@ -767,6 +767,10 @@ class CodeGen:
             for _func in _file.funcs_iter():
                 _func.generate_code_to_set_impl(self, builder)
 
+        # Setup flyable
+        flyable_func = self.get_or_create_func("flyable_init", code_type.get_void(), [], Linkage.EXTERNAL)
+        builder.call(flyable_func, [])
+
         # Start the CPython main
         func_to_call = self.get_or_create_func("Py_BytesMain", code_type.get_int32(),
                                                [code_type.get_int32(), code_type.get_int8_ptr().get_ptr_to()],

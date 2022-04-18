@@ -45,9 +45,9 @@ def main(file: str, output_dir: str = ".", exec_name: str = "a"):
         add_step("Linking")
 
         # Now link the code
-        # On windows, since no compiler is provide we link with the linker provided with flyable
+        # On windows, since no compiler is provided we link with the linker provided with flyable
         link_path = constants.LINKER_EXEC if platform.system() == "Windows" else "gcc"
-        linker_args = [link_path, "-flto", "output.o", constants.PYTHON_3_11_PATH]
+        linker_args = [link_path, "-flto", "output.o", constants.PYTHON_3_11_PATH, constants.RUNTIME_PATH]
 
         if platform.system() == "Windows":
             linker_args.append(constants.PYTHON_3_11_DLL_PATH)
