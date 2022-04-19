@@ -851,7 +851,7 @@ class ParserVisitor:
         self.push(lang_type.get_bool_type(), res)
 
     def visit_match_keys(self, instr):
-        #TODO: do the visit with the runtime
+        # TODO: do the visit with the runtime
         keys_type, keys_value = self.__stack[-1]
         subject_type, subject_value = self.__stack[-2]
         keys_size = gen_tuple.python_tuple_len(self, keys_value)
@@ -1015,19 +1015,66 @@ class ParserVisitor:
         self.__builder.store(null_value, found_var.get_code_value())
 
     def visit_load_closure(self, instr):
-        raise unsupported.FlyableUnsupported()
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        value = self.__builder.load(found_var.get_code_value())
+        ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), value)
+        self.push(lang_type.get_python_obj_type(), value)
 
     def visit_load_deref(self, instr):
-        raise unsupported.FlyableUnsupported()
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        cell = self.__builder.load(found_var.get_code_value())
+        py_cell_get = self.__code_gen.get_or_create_func("PyCell_GET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        value = self.__builder.call(py_cell_get, [cell])
+        ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), value)
+        self.push(lang_type.get_python_obj_type(), value)
 
     def visit_load_classderef(self, instr):
         raise unsupported.FlyableUnsupported()
 
     def visit_store_deref(self, instr):
-        raise unsupported.FlyableUnsupported()
+        v = self.pop()
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        cell = self.__builder.load(found_var.get_code_value())
+
+        py_cell_get = self.__code_gen.get_or_create_func("PyCell_GET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        oldobj = self.__builder.call(py_cell_get, [cell])
+
+        py_cell_set = self.__code_gen.get_or_create_func("PyCell_SET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(py_cell_set, [cell, v])
+
+        ref_counter.ref_decr_nullable(self.__builder, lang_type.get_python_obj_type(), oldobj)
 
     def visit_delete_deref(self, instr):
-        raise unsupported.FlyableUnsupported()
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        cell = self.__builder.load(found_var.get_code_value())
+
+        py_cell_get = self.__code_gen.get_or_create_func("PyCell_GET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        oldobj = self.__builder.call(py_cell_get, [cell])
+
+        null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        py_cell_set = self.__code_gen.get_or_create_func("PyCell_SET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(py_cell_set, [cell, null_value])
+
+        ref_counter.ref_decr(self.__builder, lang_type.get_python_obj_type(), oldobj)
 
     def visit_return_value(self, instr):
         value_type, value = self.pop()
