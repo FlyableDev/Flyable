@@ -104,7 +104,7 @@ class ParserVisitor:
                 arg_var.set_code_value(item_ptr)
 
     def __visit_instr(self, instr):
-        print(instr.opname)
+        print(instr.opname + (" x" if instr in self.__jumps_instr else ""))
         if instr in self.__jumps_instr:
             insert_block = self.__jumps_instr[instr]
             self.__builder.br(insert_block)
@@ -646,7 +646,15 @@ class ParserVisitor:
         self.__name = self.__builder.global_var(str_value)
 
     def visit_delete_name(self, instr):
-        raise unsupported.FlyableUnsupported()
+        name = self.__code_obj.co_names[instr.arg]
+        str_value = self.__code_gen.get_or_insert_str(name)
+        str_var = self.__builder.global_var(str_value)
+        str_var = self.__builder.load(str_var)
+        global_map = func.py_function_get_globals(self, 0)
+        del_item_func = self.__code_gen.get_or_create_func("PyObject_DelItem", code_type.get_int32(),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                           _gen.Linkage.EXTERNAL)
+        self.__builder.call(del_item_func, [global_map, str_var])
 
     def visit_store_attr(self, instr):
         name = self.__code_obj.co_names[instr.namei]
@@ -656,12 +664,11 @@ class ParserVisitor:
         fly_obj.py_obj_set_attr(self, value, str_value, self.__name, None)
 
     def visit_delete_attr(self, instr):
-        name = self.__code_obj.co_names[instr.namei]
+        name = self.__code_obj.co_names[instr.arg]
         str_value = self.__code_gen.get_or_insert_str(name)
-        self.__name = self.__builder.global_var(str_value)
         owner_type, owner_value = self.pop()
         null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
-        fly_obj.py_obj_set_attr(self, owner_value, self.__name, null_value)
+        fly_obj.py_obj_set_attr(self, owner_value, name, null_value)
 
     def visit_store_global(self, instr):
         raise unsupported.FlyableUnsupported()
