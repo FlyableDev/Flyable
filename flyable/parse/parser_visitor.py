@@ -375,58 +375,65 @@ class ParserVisitor:
     """
 
     def visit_inplace_power(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_power(instr)
 
     def visit_inplace_multiply(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_multiply(instr)
 
     def visit_inplace_matrix_multiply(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_matrix_multiply(instr)
 
     def visit_inplace_floor_divide(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_floor_divide(instr)
 
     def visit_inplace_true_divide(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_true_divide(instr)
 
     def visit_inplace_modulo(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_modulo(instr)
 
     def visit_inplace_add(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_add(instr)
 
     def visit_inplace_subtract(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_subtract(instr)
 
     def visit_inplace_subscr(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_subscr(instr)
 
     def visit_inplace_lshift(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_lshift(instr)
 
     def visit_inplace_rshift(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_rshift(instr)
 
     def visit_inplace_and(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_and(instr)
 
     def visit_inplace_xor(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_xor(instr)
 
     def visit_inplace_or(self, instr):
-        raise unsupported.FlyableUnsupported()
+        self.visit_binary_or(instr)
 
     def visit_store_subscr(self, instr):
-        raise unsupported.FlyableUnsupported()
+        sub_type, sub_value = self.pop()
+        container_type, container_value = self.pop()
+        value_type, value_value = self.pop()
+        set_item_func = self.__code_gen.get_or_create_func("PyObject_SetItem",
+                                                           code_type.get_int32(),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 3,
+                                                           _gen.Linkage.EXTERNAL)
+        self.__builder.call(set_item_func, [container_value, sub_value, value_value])
 
     def visit_delete_subscr(self, instr):
         sub_type, sub_value = self.pop()
         container_type, container_value = self.pop()
         get_item_func = self.__code_gen.get_or_create_func("PyObject_DelItem",
-                                                           code_type.get_py_obj_ptr(self.__code_gen),
+                                                           code_type.get_int32(),
                                                            [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                            _gen.Linkage.EXTERNAL)
-        get_value = self.__builder.call(get_item_func, [container_value, sub_value])
+        self.__builder.call(get_item_func, [container_value, sub_value])
 
     """
     Coroutine opcodes
@@ -1151,7 +1158,7 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_have_argument(self, instr):
-        raise unsupported.FlyableUnsupported()
+        pass
 
     def visit_push_exc_info(self, instr):
         self.__blocks_stack.append(None)
