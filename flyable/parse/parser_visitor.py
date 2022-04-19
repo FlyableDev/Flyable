@@ -60,7 +60,7 @@ class ParserVisitor:
         self.__stack = []
         self.__blocks_stack = []
         self.__stack_states = []
-        self.__load_method_stack_point = -1
+        self.__load_method_stack_point = None
 
     def run(self):
         self.__setup()
@@ -533,10 +533,16 @@ class ParserVisitor:
         arg_values.reverse()
 
         first_type, first_value = self.pop()  # Either NULL or the callable
-        second_type, second_value = self.pop()  # Either self or the callable
 
-        call_result_value = caller.call_callable(self, first_value, second_value, [first_value] + arg_values,
-                                                 self.__kw_names)
+        if self.__load_method_stack_point is not None:
+            self.__load_method_stack_point = None
+            second_type, second_value = self.pop()  # Either self or the callable
+            call_result_value = caller.call_callable(self, first_value, second_value, [first_value] + arg_values,
+                                                     self.__kw_names)
+        else:
+            call_result_value = caller.call_callable(self, first_value, first_value, [first_value] + arg_values,
+                                                     self.__kw_names)
+
         self.push(None, call_result_value)
         self.__kw_names = {}
 
@@ -899,7 +905,6 @@ class ParserVisitor:
 
         self.__builder.set_insert_block(continue_block)
         self.push(lang_type.get_tuple_of_python_obj_type(), new_tuple)
-
 
     def visit_build_slice(self, instr):
         slices_count = instr.arg
