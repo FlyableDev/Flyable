@@ -12,6 +12,7 @@ import flyable.parse.context as context
 import flyable.data.type_hint as hint
 import flyable.code_gen.code_type as code_type
 import enum
+import flyable.data.lang_type as lang_type
 
 
 class FuncImplType(enum.IntEnum):
@@ -103,6 +104,9 @@ class LangFuncImpl:
 
     def get_context(self):
         return self.__context
+
+    def get_return_type(self):
+        return lang_type.get_python_obj_type()
 
     def clear_info(self):
         # We need to keep global variable for global funcs

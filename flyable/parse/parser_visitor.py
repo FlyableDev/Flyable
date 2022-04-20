@@ -74,7 +74,7 @@ class ParserVisitor:
         for instr in self.__bytecode:
             self.__instructions.append(instr)
             if instr.is_jump_target:
-                new_block = self.__builder.create_block()
+                new_block = self.__builder.create_block("Instr:" + instr.opname)
                 self.__jumps_instr[instr] = new_block
 
         self.__setup_argument()
@@ -85,6 +85,8 @@ class ParserVisitor:
 
         self.__builder.set_insert_block(self.__entry_block)
         self.__builder.br(self.__content_block)
+
+        self.__code_gen.fill_not_terminated_block(self)
 
     def __setup_argument(self):
         callable_value = 0
@@ -104,11 +106,14 @@ class ParserVisitor:
                 arg_var.set_code_value(item_ptr)
 
     def __visit_instr(self, instr):
-        print(instr.opname + (" x" if instr in self.__jumps_instr else ""))
+
         if instr in self.__jumps_instr:
             insert_block = self.__jumps_instr[instr]
             self.__builder.br(insert_block)
             self.__builder.set_insert_block(insert_block)
+            self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
+
+        print(instr.opname + (" x" if instr in self.__jumps_instr else ""))
 
         method_to_visit = "visit_" + instr.opname.lower()
         if hasattr(self, method_to_visit):
@@ -213,7 +218,7 @@ class ParserVisitor:
 
     def visit_copy(self, instr):
         index = instr.arg
-        # self.push(*self.peek(index))
+        self.push(*self.__stack[-index + 1])
 
     def visit_swap(self, instr):
         index = instr.arg
@@ -877,6 +882,7 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_match_keys(self, instr):
+        # Todo use the CPython function
         keys_type, keys_value = self.__stack[-1]
         subject_type, subject_value = self.__stack[-2]
         keys_size = gen_tuple.python_tuple_len(self, keys_value)
@@ -1101,14 +1107,16 @@ class ParserVisitor:
         from_type, from_value = self.pop()
 
     def visit_reraise(self, instr):
-        raise unsupported.FlyableUnsupported()
-        has_lasti = instr.arg
+        lasti = instr.arg
+
+        if lasti:
+            self.__lasti = lasti
 
         # val_type, val_value = self.pop()
 
-        # new_re_func = self.__code_gen.get_or_create_func("Py_NewRef", code_type.get_py_obj_ptr(self.__code_gen),
-        #                                                 [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
-        #                                                 _gen.Linkage.EXTERNAL)
+        new_re_func = self.__code_gen.get_or_create_func("Py_NewRef", code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
 
     def visit_raise_varargs(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -1178,13 +1186,18 @@ class ParserVisitor:
 
     def visit_check_exc_match(self, instr):
         right_type, right_value = self.pop()
+        right_type, right_value = runtime.value_to_pyobj(self, right_value, right_type)
         left_type, left_value = self.top()
+        left_type, left_value = runtime.value_to_pyobj(self, left_value, left_type)
+
         excp_math_func = self.__code_gen.get_or_create_func("PyErr_GivenExceptionMatches", code_type.get_int32(),
                                                             [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                             _gen.Linkage.EXTERNAL)
+
         excp_match = self.__builder.call(excp_math_func, [left_value, right_value])
+        excp_match = self.__builder.int_cast(excp_match, code_type.get_int64())
         match_type, match_value = runtime.value_to_pyobj(self, excp_match, lang_type.get_int_type())
-        self.push(None, match_value)
+        self.push(match_type, match_value)
 
     """
     Visitor methods
@@ -1237,6 +1250,9 @@ class ParserVisitor:
     def __get_code_func(self):
         code_func = self.__func.get_code_func()
         return code_func
+
+    def get_func(self):
+        return self.__func
 
     def get_code_gen(self):
         return self.__code_gen
