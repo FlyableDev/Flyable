@@ -157,6 +157,15 @@ def py_function_get_globals(visitor: ParserVisitor, func_obj: int):
     return builder.load(result)
 
 
+def py_function_get_builtins(visitor, func_obj):
+    code_gen = visitor.get_code_gen()
+    builder = visitor.get_builder()
+    func = builder.ptr_cast(func_obj, code_gen.get_python_function_object_struct().to_code_type().get_ptr_to())
+    gep_indices = [builder.const_int32(0), builder.const_int32(3)]
+    result = builder.gep2(func, code_gen.get_python_function_object_struct().to_code_type(), gep_indices)
+    return builder.load(result)
+
+
 def py_dict_get_item(visitor: ParserVisitor, d: int, k: int):
     """Gets the value associated with key from the dictionary.
 

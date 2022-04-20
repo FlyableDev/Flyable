@@ -1089,10 +1089,16 @@ class ParserVisitor:
         if version.get_python_version() >= version.PythonVersion.VERSION_3_11:
             namei = namei >> 1
         var_name = self.__code_obj.co_names[namei]
+
         str_name_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(var_name))
         str_name_value = self.__builder.load(str_name_value)
-        global_dict_value = func.py_function_get_globals(self, self.__frame_ptr_value)
-        global_value = func.py_dict_get_item(self, global_dict_value, str_name_value)
+
+        import builtins
+        if hasattr(builtins, var_name):
+            dict_value = func.py_function_get_builtins(self, self.__frame_ptr_value)
+        else:
+            dict_value = func.py_function_get_globals(self, self.__frame_ptr_value)
+        global_value = func.py_dict_get_item(self, dict_value, str_name_value)
         self.push(None, global_value)
 
     def visit_setup_finally(self, instr):
