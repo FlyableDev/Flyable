@@ -19,6 +19,7 @@ import flyable.code_gen.list as gen_list
 import flyable.code_gen.dict as gen_dict
 import flyable.code_gen.tuple as gen_tuple
 import flyable.parse.version as version
+import flyable.code_gen.function as function
 
 import flyable.parse.exception.unsupported as unsupported
 
@@ -218,7 +219,7 @@ class ParserVisitor:
 
     def visit_copy(self, instr):
         index = instr.arg
-        self.push(*self.__stack[-index + 1])
+        # self.push(*self.peek(index))
 
     def visit_swap(self, instr):
         index = instr.arg
@@ -267,68 +268,32 @@ class ParserVisitor:
 
     def visit_binary_op(self, instr):
         op_type = instr.arg
-
-        right_type, right_value = self.pop()
-        left_type, left_value = self.pop()
-
-        op_func = self.__code_gen.get_or_create_func(op_call.get_binary_op_func_to_call(op_type),
-                                                     code_type.get_py_obj_ptr(self.__code_gen),
-                                                     [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
-                                                     _gen.Linkage.EXTERNAL)
-        op_result = self.__builder.call(op_func, [left_value, right_value])
-        self.push(None, op_result)
+        op = op_call.get_binary_op_func_to_call(op_type)
+        self.binary_or_inplace_visit(op)
 
     def visit_binary_power(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__pow__", value, value_type, [value_1], [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("_PyNumber_PowerNoMod")
 
     def visit_binary_multiply(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__mul__", value, value_type, [value_1], [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_Multiply")
 
     def visit_binary_matrix_multiply(self, instr):
-        raise NotImplementedError()
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__matmul__", value, value_type, [value_1], [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_MatrixMultiply")
 
     def visit_binary_floor_divide(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__floor_div__", value, value_type, [value_1],
-                                                    [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_FloorDivide")
 
     def visit_binary_true_divide(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__div__", value, value_type, [value_1],
-                                                    [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_TrueDivide")
 
     def visit_binary_modulo(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__mod__", value, value_type, [value_1],
-                                                    [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_Remainder")
 
     def visit_binary_add(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__add__", value, value_type, [value_1], [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_Add")
 
     def visit_binary_subtract(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__subtract__", value, value_type, [value_1], [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_Subtract")
 
     def visit_binary_subscr(self, instr):
         sub_type, sub_value = self.pop()
@@ -341,85 +306,65 @@ class ParserVisitor:
         self.push(None, get_value)
 
     def visit_binary_lshift(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__lshift__", value, value_type, [value_1],
-                                                    [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_Lshift")
 
     def visit_binary_rshift(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__rshift__", value, value_type, [value_1],
-                                                    [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_Rshift")
 
     def visit_binary_and(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__and__", value, value_type, [value_1],
-                                                    [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_And")
 
     def visit_binary_xor(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__xor__", value, value_type, [value_1],
-                                                    [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_Xor")
 
     def visit_binary_or(self, instr):
-        value_type, value = self.pop()
-        value_type_1, value_1 = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__or__", value, value_type, [value_1],
-                                                    [value_type_1])
-        self.push(new_value_type, new_value)
+        self.binary_or_inplace_visit("PyNumber_Or")
 
     """
     In-place operations
     """
 
     def visit_inplace_power(self, instr):
-        self.visit_binary_power(instr)
+        self.binary_or_inplace_visit("_PyNumber_InPlacePowerNoMod")
 
     def visit_inplace_multiply(self, instr):
-        self.visit_binary_multiply(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceMultiply")
 
     def visit_inplace_matrix_multiply(self, instr):
-        self.visit_binary_matrix_multiply(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceMatrixMultiply")
 
     def visit_inplace_floor_divide(self, instr):
-        self.visit_binary_floor_divide(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceFloorDivide")
 
     def visit_inplace_true_divide(self, instr):
-        self.visit_binary_true_divide(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceTrueDivide")
 
     def visit_inplace_modulo(self, instr):
-        self.visit_binary_modulo(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceRemainder")
 
     def visit_inplace_add(self, instr):
-        self.visit_binary_add(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceAdd")
 
     def visit_inplace_subtract(self, instr):
-        self.visit_binary_subtract(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceSubtract")
 
     def visit_inplace_subscr(self, instr):
-        self.visit_binary_subscr(instr)
+        raise unsupported.FlyableUnsupported()
 
     def visit_inplace_lshift(self, instr):
-        self.visit_binary_lshift(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceLshift")
 
     def visit_inplace_rshift(self, instr):
-        self.visit_binary_rshift(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceRshift")
 
     def visit_inplace_and(self, instr):
-        self.visit_binary_and(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceAnd")
 
     def visit_inplace_xor(self, instr):
-        self.visit_binary_xor(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceXor")
 
     def visit_inplace_or(self, instr):
-        self.visit_binary_or(instr)
+        self.binary_or_inplace_visit("PyNumber_InPlaceOr")
 
     def visit_store_subscr(self, instr):
         sub_type, sub_value = self.pop()
@@ -460,6 +405,9 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_setup_async_with(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_async_gen_wrap(self, instr):
         raise unsupported.FlyableUnsupported()
 
     """
@@ -689,6 +637,9 @@ class ParserVisitor:
     def visit_setup_with(self, instr):
         raise unsupported.FlyableUnsupported()
 
+    def visit_before_with(self, instr):
+        raise unsupported.FlyableUnsupported()
+
     def visit_unpack_sequence(self, instr):
         seq_type, seq = self.pop()
         unpack.unpack_iterable(self, seq_type, seq, instr.arg, -1)
@@ -836,7 +787,16 @@ class ParserVisitor:
         self.__builder.call(update_func, [dict_value, update_value])
 
     def visit_dict_merge(self, instr):
-        raise unsupported.FlyableUnsupported()
+        update_type, update_value = self.pop()
+        dict_type, dict_value = self.__stack[-instr.arg]
+        two = self.__builder.const_int64(2)
+        dict_merge_func = self.__code_gen.get_or_create_func("_PyDict_MergeEx",
+                                                             code_type.get_py_obj_ptr(self.__code_gen),
+                                                             [code_type.get_py_obj_ptr(self.__code_gen),
+                                                              code_type.get_py_obj_ptr(self.__code_gen),
+                                                              code_type.get_int32()],
+                                                             _gen.Linkage.EXTERNAL)
+        self.__builder.call(dict_merge_func, [dict_value, update_value, two])
 
     def visit_set_add(self, instr):
         item_type, item_value = self.pop()
@@ -876,13 +836,34 @@ class ParserVisitor:
         self.push(lang_type.get_int_type(), len)
 
     def visit_match_mapping(self, instr):
-        raise unsupported.FlyableUnsupported()
+        py_tpflags_mapping = self.__builder.const_int64(64)
+        subject_type, subject_value = self.__stack[-1]
+
+        subject_type = fly_obj.get_py_obj_type(self.__builder, subject_value)
+        tp_flag = function.py_obj_type_get_tp_flag_ptr(self, subject_type)
+        tp_flag = self.__builder.load(tp_flag)
+
+        match = self.__builder._and(tp_flag, py_tpflags_mapping)
+        zero = self.__builder.const_int64(0)
+        res = self.__builder.ne(match, zero)
+        self.push(lang_type.get_bool_type(), res)
 
     def visit_match_sequence(self, instr):
-        raise unsupported.FlyableUnsupported()
+        py_tpflags_sequence = self.__builder.const_int64(32)
+        subject_type, subject_value = self.__stack[-1]
+
+        subject_type = fly_obj.get_py_obj_type(self.__builder, subject_value)
+        tp_flag = function.py_obj_type_get_tp_flag_ptr(self, subject_type)
+        tp_flag = self.__builder.load(tp_flag)
+
+        match = self.__builder._and(tp_flag, py_tpflags_sequence)
+        zero = self.__builder.const_int64(0)
+        res = self.__builder.ne(match, zero)
+        self.push(lang_type.get_bool_type(), res)
 
     def visit_match_keys(self, instr):
-        # Todo use the CPython function
+        # TODO: do the visit with the runtime. Previously to 3.11 this instruction also pushed a boolean value
+        #  indicating success (True) or failure (False).
         keys_type, keys_value = self.__stack[-1]
         subject_type, subject_value = self.__stack[-2]
         keys_size = gen_tuple.python_tuple_len(self, keys_value)
@@ -962,6 +943,78 @@ class ParserVisitor:
         block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
         self.__builder.br(block_to_jump)
 
+    def visit_jump_backward_no_interrupt(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        self.__builder.br(block_to_jump)
+
+    def visit_pop_jump_forward_if_true(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_true(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_forward_if_false(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_false(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_forward_if_not_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.ne(none_value, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_not_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.ne(none_value, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_forward_if_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.eq(none_value, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.eq(none_value, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
     def visit_pop_jump_if_true(self, instr):
         block_to_jump = self.get_block_to_jump_to(instr.arg)
         else_block = self.__builder.create_block()
@@ -993,6 +1046,15 @@ class ParserVisitor:
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.ne(none_value, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_if_none(self, instr):
+        block_to_jump = self.get_block_to_jump_to(instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.eq(none_value, value)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1046,19 +1108,72 @@ class ParserVisitor:
         self.__builder.store(null_value, found_var.get_code_value())
 
     def visit_load_closure(self, instr):
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        value = self.__builder.load(found_var.get_code_value())
+        ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), value)
+        self.push(lang_type.get_python_obj_type(), value)
+
+    def visit_copy_free_vars(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_make_cell(self, instr):
         raise unsupported.FlyableUnsupported()
 
     def visit_load_deref(self, instr):
-        raise unsupported.FlyableUnsupported()
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        cell = self.__builder.load(found_var.get_code_value())
+        py_cell_get = self.__code_gen.get_or_create_func("PyCell_GET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        value = self.__builder.call(py_cell_get, [cell])
+        ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), value)
+        self.push(lang_type.get_python_obj_type(), value)
 
     def visit_load_classderef(self, instr):
         raise unsupported.FlyableUnsupported()
 
     def visit_store_deref(self, instr):
-        raise unsupported.FlyableUnsupported()
+        v = self.pop()
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        cell = self.__builder.load(found_var.get_code_value())
+
+        py_cell_get = self.__code_gen.get_or_create_func("PyCell_GET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        oldobj = self.__builder.call(py_cell_get, [cell])
+
+        py_cell_set = self.__code_gen.get_or_create_func("PyCell_SET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(py_cell_set, [cell, v])
+
+        ref_counter.ref_decr_nullable(self.__builder, lang_type.get_python_obj_type(), oldobj)
 
     def visit_delete_deref(self, instr):
-        raise unsupported.FlyableUnsupported()
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        cell = self.__builder.load(found_var.get_code_value())
+
+        py_cell_get = self.__code_gen.get_or_create_func("PyCell_GET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        oldobj = self.__builder.call(py_cell_get, [cell])
+
+        null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        py_cell_set = self.__code_gen.get_or_create_func("PyCell_SET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(py_cell_set, [cell, null_value])
+
+        ref_counter.ref_decr(self.__builder, lang_type.get_python_obj_type(), oldobj)
 
     def visit_return_value(self, instr):
         value_type, value = self.pop()
@@ -1068,6 +1183,12 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_yield_from(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_return_generator(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_send(self, instr):
         raise unsupported.FlyableUnsupported()
 
     """
@@ -1117,6 +1238,9 @@ class ParserVisitor:
         new_re_func = self.__code_gen.get_or_create_func("Py_NewRef", code_type.get_py_obj_ptr(self.__code_gen),
                                                          [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                          _gen.Linkage.EXTERNAL)
+
+    def visit_prep_reraise_star(self, instr):
+        raise unsupported.FlyableUnsupported()
 
     def visit_raise_varargs(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -1199,6 +1323,9 @@ class ParserVisitor:
         match_type, match_value = runtime.value_to_pyobj(self, excp_match, lang_type.get_int_type())
         self.push(match_type, match_value)
 
+    def visit_check_eg_match(self, instr):
+        raise unsupported.FlyableUnsupported()
+
     """
     Visitor methods
     """
@@ -1273,3 +1400,14 @@ class ParserVisitor:
             found_var = self.__context.add_var(var_name, lang_type.get_python_obj_type())
             found_var.set_code_value(self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen)))
         return found_var
+
+    def binary_or_inplace_visit(self, op_type):
+        right_type, right_value = self.pop()
+        left_type, left_value = self.pop()
+
+        op_func = self.__code_gen.get_or_create_func(op_type,
+                                                     code_type.get_py_obj_ptr(self.__code_gen),
+                                                     [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                     _gen.Linkage.EXTERNAL)
+        op_result = self.__builder.call(op_func, [left_value, right_value])
+        self.push(None, op_result)
