@@ -66,7 +66,7 @@ class ParserVisitor:
     def run(self):
         self.__setup()
         self.__bytecode = dis.Bytecode(self.__func.get_parent_func().get_source_code())
-        self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0])
+        self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0], show_caches=True)
         self.__code_obj = self.__bytecode.codeobj
         self.__frame_ptr_value = 0
 
@@ -179,6 +179,9 @@ class ParserVisitor:
         pass
 
     def visit_resume(self, instr):
+        pass
+
+    def visit_cache(self, instr):
         pass
 
     def visit_pop_top(self, instr):
@@ -624,15 +627,23 @@ class ParserVisitor:
         fly_obj.py_obj_set_attr(self, owner_value, name, null_value)
 
     def visit_store_global(self, instr):
-        raise unsupported.FlyableUnsupported()
-
-    def visit_delete_global(self, instr):
-        str_name = self.__code_obj[instr.arg]
+        str_name = self.__code_obj.co_names[instr.arg]
         str_var = self.__code_gen.get_or_insert_str(str_name)
         str_var = self.__builder.global_var(str_var)
+        str_var = self.__builder.load(str_var)
+        v_type, v_value = self.pop()
+        v_type, v_value = runtime.value_to_pyobj(self, v_value, v_type)
+
+        globals = function.py_function_get_globals(self, 0)
+        gen_dict.python_dict_set_item(self, globals, str_var, v_value)
+
+    def visit_delete_global(self, instr):
+        str_name = self.__code_obj.co_names[instr.arg]
+        str_var = self.__code_gen.get_or_insert_str(str_name)
+        str_var = self.__builder.global_var(str_var)
+        str_var = self.__builder.load(str_var)
         global_map = func.py_function_get_globals(self, 0)
-        null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
-        gen_dict.python_dict_set_item(self, global_map, str_var, null_value)
+        gen_dict.python_dict_del_item(self, global_map, str_var)
 
     def visit_setup_with(self, instr):
         raise unsupported.FlyableUnsupported()

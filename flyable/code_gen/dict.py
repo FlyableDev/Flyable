@@ -19,11 +19,22 @@ def python_dict_set_item(visitor: ParserVisitor, dict: int, key: int, value: int
                                        [code_type.get_py_obj_ptr(code_gen)] * 3, gen.Linkage.EXTERNAL)
     return builder.call(func, [dict, key, value])
 
+
 def python_dict_get_item(visitor: ParserVisitor, dict: int, key: int):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     func = code_gen.get_or_create_func("PyDict_GetItem", code_type.get_py_obj_ptr(code_gen),
                                        [code_type.get_py_obj_ptr(code_gen)] * 2, gen.Linkage.EXTERNAL)
     return builder.call(func, [dict, key])
+
+
+def python_dict_del_item(visitor, dict, key):
+    builder = visitor.get_builder()
+    code_gen = visitor.get_code_gen()
+    func = code_gen.get_or_create_func("PyDict_DelItem", code_type.get_int32(),
+                                       [code_type.get_py_obj_ptr(code_gen)] * 2,
+                                       gen.Linkage.EXTERNAL)
+    return builder.call(func, [dict, key])
+
 
 def python_dict_len(visitor: ParserVisitor, dict: int):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
@@ -31,8 +42,10 @@ def python_dict_len(visitor: ParserVisitor, dict: int):
     func = code_gen.get_or_create_func("PyDict_Size", code_type.get_int64(), args_types, gen.Linkage.EXTERNAL)
     return builder.call(func, [dict])
 
+
 def python_dict_get_keys(visitor: ParserVisitor, dict: int):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     args_types = [code_type.get_py_obj_ptr(code_gen)]
-    func = code_gen.get_or_create_func("PyDict_Keys", code_type.get_py_obj_ptr(code_gen), args_types, gen.Linkage.EXTERNAL)
+    func = code_gen.get_or_create_func("PyDict_Keys", code_type.get_py_obj_ptr(code_gen), args_types,
+                                       gen.Linkage.EXTERNAL)
     return builder.call(func, [dict])
