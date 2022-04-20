@@ -23,6 +23,7 @@ CODE_BUILDER_IDS = [
     "_and",
     "_or",
     "mod",
+    "floor",
     "_not",
     "store",
     "load",
