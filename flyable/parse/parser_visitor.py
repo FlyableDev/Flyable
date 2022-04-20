@@ -402,6 +402,9 @@ class ParserVisitor:
     def visit_setup_async_with(self, instr):
         raise unsupported.FlyableUnsupported()
 
+    def visit_async_gen_wrap(self, instr):
+        raise unsupported.FlyableUnsupported()
+
     """
     Compare
     """
@@ -629,6 +632,9 @@ class ParserVisitor:
     def visit_setup_with(self, instr):
         raise unsupported.FlyableUnsupported()
 
+    def visit_before_with(self, instr):
+        raise unsupported.FlyableUnsupported()
+
     def visit_unpack_sequence(self, instr):
         seq_type, seq = self.pop()
         unpack.unpack_iterable(self, seq_type, seq, instr.arg, -1)
@@ -851,7 +857,8 @@ class ParserVisitor:
         self.push(lang_type.get_bool_type(), res)
 
     def visit_match_keys(self, instr):
-        # TODO: do the visit with the runtime
+        # TODO: do the visit with the runtime. Previously to 3.11 this instruction also pushed a boolean value
+        #  indicating success (True) or failure (False).
         keys_type, keys_value = self.__stack[-1]
         subject_type, subject_value = self.__stack[-2]
         keys_size = gen_tuple.python_tuple_len(self, keys_value)
@@ -931,6 +938,78 @@ class ParserVisitor:
         block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
         self.__builder.br(block_to_jump)
 
+    def visit_jump_backward_no_interrupt(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        self.__builder.br(block_to_jump)
+
+    def visit_pop_jump_forward_if_true(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_true(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_forward_if_false(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_false(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_forward_if_not_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.ne(none_value, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_not_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.ne(none_value, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_forward_if_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.eq(none_value, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.eq(none_value, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
     def visit_pop_jump_if_true(self, instr):
         block_to_jump = self.get_block_to_jump_to(instr.arg)
         else_block = self.__builder.create_block()
@@ -962,6 +1041,15 @@ class ParserVisitor:
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.ne(none_value, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_if_none(self, instr):
+        block_to_jump = self.get_block_to_jump_to(instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.eq(none_value, value)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1020,6 +1108,12 @@ class ParserVisitor:
         value = self.__builder.load(found_var.get_code_value())
         ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), value)
         self.push(lang_type.get_python_obj_type(), value)
+
+    def visit_copy_free_vars(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_make_cell(self, instr):
+        raise unsupported.FlyableUnsupported()
 
     def visit_load_deref(self, instr):
         var_name = self.__code_obj.co_varnames[instr.arg]
@@ -1086,6 +1180,12 @@ class ParserVisitor:
     def visit_yield_from(self, instr):
         raise unsupported.FlyableUnsupported()
 
+    def visit_return_generator(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_send(self, instr):
+        raise unsupported.FlyableUnsupported()
+
     """
     Miscellaneous opcodes
     """
@@ -1131,6 +1231,9 @@ class ParserVisitor:
         # new_re_func = self.__code_gen.get_or_create_func("Py_NewRef", code_type.get_py_obj_ptr(self.__code_gen),
         #                                                 [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
         #                                                 _gen.Linkage.EXTERNAL)
+
+    def visit_prep_reraise_star(self, instr):
+        raise unsupported.FlyableUnsupported()
 
     def visit_raise_varargs(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -1207,6 +1310,9 @@ class ParserVisitor:
         excp_match = self.__builder.call(excp_math_func, [left_value, right_value])
         match_type, match_value = runtime.value_to_pyobj(self, excp_match, lang_type.get_int_type())
         self.push(None, match_value)
+
+    def visit_check_eg_match(self, instr):
+        raise unsupported.FlyableUnsupported()
 
     """
     Visitor methods
