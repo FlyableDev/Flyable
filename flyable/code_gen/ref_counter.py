@@ -195,7 +195,7 @@ def decr_all_variables(visitor: ParserVisitor):
         if var.get_code_value() is not None:
             if not var.is_arg():
                 if var.is_global():
-                    val = var.get_code_gen_value()
+                    val = var.get_code_value()
                     if val is None or isinstance(val, int):
                         raise Exception("Global variable ref not found.")
                     value = visitor.get_builder().global_var(val)

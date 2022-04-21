@@ -571,7 +571,6 @@ class ParserVisitor:
         for i, arg_value in enumerate(arg_values):
             ref_counter.ref_decr(self, arg_types[i], arg_value)
 
-
     def visit_call_function(self, instr):
         args_count = instr.arg
 
@@ -685,12 +684,13 @@ class ParserVisitor:
     def visit_load_name(self, instr):
         name = self.__code_obj.co_names[instr.arg]
         var = self.get_or_gen_var(name)
-        self.push(None, self.__builder.load(var.get_code_gen_value()))
+        self.push(None, self.__builder.load(var.get_code_value()))
 
     def visit_store_name(self, instr):
         name = self.__code_obj.co_names[instr.arg]
-        str_value = self.__code_gen.get_or_insert_str(name)
-        self.__name = self.__builder.global_var(str_value)
+        var = self.get_or_gen_var(name)
+        store_type, store_value = self.pop()
+        self.__builder.store(store_value, var.get_code_value())
 
     def visit_delete_name(self, instr):
         name = self.__code_obj.co_names[instr.arg]
