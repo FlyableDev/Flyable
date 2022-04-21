@@ -61,8 +61,6 @@ class ParserVisitor:
         self.__stack = []
         self.__blocks_stack = []
         self.__stack_states = []
-        self.__is_method = None
-        self.__load_method_stack_point = None
 
     def run(self):
         self.__setup()
@@ -653,7 +651,6 @@ class ParserVisitor:
 
         self.push(None, self.__builder.load(first_push_alloca))
         self.push(value_type, self.__builder.load(second_push_alloca))
-        self.__load_method_stack_point = self.stack_size()
 
     def visit_call_method(self, instr):
         args_count = instr.arg
