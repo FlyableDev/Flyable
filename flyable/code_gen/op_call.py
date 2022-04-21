@@ -133,22 +133,22 @@ def bin_op(
             return return_type, return_value
         else:
             raise TypeError("Unsupported type for pow operator")
-
+        
     if isinstance(op, ast.FloorDiv):
+        value_left = builder.float_cast(value_left, code_type.get_double())
+        value_right = builder.float_cast(value_right, code_type.get_double())
+        
+        div = builder.div(value_left, value_right)
+        floored_div = builder.floor(div)
+
         if type_left.is_int() and type_right.is_int():
-            result = builder.div(value_left, value_right)
-            return lang_type.get_int_type(), result
+            floored_div = builder.int_cast(floored_div, code_type.get_int64())
+            result_type = lang_type.get_int_type()
+
         elif type_left.is_dec() or type_right.is_dec():
-            # cast in case it'second_value not double
-            value_right = builder.float_cast(value_right, code_type.get_double())
-            # cast in case it'second_value not double
-            value_left = builder.float_cast(value_left, code_type.get_double())
-            result = builder.div(value_left, value_right)
-            result = builder.int_cast(result, code_type.get_int64())
-            result = builder.float_cast(result, code_type.get_double())
-            return lang_type.get_dec_type(), result
-        else:
-            """Do something"""
+            result_type = lang_type.get_dec_type()
+
+        return result_type, floored_div
 
     result_type = copy.copy(type_left)
     result_type.clear_hints()  # Since an op is done we remove the constant value hint
@@ -163,7 +163,21 @@ def bin_op(
     elif isinstance(op, ast.Div):
         apply_op = builder.div
     elif isinstance(op, ast.Mod):
-        apply_op = builder.mod
+        value_left = builder.float_cast(value_left, code_type.get_double())
+        value_right = builder.float_cast(value_right, code_type.get_double())
+
+        div = builder.div(value_left, value_right)
+        floored_div = builder.floor(builder.float_cast(div, code_type.get_double()))
+        mul = builder.mul(value_right, floored_div)
+        mod = builder.sub(value_left, mul)
+        
+        if type_left.is_int() and type_right.is_int():
+            mod = builder.int_cast(mod, code_type.get_int64())
+            result_type = lang_type.get_int_type()
+        elif type_left.is_dec() or type_right.is_dec():    
+            result_type = lang_type.get_dec_type()
+            
+        return result_type, mod
     else:
         raise ValueError("Unsupported Op " + str(op))
 
