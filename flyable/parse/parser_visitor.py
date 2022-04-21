@@ -61,6 +61,7 @@ class ParserVisitor:
         self.__stack = []
         self.__blocks_stack = []
         self.__stack_states = []
+        self.__is_method = None
         self.__load_method_stack_point = None
 
     def run(self):
@@ -485,6 +486,8 @@ class ParserVisitor:
 
         args_count = instr.arg
 
+        result_value = self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen))
+
         arg_types = []
         arg_values = []
         for i in range(args_count):
@@ -495,18 +498,29 @@ class ParserVisitor:
         arg_types.reverse()
         arg_values.reverse()
 
-        first_type, first_value = self.pop()  # Either NULL or the callable
+        first_type, first_value = self.pop()  # Callable or self
+        second_type, second_value = self.pop()  # NULL or method
 
-        if self.__load_method_stack_point is not None:
-            self.__load_method_stack_point = None
-            second_type, second_value = self.pop()  # Either self or the callable
-            call_result_value = caller.call_callable(self, first_value, second_value, [first_value] + arg_values,
-                                                     self.__kw_names)
-        else:
-            call_result_value = caller.call_callable(self, first_value, first_value, [first_value] + arg_values,
-                                                     self.__kw_names)
+        is_method_block = self.__builder.create_block()
+        not_method_block = self.__builder.create_block()
+        continue_block = self.__builder.create_block()
 
-        self.push(None, call_result_value)
+        is_meth = self.__builder.ne(second_value, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
+        self.__builder.cond_br(is_meth, is_method_block, not_method_block)
+
+        self.__builder.set_insert_block(is_method_block)
+        value = caller.call_callable(self, first_value, second_value, [first_value] + arg_values, self.__kw_names)
+        self.__builder.store(value, result_value)
+        self.__builder.br(continue_block)
+
+        self.__builder.set_insert_block(not_method_block)
+        value = caller.call_callable(self, first_value, first_value, arg_values, self.__kw_names)
+        self.__builder.store(value, result_value)
+        self.__builder.br(continue_block)
+
+        self.__builder.set_insert_block(continue_block)
+
+        self.push(None, self.__builder.load(result_value))
         self.__kw_names = {}
 
     def visit_call_function(self, instr):
@@ -557,9 +571,32 @@ class ParserVisitor:
                                                              _gen.Linkage.EXTERNAL)
 
         is_method = self.__builder.call(get_method_func, [value, str_var, found_attr])
+
+        first_push_alloca = self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen))
+        second_push_alloca = self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen))
+
+        is_method_block = self.__builder.create_block()
+        not_method_block = self.__builder.create_block()
+        continue_block = self.__builder.create_block()
+
+        is_method = self.__builder.ne(is_method, self.__builder.const_int32(0))
+        self.__builder.cond_br(is_method, is_method_block, not_method_block)
+
+        self.__builder.set_insert_block(is_method_block)
+        self.__builder.store(self.__builder.load(found_attr), first_push_alloca)
+        self.__builder.store(value, second_push_alloca)
+        self.__builder.br(continue_block)
+
+        self.__builder.set_insert_block(not_method_block)
+        self.__builder.store(self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)), first_push_alloca)
+        self.__builder.store(self.__builder.load(found_attr), second_push_alloca)
+        self.__builder.br(continue_block)
+
+        self.__builder.set_insert_block(continue_block)
+
+        self.push(None, self.__builder.load(first_push_alloca))
+        self.push(value_type, self.__builder.load(second_push_alloca))
         self.__load_method_stack_point = self.stack_size()
-        self.push(None, self.__builder.load(found_attr))
-        self.push(value_type, value)
 
     def visit_call_method(self, instr):
         args_count = instr.arg
@@ -1087,6 +1124,8 @@ class ParserVisitor:
     def visit_load_global(self, instr):
         namei = instr.arg
         if version.get_python_version() >= version.PythonVersion.VERSION_3_11:
+            if namei & 1:
+                self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
             namei = namei >> 1
         var_name = self.__code_obj.co_names[namei]
 
