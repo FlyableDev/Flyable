@@ -91,6 +91,7 @@ def unpack_iterable(visitor: ParserVisitor, seq_type, seq, arg_count, arg_count_
         builder.br(continue_block)
 
     builder.set_insert_block(continue_block)
+    ref_counter.ref_decr(visitor, iterable_type, iterator)
     for k in range(len(temp_stack)):
         type, value = temp_stack.pop()
         visitor.push(type, value)

@@ -185,7 +185,8 @@ class ParserVisitor:
         pass
 
     def visit_pop_top(self, instr):
-        self.pop()
+        type, value = self.pop()
+        ref_counter.ref_decr(self, type, value)
 
     def visit_rot_two(self, instr):
         buffer = self.__stack[-2]
@@ -214,15 +215,23 @@ class ParserVisitor:
                 self.__stack[-i - 1] = self.__stack[-i - 2]
 
     def visit_dup_top(self, instr):
-        self.__stack.append(self.__stack[-1])
+        type, value = self.__stack[-1]
+        self.push(type, value)
+        ref_counter.ref_incr(self.__builder, type, value)
 
     def visit_dup_top_two(self, instr):
-        self.__stack.append(self.__stack[-2])
-        self.__stack.append(self.__stack[-2])
+        type, value = self.__stack[-2]
+        self.push(type, value)
+        ref_counter.ref_incr(self.__builder, type, value)
+        type, value = self.__stack[-2]
+        self.push(type, value)
+        ref_counter.ref_incr(self.__builder, type, value)
 
     def visit_copy(self, instr):
         index = instr.arg
-        # self.push(*self.peek(index))
+        type, value = self.__stack[-index]
+        self.push(type, value)
+        ref_counter.ref_incr(self.__builder, type, value)
 
     def visit_swap(self, instr):
         index = instr.arg
@@ -239,27 +248,47 @@ class ParserVisitor:
 
     def visit_unary_positive(self, instr):
         value_type, value = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__pos__", value, value_type, [], [])
+        op_func = self.__code_gen.get_or_create_func("PyNumber_Positive",
+                                                     code_type.get_py_obj_ptr(self.__code_gen),
+                                                     [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                     _gen.Linkage.EXTERNAL)
+        new_value = self.__builder.call(op_func, [value])
+        new_value_type = lang_type.get_python_obj_type()
+        ref_counter.ref_decr(self, value_type, value)
         self.push(new_value_type, new_value)
 
     def visit_unary_negative(self, instr):
         value_type, value = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__neg__", value, value_type, [], [])
+        op_func = self.__code_gen.get_or_create_func("PyNumber_Negative",
+                                                     code_type.get_py_obj_ptr(self.__code_gen),
+                                                     [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                     _gen.Linkage.EXTERNAL)
+        new_value = self.__builder.call(op_func, [value])
+        new_value_type = lang_type.get_python_obj_type()
+        ref_counter.ref_decr(self, value_type, value)
         self.push(new_value_type, new_value)
 
     def visit_unary_not(self, instr):
         value_type, value = self.pop()
         new_value_type, new_value = caller.call_obj(self, "__not__", value, value_type, [], [])
+        ref_counter.ref_decr(self, value_type, value)
         self.push(new_value_type, new_value)
 
     def visit_unary_invert(self, instr):
         value_type, value = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__inv__", value, value_type, [], [])
+        op_func = self.__code_gen.get_or_create_func("PyNumber_Invert",
+                                                     code_type.get_py_obj_ptr(self.__code_gen),
+                                                     [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                     _gen.Linkage.EXTERNAL)
+        new_value = self.__builder.call(op_func, [value])
+        new_value_type = lang_type.get_python_obj_type()
+        ref_counter.ref_decr(self, value_type, value)
         self.push(new_value_type, new_value)
 
     def visit_get_iter(self, instr):
         value_type, value = self.pop()
         new_value_type, new_value = caller.call_obj(self, "__iter__", value, value_type, [], [])
+        ref_counter.ref_decr(self, value_type, value)
         self.push(new_value_type, new_value)
 
     def visit_get_yield_from_iter(self, instr):
@@ -291,9 +320,11 @@ class ParserVisitor:
 
     def visit_binary_modulo(self, instr):
         self.binary_or_inplace_visit("PyNumber_Remainder")
+        # TODO: we should check if it's a string formatting and call PyUnicode_Format
 
     def visit_binary_add(self, instr):
         self.binary_or_inplace_visit("PyNumber_Add")
+        # TODO: we should check if it's a concatenation
 
     def visit_binary_subtract(self, instr):
         self.binary_or_inplace_visit("PyNumber_Subtract")
@@ -306,6 +337,8 @@ class ParserVisitor:
                                                            [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                            _gen.Linkage.EXTERNAL)
         get_value = self.__builder.call(get_item_func, [container_value, sub_value])
+        ref_counter.ref_decr(self, container_type, container_value)
+        ref_counter.ref_decr(self, sub_type, sub_value)
         self.push(None, get_value)
 
     def visit_binary_lshift(self, instr):
@@ -347,6 +380,7 @@ class ParserVisitor:
 
     def visit_inplace_add(self, instr):
         self.binary_or_inplace_visit("PyNumber_InPlaceAdd")
+        # TODO: we should check if it's a concatenation
 
     def visit_inplace_subtract(self, instr):
         self.binary_or_inplace_visit("PyNumber_InPlaceSubtract")
@@ -378,6 +412,9 @@ class ParserVisitor:
                                                            [code_type.get_py_obj_ptr(self.__code_gen)] * 3,
                                                            _gen.Linkage.EXTERNAL)
         self.__builder.call(set_item_func, [container_value, sub_value, value_value])
+        ref_counter.ref_decr(self, value_type, value_value)
+        ref_counter.ref_decr(self, container_type, container_value)
+        ref_counter.ref_decr(self, sub_type, sub_value)
 
     def visit_delete_subscr(self, instr):
         sub_type, sub_value = self.pop()
@@ -387,6 +424,8 @@ class ParserVisitor:
                                                            [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                            _gen.Linkage.EXTERNAL)
         self.__builder.call(get_item_func, [container_value, sub_value])
+        ref_counter.ref_decr(self, container_type, container_value)
+        ref_counter.ref_decr(self, sub_type, sub_value)
 
     """
     Coroutine opcodes
@@ -432,6 +471,8 @@ class ParserVisitor:
                                             [left_value, right_value, self.__builder.const_int32(instr.arg)])
 
         self.push(None, compare_value)
+        ref_counter.ref_decr(self, left_type, left_value)
+        ref_counter.ref_decr(self, right_type, right_value)
 
     def visit_is_op(self, instr):
         right_type, right_value = self.pop()
@@ -444,8 +485,11 @@ class ParserVisitor:
             self.__builder.neg(result_val)
 
         result_type, result_value = runtime.value_to_pyobj(self, result_val, lang_type.get_bool_type())
-
+        ref_counter.ref_incr(self.__builder, result_type, result_value)
         self.push(result_type, result_value)
+
+        ref_counter.ref_decr(self, left_type, left_value)
+        ref_counter.ref_decr(self, right_type, right_value)
 
     def visit_contains_op(self, instr):
         right_type, right_value = self.pop()
@@ -468,8 +512,11 @@ class ParserVisitor:
             result_val = self.__builder.eq(result_val, one)
 
         result_type, result_val = runtime.value_to_pyobj(self, result_val, lang_type.get_bool_type())
-
+        ref_counter.ref_incr(self.__builder, result_type, result_val)
         self.push(result_type, result_val)
+
+        ref_counter.ref_decr(self, left_type, left_value)
+        ref_counter.ref_decr(self, right_type, right_value)
 
     """
     Call
@@ -509,6 +556,10 @@ class ParserVisitor:
         self.push(None, call_result_value)
         self.__kw_names = {}
 
+        for i, arg_value in enumerate(arg_values):
+            ref_counter.ref_decr(self, arg_types[i], arg_value)
+
+
     def visit_call_function(self, instr):
         args_count = instr.arg
 
@@ -522,11 +573,14 @@ class ParserVisitor:
         arg_types.reverse()
         arg_values.reverse()
 
-        second_type, second_value = self.pop()  # Either self or the callable
+        callable_type, callable_value = self.pop()
 
-        call_result_value = caller.call_callable(self, second_value, second_value, arg_values, self.__kw_names)
+        call_result_value = caller.call_callable(self, callable_value, callable_value, arg_values, self.__kw_names)
         self.push(None, call_result_value)
         self.__kw_names = {}
+
+        for i, arg_value in enumerate(arg_values):
+            ref_counter.ref_decr(self, arg_types[i], arg_value)
 
     def visit_call_function_ex(self):
         raise unsupported.FlyableUnsupported()
@@ -541,6 +595,9 @@ class ParserVisitor:
             args.insert(0, new_arg)
             arg_types.insert(0, arg_types)
         call_result_type, call_result_value = caller.call_callable(self, callable, args, {})
+        for i, arg in enumerate(args):
+            ref_counter.ref_decr(self, arg_types[i], arg)
+        ref_counter.ref_decr(self, tuple_type, tuple_args)
 
     def visit_load_method(self, instr):
         found_attr = self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen))
@@ -618,6 +675,7 @@ class ParserVisitor:
         self.__name = self.__builder.global_var(str_value)
         value_type, value = self.pop()
         fly_obj.py_obj_set_attr(self, value, str_value, self.__name, None)
+        ref_counter.ref_decr(self, value_type, value)
 
     def visit_delete_attr(self, instr):
         name = self.__code_obj.co_names[instr.arg]
@@ -625,6 +683,7 @@ class ParserVisitor:
         owner_type, owner_value = self.pop()
         null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
         fly_obj.py_obj_set_attr(self, owner_value, name, null_value)
+        ref_counter.ref_decr(self, owner_type, owner_value)
 
     def visit_store_global(self, instr):
         str_name = self.__code_obj.co_names[instr.arg]
@@ -632,10 +691,11 @@ class ParserVisitor:
         str_var = self.__builder.global_var(str_var)
         str_var = self.__builder.load(str_var)
         v_type, v_value = self.pop()
-        v_type, v_value = runtime.value_to_pyobj(self, v_value, v_type)
+        val_type, val_value = runtime.value_to_pyobj(self, v_value, v_type)
 
         globals = function.py_function_get_globals(self, 0)
-        gen_dict.python_dict_set_item(self, globals, str_var, v_value)
+        gen_dict.python_dict_set_item(self, globals, str_var, val_value)
+        ref_counter.ref_decr(self, v_type, v_value)
 
     def visit_delete_global(self, instr):
         str_name = self.__code_obj.co_names[instr.arg]
@@ -720,6 +780,7 @@ class ParserVisitor:
                                                          [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                          _gen.Linkage.EXTERNAL)
         self.__builder.call(extend_func, [list_value, iter_value])
+        ref_counter.ref_decr(self, iter_type, iter_value)
 
     def visit_list_to_tuple(self, instr):
         list_type, list_value = self.pop()
@@ -729,6 +790,7 @@ class ParserVisitor:
                                                                 _gen.Linkage.EXTERNAL)
         new_tuple_value = self.__builder.call(list_as_tuple_func, [list_value])
         self.push(None, new_tuple_value)
+        ref_counter.ref_decr(self, list_type, list_value)
 
     def visit_build_set(self, instr):
         counts = instr.arg
@@ -738,8 +800,9 @@ class ParserVisitor:
 
         for i in range(counts):
             element_type, element_value = self.pop()
-            element_type, element_value = runtime.value_to_pyobj(self, element_value, element_type)
-            gen_set.python_set_add(self, new_set, element_value)
+            py_element_type, py_element_value = runtime.value_to_pyobj(self, element_value, element_type)
+            gen_set.python_set_add(self, new_set, py_element_value)
+            ref_counter.ref_decr(self, element_type, element_value)
         self.push(lang_type.get_set_of_python_obj_type(), new_set)
 
     def visit_set_update(self, instr):
@@ -750,6 +813,7 @@ class ParserVisitor:
                                                          [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                          _gen.Linkage.EXTERNAL)
         self.__builder.call(extend_func, [list_value, iter_value])
+        ref_counter.ref_decr(self, iter_type, iter_value)
 
     def visit_build_map(self, instr):
         import flyable.code_gen.dict as gen_dict
@@ -762,10 +826,12 @@ class ParserVisitor:
         for i in reversed(range(instr.arg)):
             key_type, key_value = keys[i]
             value_type, value_value = values[i]
-            key_type, key_value = runtime.value_to_pyobj(self, key_value, key_type)
-            value_type, value_value = runtime.value_to_pyobj(self, value_value, value_type)
+            py_key_type, py_key_value = runtime.value_to_pyobj(self, key_value, key_type)
+            py_value_type, py_value_value = runtime.value_to_pyobj(self, value_value, value_type)
 
-            gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
+            gen_dict.python_dict_set_item(self, new_dict, py_key_value, py_value_value)
+            ref_counter.ref_decr(self, key_type, key_value)
+            ref_counter.ref_decr(self, value_type, value_value)
 
         self.push(lang_type.get_dict_of_python_obj_type(), new_dict)
 
@@ -780,12 +846,14 @@ class ParserVisitor:
         values.reverse()
         for i in range(instr.arg):
             value_type, value_value = values[i]
-            value_type, value_value = runtime.value_to_pyobj(self, value_value, value_type)
+            py_value_type, py_value_value = runtime.value_to_pyobj(self, value_value, value_type)
             key_value = gen_tuple.python_tuple_get_unsafe_item_ptr(self, keys_type, keys_value,
                                                                    self.__builder.const_int64(i))
             key_value = self.__builder.load(key_value)
-            gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
+            gen_dict.python_dict_set_item(self, new_dict, key_value, py_value_value)
+            ref_counter.ref_decr(self, value_type, value_value)
 
+        ref_counter.ref_decr(self, keys_type, keys_value)
         self.push(lang_type.get_dict_of_python_obj_type(), new_dict)
 
     def visit_dict_update(self, instr):
@@ -808,11 +876,13 @@ class ParserVisitor:
                                                               code_type.get_int32()],
                                                              _gen.Linkage.EXTERNAL)
         self.__builder.call(dict_merge_func, [dict_value, update_value, two])
+        ref_counter.ref_decr(self, update_type, update_value)
 
     def visit_set_add(self, instr):
         item_type, item_value = self.pop()
         set_type, set_value = self.__stack[-instr.arg]
         gen_set.python_set_add(self, set_value, item_value)
+        ref_counter.ref_decr(self, item_type, item_value)
 
     def visit_list_append(self, instr):
         item_type, item_value = self.pop()
@@ -858,6 +928,7 @@ class ParserVisitor:
         zero = self.__builder.const_int64(0)
         res = self.__builder.ne(match, zero)
         self.push(lang_type.get_bool_type(), res)
+        ref_counter.ref_incr(self.__builder, lang_type.get_bool_type(), res)
 
     def visit_match_sequence(self, instr):
         py_tpflags_sequence = self.__builder.const_int64(32)
@@ -871,6 +942,7 @@ class ParserVisitor:
         zero = self.__builder.const_int64(0)
         res = self.__builder.ne(match, zero)
         self.push(lang_type.get_bool_type(), res)
+        ref_counter.ref_incr(self.__builder, lang_type.get_bool_type(), res)
 
     def visit_match_keys(self, instr):
         # TODO: do the visit with the runtime. Previously to 3.11 this instruction also pushed a boolean value
@@ -931,6 +1003,9 @@ class ParserVisitor:
                                                             _gen.Linkage.EXTERNAL)
         new_slice = self.__builder.call(new_slice_func, [start, stop, step])
         self.push(None, new_slice)
+        ref_counter.ref_decr(self, start_type, start)
+        ref_counter.ref_decr(self, stop_type, stop)
+        ref_counter.ref_decr_nullable(self, step_type, step)
 
     """
     Attr
@@ -941,6 +1016,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         new_attr = fly_obj.py_obj_get_attr(self, value, name, None)
         self.push(None, new_attr)
+        ref_counter.ref_decr(self, value_type, value)
 
     """
     JUMP
@@ -963,6 +1039,7 @@ class ParserVisitor:
         else_block = self.__builder.create_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -971,6 +1048,7 @@ class ParserVisitor:
         else_block = self.__builder.create_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -979,6 +1057,7 @@ class ParserVisitor:
         else_block = self.__builder.create_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
         self.__builder.set_insert_block(else_block)
 
@@ -987,6 +1066,7 @@ class ParserVisitor:
         else_block = self.__builder.create_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
         self.__builder.set_insert_block(else_block)
 
@@ -996,6 +1076,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.ne(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1005,6 +1086,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.ne(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1014,6 +1096,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.eq(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1023,6 +1106,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.eq(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1031,6 +1115,7 @@ class ParserVisitor:
         else_block = self.__builder.create_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1039,6 +1124,7 @@ class ParserVisitor:
         else_block = self.__builder.create_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
         self.__builder.set_insert_block(else_block)
 
@@ -1057,6 +1143,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.ne(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1066,6 +1153,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.eq(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1074,9 +1162,10 @@ class ParserVisitor:
         self.__builder.br(block_to_jump)
 
     def visit_for_iter(self, instr):
-        iterable_type, iterator = self.__stack[-1]
+        iterable_type, iterator = self.pop()
         next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [], {})
         self.push(next_type, next_value)
+        ref_counter.ref_decr(self, iterable_type, iterator)
         null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
         test = self.__builder.eq(next_value, null_ptr)
         continue_block = self.get_block_to_jump_by(instr.offset, instr.arg)
@@ -1135,7 +1224,15 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_make_cell(self, instr):
-        raise unsupported.FlyableUnsupported()
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        initial = self.__builder.load(found_var.get_code_value())
+        py_cell_get = self.__code_gen.get_or_create_func("PyCell_New",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        cell = self.__builder.call(py_cell_get, [initial])
+        self.__builder.store(cell, found_var.get_code_value())
 
     def visit_load_deref(self, instr):
         var_name = self.__code_obj.co_varnames[instr.arg]
@@ -1311,6 +1408,8 @@ class ParserVisitor:
             value_value = self.__builder.call(conv_func, [value_value, fmt_spec])
 
         self.push(value_type, value_value)
+        ref_counter.ref_decr(self, value_type, value_value)
+        ref_counter.ref_decr_nullable(self, lang_type.get_python_obj_type(), fmt_spec)
 
     def visit_match_class(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -1326,8 +1425,8 @@ class ParserVisitor:
         self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
 
     def visit_check_exc_match(self, instr):
-        right_type, right_value = self.pop()
-        right_type, right_value = runtime.value_to_pyobj(self, right_value, right_type)
+        r_type, r_value = self.pop()
+        right_type, right_value = runtime.value_to_pyobj(self, r_value, r_type)
         left_type, left_value = self.top()
         left_type, left_value = runtime.value_to_pyobj(self, left_value, left_type)
 
@@ -1339,6 +1438,7 @@ class ParserVisitor:
         excp_match = self.__builder.int_cast(excp_match, code_type.get_int64())
         match_type, match_value = runtime.value_to_pyobj(self, excp_match, lang_type.get_int_type())
         self.push(match_type, match_value)
+        ref_counter.ref_decr(self, r_type, r_value)
 
     def visit_check_eg_match(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -1427,4 +1527,6 @@ class ParserVisitor:
                                                      [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                      _gen.Linkage.EXTERNAL)
         op_result = self.__builder.call(op_func, [left_value, right_value])
+        ref_counter.ref_decr(left_value)
+        ref_counter.ref_decr(right_value)
         self.push(None, op_result)
