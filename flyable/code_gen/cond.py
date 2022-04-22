@@ -82,30 +82,6 @@ def test_obj_true(visitor: ParserVisitor, value_type: lang_type.LangType, value:
         list_size = _list.python_list_len(visitor, value)
         return builder.lt(list_size, builder.const_int64(0))
     else:
-        is_true_alloca = visitor.generate_entry_block_var(code_type.get_int1())
-
-        if_false_block = builder.create_block()
-        else_block = builder.create_block()
-        continue_block = builder.create_block()
-
-        true_var = builder.global_var(code_gen.get_true())
-        is_true = builder.eq(true_var, value)
-        builder.store(is_true, is_true_alloca)
-        builder.cond_br(is_true, continue_block, if_false_block)
-
-        builder.set_insert_block(if_false_block)
-        false_var = builder.global_var(code_gen.get_false())
-        if_false = builder.eq(false_var, value)
-        builder.store(if_false, is_true_alloca)
-        builder.cond_br(if_false, continue_block, else_block)
-
-        builder.set_insert_block(else_block)
         is_true_func = code_gen.get_or_create_func("PyObject_IsTrue", code_type.get_int32(),
                                                    [code_type.get_py_obj_ptr(code_gen)], _gen.Linkage.EXTERNAL)
-        is_true_value = builder.call(is_true_func, [value])
-        is_true = builder.ne(is_true_value, builder.const_int32(0))
-        builder.store(is_true, is_true_alloca)
-        builder.br(continue_block)
-
-        builder.set_insert_block(continue_block)
-        return builder.load(is_true_alloca)
+        return builder.ne(builder.call(is_true_func, [value]), builder.const_int32(0))
