@@ -1,3 +1,5 @@
+import sys
+
 import flyable.code_gen.code_gen as gen
 
 import flyable.data.comp_data as comp_data
@@ -67,7 +69,10 @@ class ParserVisitor:
     def run(self):
         self.__setup()
         self.__bytecode = dis.Bytecode(self.__func.get_parent_func().get_source_code())
-        self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0], show_caches=True)
+        if sys.version_info.major == 3 and sys.version_info.minor >= 11:
+            self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0], show_caches=True)
+        else:
+            self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0])
         self.__code_obj = self.__bytecode.codeobj
         self.__frame_ptr_value = 0
 
@@ -1255,7 +1260,6 @@ class ParserVisitor:
         var_name = self.__code_obj.co_varnames[instr.arg]
         store_type, store_value = self.pop()
         found_var = self.get_or_gen_var(var_name)
-        ref_counter.ref_incr(self.__builder, store_type, store_value)
         self.__builder.store(store_value, found_var.get_code_value())
 
     def visit_delete_fast(self, instr):
