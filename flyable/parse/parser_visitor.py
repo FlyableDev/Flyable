@@ -21,6 +21,7 @@ import flyable.code_gen.tuple as gen_tuple
 import flyable.parse.version as version
 import flyable.code_gen.function as function
 import flyable.code_gen.iterator as gen_iter
+import flyable.code_gen.exception as excp
 
 import flyable.parse.exception.unsupported as unsupported
 
@@ -81,8 +82,8 @@ class ParserVisitor:
 
         for i, instr in enumerate(self.__instructions):
             self.__current_instr_index = i
-            self.__visit_instr(instr)
             print(instr.opname + (" x" if instr in self.__jumps_instr else "") + " " + str(len(self.__stack)))
+            self.__visit_instr(instr)
 
         self.__builder.set_insert_block(self.__entry_block)
         self.__builder.br(self.__content_block)
@@ -112,7 +113,6 @@ class ParserVisitor:
             insert_block = self.__jumps_instr[instr]
             self.__builder.br(insert_block)
             self.__builder.set_insert_block(insert_block)
-            self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
 
         method_to_visit = "visit_" + instr.opname.lower()
         if hasattr(self, method_to_visit):
@@ -232,7 +232,7 @@ class ParserVisitor:
         ref_counter.ref_incr(self.__builder, type, value)
 
     def visit_swap(self, instr):
-        index = (-instr.arg) - 1
+        index = (-instr.arg)
         buffer = self.__stack[-1]
         self.__stack[-1] = self.__stack[index]
         self.__stack[index] = buffer
@@ -285,9 +285,17 @@ class ParserVisitor:
 
     def visit_get_iter(self, instr):
         value_type, value = self.pop()
-        new_value_type, new_value = caller.call_obj(self, "__iter__", value, value_type, [], [])
+
+        get_iter_func = self.__code_gen.get_or_create_func("PyObject_GetIter",
+                                                           code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                           _gen.Linkage.EXTERNAL)
+        iter_value = self.__builder.call(get_iter_func, [value])
+
         ref_counter.ref_decr(self, value_type, value)
-        self.push(new_value_type, new_value)
+
+        self.push(None, iter_value)
+        print(self.__stack)
 
     def visit_get_yield_from_iter(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -1195,9 +1203,10 @@ class ParserVisitor:
         self.__builder.br(block_to_jump)
 
     def visit_for_iter(self, instr):
-        iterable_type, iterator_value = self.pop()
+        print(self.__stack)
+        iterable_type, iterator_value = self.top()
 
-        next_value = gen_iter.call_iter_direct(self, iterator_value)
+        next_value = gen_iter.call_iter_next_direct(self, iterator_value)
         self.push(None, next_value)
 
         ref_counter.ref_decr(self, iterable_type, iterator_value)
@@ -1206,6 +1215,11 @@ class ParserVisitor:
         continue_block = self.get_block_to_jump_by(instr.offset, instr.arg)
         next_block = self.__builder.create_block("Next Block")
         self.__builder.cond_br(test, continue_block, next_block)
+
+        # clear the global excp when we leave the loop
+        self.__builder.set_insert_block(continue_block)
+        excp.py_runtime_clear_error(self.__code_gen, self.__builder)
+
         self.__builder.set_insert_block(next_block)
 
     def visit_load_global(self, instr):

@@ -91,7 +91,7 @@ def call_iter_iter(visitor, obj: int):
     return builder.load(result)
 
 
-def call_iter_direct(visitor, obj):
+def call_iter_next_direct(visitor, obj):
     """
     Directly take the object and call the iter func on it, without any validations
     """
@@ -102,8 +102,7 @@ def call_iter_direct(visitor, obj):
     iter_next_type = iter_next_type.get_ptr_to()
 
     obj_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
-    iter_next_ptr = _type.py_object_type_get_iter(visitor, obj_type)
+    iter_next_ptr = _type.py_object_type_get_iter_next(visitor, obj_type)
     iter_next_ptr = builder.ptr_cast(iter_next_ptr, iter_next_type.get_ptr_to())
     iter_next = builder.load(iter_next_ptr)
-
-    return iter_next
+    return builder.call_ptr(iter_next, [obj])
