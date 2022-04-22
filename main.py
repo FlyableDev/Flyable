@@ -37,13 +37,16 @@ def get_module_paths(directory_name: str) -> str:
                 paths.append(file_path)
     return paths
 
-def main(source_directory: str, output_dir: str = ".", exec_name: str = "a"):
+def main(source: str, output_dir: str = ".", exec_name: str = "a"):
     add_step("Compiling")
     compiler = com.Compiler()
 
-    modules = get_module_paths(output_dir)
-    for module in modules:
-        compiler.add_file(module)
+    if os.path.isfile(source):
+        compile.add_file(source)
+    else:
+        modules = get_module_paths(output_dir)
+        for module in modules:
+            compiler.add_file(module)
 
     compiler.set_output_path(f"{output_dir}/output.o")
     # Make sure the folder exist
@@ -106,9 +109,8 @@ if __name__ == "__main__":
         # move dll to executable location
         copyfile(constants.PYTHON_3_11_DLL_PATH, f"{dir}/python311.dll")
 
-    main(os.dirname(__file__), dir, "a")
+    main("test.py", dir, "a")
 
-    
     if platform.system() == "Windows":
         run_code("./build/win64/", "a")
     elif platform.system() == "Darwin":
