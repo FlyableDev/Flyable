@@ -20,6 +20,7 @@ import flyable.code_gen.dict as gen_dict
 import flyable.code_gen.tuple as gen_tuple
 import flyable.parse.version as version
 import flyable.code_gen.function as function
+import flyable.code_gen.iterator as gen_iter
 
 import flyable.parse.exception.unsupported as unsupported
 
@@ -76,12 +77,12 @@ class ParserVisitor:
             if instr.is_jump_target:
                 new_block = self.__builder.create_block("Instr:" + instr.opname)
                 self.__jumps_instr[instr] = new_block
-
         self.__setup_argument()
 
         for i, instr in enumerate(self.__instructions):
             self.__current_instr_index = i
             self.__visit_instr(instr)
+            print(instr.opname + (" x" if instr in self.__jumps_instr else "") + " " + str(len(self.__stack)))
 
         self.__builder.set_insert_block(self.__entry_block)
         self.__builder.br(self.__content_block)
@@ -112,8 +113,6 @@ class ParserVisitor:
             self.__builder.br(insert_block)
             self.__builder.set_insert_block(insert_block)
             self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
-
-        print(instr.opname + (" x" if instr in self.__jumps_instr else ""))
 
         method_to_visit = "visit_" + instr.opname.lower()
         if hasattr(self, method_to_visit):
@@ -233,10 +232,10 @@ class ParserVisitor:
         ref_counter.ref_incr(self.__builder, type, value)
 
     def visit_swap(self, instr):
-        index = instr.arg
+        index = (-instr.arg) - 1
         buffer = self.__stack[-1]
-        self.__stack[-1] = self.__stack[-index]
-        self.__stack[-index] = buffer
+        self.__stack[-1] = self.__stack[index]
+        self.__stack[index] = buffer
 
     def visit_push_null(self, instr):
         self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
@@ -1196,10 +1195,12 @@ class ParserVisitor:
         self.__builder.br(block_to_jump)
 
     def visit_for_iter(self, instr):
-        iterable_type, iterator = self.pop()
-        next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [], {})
-        self.push(next_type, next_value)
-        ref_counter.ref_decr(self, iterable_type, iterator)
+        iterable_type, iterator_value = self.pop()
+
+        next_value = gen_iter.call_iter_direct(self, iterator_value)
+        self.push(None, next_value)
+
+        ref_counter.ref_decr(self, iterable_type, iterator_value)
         null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
         test = self.__builder.eq(next_value, null_ptr)
         continue_block = self.get_block_to_jump_by(instr.offset, instr.arg)

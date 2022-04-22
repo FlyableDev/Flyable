@@ -8,10 +8,10 @@ if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeGen
     from flyable.data.lang_func_impl import LangFuncImpl
     from flyable.data.comp_data import CompData
+    from flyable.parse.parser_visitor import ParserVisitor
 
 import flyable.data.lang_func_impl as impl
 from flyable.data.error_thrower import ErrorThrower
-from flyable.parse.parser_visitor import ParserVisitor
 import flyable.data.lang_func as lang_func
 
 
@@ -44,7 +44,8 @@ class Parser(ErrorThrower):
     def parse_impl(self, func_impl: LangFuncImpl):
         if func_impl.get_parse_status() == impl.LangFuncImpl.ParseStatus.NOT_STARTED:
             func_impl.set_parse_status(impl.LangFuncImpl.ParseStatus.STARTED)
-            vis = ParserVisitor(self, self.__code_gen, func_impl)
+            import flyable.parse.parser_visitor as parser_vis
+            vis = parser_vis.ParserVisitor(self, self.__code_gen, func_impl)
             vis.run()
 
     def get_code_gen(self):

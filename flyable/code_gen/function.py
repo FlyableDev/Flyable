@@ -11,16 +11,15 @@ import flyable.code_gen.debug as debug
 import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
-from flyable.parse.parser import ParserVisitor
 
 
-def check_py_obj_is_func_type(visitor: ParserVisitor, func_to_call: int):
+def check_py_obj_is_func_type(visitor, func_to_call: int):
     obj_type = fly_obj.get_py_obj_type(visitor.get_builder(), func_to_call)
     func_type = visitor.get_builder().global_var(visitor.get_code_gen().get_py_func_type())
     return visitor.get_builder().eq(obj_type, func_type)
 
 
-def get_vector_call_ptr(visitor: ParserVisitor, python_callable: int):
+def get_vector_call_ptr(visitor, python_callable: int):
     """
     Retrieves vector call pointer from Python callable.
     :param visitor: Parser visitor
@@ -40,7 +39,7 @@ def get_vector_call_ptr(visitor: ParserVisitor, python_callable: int):
     return builder.load(vector_call_ptr)
 
 
-def call_py_func_vec_call(visitor: ParserVisitor, obj: int, func_to_call: int, args: list[int], kwargs: dict[int, int],
+def call_py_func_vec_call(visitor, obj: int, func_to_call: int, args: list[int], kwargs: dict[int, int],
                           vector_call_ptr: int):
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
@@ -83,7 +82,7 @@ def call_py_func_vec_call(visitor: ParserVisitor, obj: int, func_to_call: int, a
     return result
 
 
-def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, args: list[int], kwargs: dict[int, int]):
+def call_py_func_tp_call(visitor, obj: int, func_to_call: int, args: list[int], kwargs: dict[int, int]):
     """
     Call a python function using the tp_call convention
     """
@@ -115,27 +114,27 @@ def call_py_func_tp_call(visitor: ParserVisitor, obj: int, func_to_call: int, ar
     return result
 
 
-def py_obj_func_get_vectorcall_ptr(visitor: ParserVisitor, func: int):
+def py_obj_func_get_vectorcall_ptr(visitor, func: int):
     func = visitor.get_builder().ptr_cast(func, visitor.get_code_gen().get_py_func_struct().to_code_type().get_ptr_to())
     gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(14)]
     return visitor.get_builder().gep2(func, visitor.get_code_gen().get_py_func_struct().to_code_type(), gep_indices)
 
 
-def py_obj_type_get_tp_call(visitor: ParserVisitor, func_type: int):
+def py_obj_type_get_tp_call(visitor, func_type: int):
     func_type = visitor.get_builder().ptr_cast(func_type,
                                                visitor.get_code_gen().get_python_type().to_code_type().get_ptr_to())
     gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(16)]
     return visitor.get_builder().gep2(func_type, visitor.get_code_gen().get_python_type().to_code_type(), gep_indices)
 
 
-def py_obj_type_get_tp_flag_ptr(visitor: ParserVisitor, func_type: int):
+def py_obj_type_get_tp_flag_ptr(visitor, func_type: int):
     func_type = visitor.get_builder().ptr_cast(func_type,
                                                visitor.get_code_gen().get_python_type().to_code_type().get_ptr_to())
     gep_indices = [visitor.get_builder().const_int32(0), visitor.get_builder().const_int32(21)]
     return visitor.get_builder().gep2(func_type, visitor.get_code_gen().get_python_type().to_code_type(), gep_indices)
 
 
-def is_py_obj_method(visit: ParserVisitor, obj: int):
+def is_py_obj_method(visit, obj: int):
     """
     Return a value containing if obj is a python method
     """
@@ -145,7 +144,7 @@ def is_py_obj_method(visit: ParserVisitor, obj: int):
     return builder.eq(obj_type, builder.global_var(code_gen.get_method_type()))
 
 
-def py_function_get_globals(visitor: ParserVisitor, func_obj: int):
+def py_function_get_globals(visitor, func_obj: int):
     """Return the globals dictionary associated with the function object func_obj."""
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
@@ -166,7 +165,7 @@ def py_function_get_builtins(visitor, func_obj):
     return builder.load(result)
 
 
-def py_dict_get_item(visitor: ParserVisitor, d: int, k: int):
+def py_dict_get_item(visitor, d: int, k: int):
     """Gets the value associated with key from the dictionary.
 
     Args:
