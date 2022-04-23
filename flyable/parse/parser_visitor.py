@@ -566,11 +566,14 @@ class ParserVisitor:
         self.__builder.cond_br(is_meth, is_method_block, not_method_block)
 
         self.__builder.set_insert_block(is_method_block)
+        ref_counter.ref_incr(self.__builder, first_type, first_value)
+        ref_counter.ref_incr(self.__builder, second_type, second_value)
         value = caller.call_callable(self, first_value, second_value, [first_value] + arg_values, self.__kw_names)
         self.__builder.store(value, result_value)
         self.__builder.br(continue_block)
 
         self.__builder.set_insert_block(not_method_block)
+        ref_counter.ref_incr(self.__builder, first_type, first_value)
         value = caller.call_callable(self, first_value, first_value, arg_values, self.__kw_names)
         self.__builder.store(value, result_value)
         self.__builder.br(continue_block)
