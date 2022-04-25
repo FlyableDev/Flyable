@@ -70,7 +70,7 @@ class ParserVisitor:
         self.__setup()
         self.__bytecode = dis.Bytecode(self.__func.get_parent_func().get_source_code())
         if sys.version_info.major == 3 and sys.version_info.minor >= 11:
-            self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0], show_caches=True)
+            self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0])
         else:
             self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0])
         self.__code_obj = self.__bytecode.codeobj
@@ -83,6 +83,7 @@ class ParserVisitor:
             if instr.is_jump_target:
                 new_block = self.__builder.create_block("Instr:" + instr.opname)
                 self.__jumps_instr[instr] = new_block
+        print("---")
         self.__setup_argument()
 
         for i, instr in enumerate(self.__instructions):
@@ -719,16 +720,15 @@ class ParserVisitor:
         self.__builder.call(del_item_func, [global_map, str_var])
 
     def visit_store_attr(self, instr):
-        name = self.__code_obj.co_names[instr.namei]
-        str_value = self.__code_gen.get_or_insert_str(name)
-        self.__name = self.__builder.global_var(str_value)
-        value_type, value = self.pop()
-        fly_obj.py_obj_set_attr(self, value, str_value, self.__name, None)
-        ref_counter.ref_decr(self, value_type, value)
+        name = self.__code_obj.co_names[instr.arg]
+        owner_type, owner_value = self.pop()
+        v_type, v_value = self.pop()
+        fly_obj.py_obj_set_attr(self, owner_value, name, v_value, None)
+        ref_counter.ref_decr(self, v_type, v_value)
+        ref_counter.ref_decr(self, owner_type, owner_value)
 
     def visit_delete_attr(self, instr):
         name = self.__code_obj.co_names[instr.arg]
-        str_value = self.__code_gen.get_or_insert_str(name)
         owner_type, owner_value = self.pop()
         null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
         fly_obj.py_obj_set_attr(self, owner_value, name, null_value)
