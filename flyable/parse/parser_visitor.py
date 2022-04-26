@@ -72,7 +72,7 @@ class ParserVisitor:
         if sys.version_info.major == 3 and sys.version_info.minor >= 11:
             self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0])
         else:
-            self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0])
+            self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0], show_caches=True)
         self.__code_obj = self.__bytecode.codeobj
         self.__frame_ptr_value = 0
 
@@ -117,8 +117,10 @@ class ParserVisitor:
 
         if instr in self.__jumps_instr:
             insert_block = self.__jumps_instr[instr]
-            self.__builder.br(insert_block)
-            self.__builder.set_insert_block(insert_block)
+            # If we're not already the on the block
+            if self.__builder.get_current_block() != insert_block:
+                self.__builder.br(insert_block)
+                self.__builder.set_insert_block(insert_block)
 
         method_to_visit = "visit_" + instr.opname.lower()
         if hasattr(self, method_to_visit):
@@ -1085,7 +1087,7 @@ class ParserVisitor:
 
     def visit_pop_jump_forward_if_true(self, instr):
         block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
-        else_block = self.__builder.create_block()
+        else_block = self.__get_else_instr_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
@@ -1094,7 +1096,7 @@ class ParserVisitor:
 
     def visit_pop_jump_backward_if_true(self, instr):
         block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
-        else_block = self.__builder.create_block()
+        else_block = self.__get_else_instr_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
@@ -1103,7 +1105,7 @@ class ParserVisitor:
 
     def visit_pop_jump_forward_if_false(self, instr):
         block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
-        else_block = self.__builder.create_block()
+        else_block = self.__get_else_instr_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
@@ -1112,7 +1114,7 @@ class ParserVisitor:
 
     def visit_pop_jump_backward_if_false(self, instr):
         block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
-        else_block = self.__builder.create_block()
+        else_block = self.__get_else_instr_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
@@ -1121,7 +1123,7 @@ class ParserVisitor:
 
     def visit_pop_jump_forward_if_not_none(self, instr):
         block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
-        else_block = self.__builder.create_block()
+        else_block = self.__get_else_instr_block()
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.ne(none_value, value)
@@ -1131,7 +1133,7 @@ class ParserVisitor:
 
     def visit_pop_jump_backward_if_not_none(self, instr):
         block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
-        else_block = self.__builder.create_block()
+        else_block = self.__get_else_instr_block()
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.ne(none_value, value)
@@ -1141,7 +1143,7 @@ class ParserVisitor:
 
     def visit_pop_jump_forward_if_none(self, instr):
         block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
-        else_block = self.__builder.create_block()
+        else_block = self.__get_else_instr_block()
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.eq(none_value, value)
@@ -1151,7 +1153,7 @@ class ParserVisitor:
 
     def visit_pop_jump_backward_if_none(self, instr):
         block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
-        else_block = self.__builder.create_block()
+        else_block = self.__get_else_instr_block()
         value_type, value = self.pop()
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.eq(none_value, value)
@@ -1161,7 +1163,7 @@ class ParserVisitor:
 
     def visit_pop_jump_if_true(self, instr):
         block_to_jump = self.get_block_to_jump_to(instr.arg)
-        else_block = self.__builder.create_block()
+        else_block = self.__get_else_instr_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
@@ -1170,7 +1172,7 @@ class ParserVisitor:
 
     def visit_pop_jump_if_false(self, instr):
         block_to_jump = self.get_block_to_jump_to(instr.arg)
-        else_block = self.__builder.create_block()
+        else_block = self.__get_else_instr_block()
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
@@ -1552,6 +1554,24 @@ class ParserVisitor:
     def __get_code_func(self):
         code_func = self.__func.get_code_func()
         return code_func
+
+    def __get_else_instr_block(self):
+        if self.__current_instr_index + 1 < len(self.__instructions):
+            else_instr = self.__instructions[self.__current_instr_index + 1]
+            if else_instr in self.__jumps_instr:
+                return self.__jumps_instr[else_instr]
+        return self.__builder.create_block()
+
+    def __multiple_instr_jump(self, instr):
+        """
+        return if whether a instruction can be jumped from two different instructions
+        """
+        count = 0
+        if instr.is_jump_target:
+            for i, e in enumerate(self.__instructions):
+                if e.opname.lower().contains("jump") and e.arg * 2 == instr.offset:
+                    count += 1
+        return count > 1
 
     def get_func(self):
         return self.__func
