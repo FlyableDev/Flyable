@@ -11,16 +11,14 @@ import flyable.code_gen.library_loader as loader
 import flyable.code_gen.module as gen_module
 import flyable.code_gen.runtime as runtime
 from flyable.data.comp_data import CompData
-from flyable.data.lang_class import LangClass
 import flyable.data.lang_func_impl as lang_func_impl
-import flyable.data.lang_type as lang_type
 from flyable.code_gen.code_builder import CodeBuilder
 from flyable.code_gen.code_type import CodeType
 from flyable.code_gen.code_writer import CodeWriter
-from flyable.debug.code_builder_analyser import CodeBuilderAnalyser
 from flyable.debug.debug_flags import DebugFlag, value_if_debug
-from flyable.debug.code_branch_viewer import BranchViewer
 import flyable.code_gen.ref_counter as ref_counter
+import flyable.data.lang_type as lang_type
+import flyable.code_gen.tuple as gen_tuple
 from flyable.debug.debug_flags_list import *
 
 if TYPE_CHECKING:
@@ -201,8 +199,7 @@ class CodeFunc:
         self.__args = []
         self.__return_type = CodeType()
         self.__blocks: list[CodeBlock] = []
-        self.__builder = value_if_debug(CodeBuilder(self), CodeBuilderAnalyser(self), FLAG_SHOW_OUTPUT_BUILDER)
-        self.__branch_viewer = BranchViewer(self.__builder) if FLAG_SHOW_BLOCK_BRANCHES else None
+        self.__builder = CodeBuilder(self)
 
     def set_linkage(self, link: Linkage):
         self.__linkage = link
@@ -292,8 +289,7 @@ class CodeGen:
         self.__structs: list[StructType] = []
         self.__funcs: OrderedDict[str, CodeFunc] = OrderedDict()
         self.__data = comp_data
-        self.__global_strings: dict[str, GlobalVar] = {}
-        self.__py_constants: dict[Any, GlobalVar] = {}  # Global variable containing python constants
+        self.__py_constants: OrderedDict[Any, GlobalVar] = OrderedDict()  # Global variable containing python constants
 
         self.__true_var: Optional[GlobalVar] = None
         self.__false_var: Optional[GlobalVar] = None
@@ -386,26 +382,25 @@ class CodeGen:
 
         # PyFunctionObject struct
         # PyObject ob_base
-        self.__python_function_object_struct.add_type(code_type.get_int64()) # Py_ssize_t ob_refcnt
-        self.__python_type_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyTypeObject * ob_type
+        self.__python_function_object_struct.add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
+        self.__python_type_struct.add_type(self.get_python_type().to_code_type().get_ptr_to())  # PyTypeObject * ob_type
 
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_globals
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_builtins
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_name
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_qualname
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_code
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_defaults
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_kwdefaults
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_closure 
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_doc 
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_dict
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_weakreflist
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_module 
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func_annotattions 
-        self.__python_function_object_struct.add_type(self.get_python_type().to_code_type().get_ptr_to()) # PyObject * func 
-        self.__python_function_object_struct.add_type(code_type.get_int8_ptr()) # vectorcallfunc vectorcall
-        self.__python_function_object_struct.add_type(code_type.get_int32()) # uint32_t func_version
-        
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_globals
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_builtins
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_name
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_qualname
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_code
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_defaults
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_kwdefaults
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_closure
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_doc
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_dict
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_weakreflist
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_module
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func_annotattions
+        self.__python_function_object_struct.add_type(code_type.get_py_obj_ptr(self))  # PyObject * func
+        self.__python_function_object_struct.add_type(code_type.get_int8_ptr())  # vectorcallfunc vectorcall
+        self.__python_function_object_struct.add_type(code_type.get_int32())  # uint32_t func_version
 
         self.__none_var = self.add_global_var(
             GlobalVar("_Py_NoneStruct", code_type.get_py_obj(self), Linkage.EXTERNAL))
@@ -429,9 +424,6 @@ class CodeGen:
 
         self.__build_in_module = self.add_global_var(
             GlobalVar("__flyable@BuildIn@Module@", code_type.get_py_obj_ptr(self), Linkage.INTERNAL))
-
-        for _class in self.__data.classes_iter():
-            self.gen_struct(_class)
 
     def clear(self):
         self.__global_vars.clear()
@@ -566,14 +558,7 @@ class CodeGen:
         return global_var
 
     def get_or_insert_str(self, value: str):
-        if value in self.__global_strings:
-            return self.__global_strings[value]
-
-        new_var = GlobalVar("@flyable@str" + str(len(self.__global_strings)), code_type.get_py_obj_ptr(self),
-                            Linkage.INTERNAL)
-        self.add_global_var(new_var)
-        self.__global_strings[value] = new_var
-        return new_var
+        return self.get_or_insert_const(value)
 
     def get_or_insert_const(self, value: Any):
         try:
@@ -581,12 +566,17 @@ class CodeGen:
         except KeyError:
             pass
 
-        if not isinstance(value, int) and not isinstance(value, float):
+        if not isinstance(value, int) and not isinstance(value, float) and not isinstance(value, tuple) \
+                and not isinstance(value, str) and not isinstance(value, frozenset):
             raise ValueError("Const type " + str(type(value)) + " not expected")
 
-        var_type = code_type.get_int64()
+        if isinstance(value, tuple) or isinstance(value, frozenset):
+            for content_value in value:
+                self.get_or_insert_const(content_value)
+
         name = f"@flyable@const@{len(self.__py_constants)}"
         new_var = GlobalVar(name, code_type.get_py_obj_ptr(self), Linkage.INTERNAL)
+
         self.add_global_var(new_var)
         self.__py_constants[value] = new_var
         return new_var
@@ -606,7 +596,7 @@ class CodeGen:
     def get_global_var(self, variable_name: str) -> GlobalVar:
         return self.__global_vars.get(variable_name, None)
 
-    def gen_struct(self, _class: LangClass):
+    def gen_struct(self, _class):
         """
         Create a structure from a class and creates the global variable that will hold the type instance of that class
         """
@@ -614,13 +604,6 @@ class CodeGen:
         new_struct = StructType("@flyable@__" + _class.get_name())
         _class.set_struct(new_struct)
         self.add_struct(new_struct)
-
-    def setup_struct(self):
-        for _class in self.__data.classes_iter():
-            _class.get_struct().add_type(code_type.get_int64())  # Py_ssize_t ob_refcnt
-            _class.get_struct().add_type(code_type.get_py_type(self).get_ptr_to())  # PyTypeObject * ob_type
-            for attribute in _class.attributes_iter():
-                _class.get_struct().add_type(attribute.get_type().to_code_type(self))
 
     def gen_func(self, impl: lang_func_impl.LangFuncImpl):
         """
@@ -688,6 +671,8 @@ class CodeGen:
         # Write if it's a debug build or not
         if FLAG_SHOW_OPCODE_ON_EXEC.is_enabled:
             writer.add_int32(1)
+        elif FLAG_SHOW_OPCODE_ON_GEN.is_enabled:
+            writer.add_int32(2)
         else:
             writer.add_int32(0)
 
@@ -723,16 +708,13 @@ class CodeGen:
                                             Linkage.EXTERNAL)
 
         builder = CodeBuilder(main_func)
+        import flyable.parse.parser_visitor as pv
+        visitor = pv.DuckParserVisitor(self, builder)
         entry_block = builder.create_block("Main Function Block")
         builder.set_insert_block(entry_block)
 
         init_func = self.get_or_create_func("Py_Initialize", code_type.get_void(), [], Linkage.EXTERNAL)
         builder.call(init_func, [])
-
-        # Create all the static Python string that we need
-        for global_str in self.__global_strings.items():
-            new_str = runtime.py_runtime_get_string(self, builder, global_str[0])
-            builder.store(new_str, builder.global_var(global_str[1]))
 
         # Initialize all global vars
         # Set the build-in module
@@ -744,48 +726,55 @@ class CodeGen:
             constant_var = builder.global_var(self.__py_constants[key])
             if isinstance(key, int):
                 value_to_convert = builder.const_int64(key)
-                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert,
+                type_to_assign, value_to_assign = runtime.value_to_pyobj(visitor, value_to_convert,
                                                                          lang_type.get_int_type())
-            else:
+            elif isinstance(key, float):
                 value_to_convert = builder.const_float64(key)
-                type_to_assign, value_to_assign = runtime.value_to_pyobj(self, builder, value_to_convert,
+                type_to_assign, value_to_assign = runtime.value_to_pyobj(visitor, value_to_convert,
                                                                          lang_type.get_dec_type())
+            elif isinstance(key, tuple):
+                tuple_size = builder.const_int64(len(key))
+                value_to_assign = gen_tuple.python_tuple_new(self, builder, tuple_size)
+                for i, const_in_key in enumerate(key):
+                    tuple_content = self.__py_constants[const_in_key]
+                    tuple_content_ptr = builder.global_var(tuple_content)
+                    tupe_content_value = builder.load(tuple_content_ptr)
+                    item_ptr = gen_tuple.python_tuple_get_unsafe_item_ptr(visitor,
+                                                                          lang_type.get_python_obj_type(),
+                                                                          value_to_assign, builder.const_int64(i))
+                    builder.store(tupe_content_value, item_ptr)
+            elif isinstance(key, frozenset):
+                """
+                Because we found no easy way to generate a const fronzen set, we generate a tuple instead.
+                CPython get tricked since it saw it as a iterable anyway
+                """
+                tuple_size = builder.const_int64(len(key))
+                value_to_assign = gen_tuple.python_tuple_new(self, builder, tuple_size)
+                for i, const_in_key in enumerate(key):
+                    tuple_content = self.__py_constants[const_in_key]
+                    tuple_content_ptr = builder.global_var(tuple_content)
+                    tupe_content_value = builder.load(tuple_content_ptr)
+                    item_ptr = gen_tuple.python_tuple_get_unsafe_item_ptr(visitor,
+                                                                          lang_type.get_python_obj_type(),
+                                                                          value_to_assign, builder.const_int64(i))
+                    builder.store(tupe_content_value, item_ptr)
+            elif isinstance(key, str):
+                value_to_assign = runtime.py_runtime_get_string(self, builder, key)
             builder.store(value_to_assign, constant_var)
 
         # Create all the implementations on Python side
-        for _class in self.__data.classes_iter():
-            for _func in _class.funcs_iter():
+        for _file in self.__data.files_iter():
+            for _func in _file.funcs_iter():
                 _func.generate_code_to_set_impl(self, builder)
-        for _func in self.__data.funcs_iter():
-            _func.generate_code_to_set_impl(self, builder)
 
+        # Setup flyable
+        flyable_func = self.get_or_create_func("flyable_init", code_type.get_void(), [], Linkage.EXTERNAL)
+        builder.call(flyable_func, [])
+
+        # Start the CPython main
         func_to_call = self.get_or_create_func("Py_BytesMain", code_type.get_int32(),
                                                [code_type.get_int32(), code_type.get_int8_ptr().get_ptr_to()],
                                                Linkage.EXTERNAL)
 
         return_value = builder.call(func_to_call, [0, 1])
         builder.ret(return_value)
-
-    def convert_type(self, builder: CodeBuilder, code_gen: CodeGen, type_from: lang_type.LangType, value: int,
-                     type_to: lang_type.LangType):
-        if type_to.is_python_obj():
-            return runtime.value_to_pyobj(self, builder, value, type_from)[1]
-        elif type_to.is_obj():
-            return builder.ptr_cast(type_to.get_id(), code_type.get_py_obj(code_gen))
-        elif type_to.is_primitive():
-            if type_to.is_int():
-                return builder.int_cast(value, code_type.get_int64())
-            elif type_to.is_dec():
-                return builder.float_cast(value, code_type.get_double())
-        else:
-            raise ValueError("Impossible to convert the type")
-
-    def get_null_from_type(self, builder: CodeBuilder, code_gen: CodeGen, type: lang_type.LangType):
-        if type.is_int():
-            return builder.const_int64(0)
-        elif type.is_dec():
-            return builder.const_float64(0.0)
-        elif type.is_bool():
-            return builder.const_int1(False)
-        else:
-            return builder.const_null(type.to_code_type(code_gen))

@@ -18,14 +18,38 @@ if TYPE_CHECKING:
     from flyable.data.lang_type import LangType
 
 
-def __convert_type_to_match(
-        visitor: ParserVisitor,
-        op: ast.operator,
-        type_left: LangType,
-        value_left,
-        type_right,
-        value_right,
-):
+def get_binary_op_func_to_call(op):
+    func_op = ["PyNumber_Add",
+               "PyNumber_And",
+               "PyNumber_FloorDivide",
+               "PyNumber_Lshift",
+               "PyNumber_MatrixMultiply",
+               "PyNumber_Multiply",
+               "PyNumber_Remainder",
+               "PyNumber_Or",
+               "_PyNumber_PowerNoMod",
+               "PyNumber_Rshift",
+               "PyNumber_Subtract",
+               "PyNumber_TrueDivide",
+               "PyNumber_Xor",
+               "PyNumber_InPlaceAdd",
+               "PyNumber_InPlaceAnd",
+               "PyNumber_InPlaceFloorDivide",
+               "PyNumber_InPlaceLshift",
+               "PyNumber_InPlaceMatrixMultiply",
+               "PyNumber_InPlaceMultiply",
+               "PyNumber_InPlaceRemainder",
+               "PyNumber_InPlaceOr",
+               "_PyNumber_InPlacePowerNoMod",
+               "PyNumber_InPlaceRshift",
+               "PyNumber_InPlaceSubtract",
+               "PyNumber_InPlaceTrueDivide",
+               "PyNumber_InPlaceXor"]
+    return func_op[op]
+
+
+def __convert_type_to_match(visitor: ParserVisitor, type_left: LangType, value_left, type_right,
+                            value_right):
     # Check the primitive type conversion
     if type_left.is_dec():
         # If left type is decimal, the right type must also be to return a decimal
@@ -73,14 +97,8 @@ def __convert_type_to_match(
     return type_left, value_left, type_right, value_right
 
 
-def bin_op(
-        visitor: ParserVisitor,
-        op: ast.operator,
-        type_left: LangType,
-        value_left: int,
-        type_right: LangType,
-        value_right: int,
-):
+def bin_op(visitor: ParserVisitor, op: ast.operator, type_left: LangType, value_left: int, type_right: LangType,
+           value_right: int, ):
     builder = visitor.get_builder()
 
     # Check the primitive type conversion
@@ -133,11 +151,11 @@ def bin_op(
             return return_type, return_value
         else:
             raise TypeError("Unsupported type for pow operator")
-        
+
     if isinstance(op, ast.FloorDiv):
         value_left = builder.float_cast(value_left, code_type.get_double())
         value_right = builder.float_cast(value_right, code_type.get_double())
-        
+
         div = builder.div(value_left, value_right)
         floored_div = builder.floor(div)
 
@@ -170,13 +188,13 @@ def bin_op(
         floored_div = builder.floor(builder.float_cast(div, code_type.get_double()))
         mul = builder.mul(value_right, floored_div)
         mod = builder.sub(value_left, mul)
-        
+
         if type_left.is_int() and type_right.is_int():
             mod = builder.int_cast(mod, code_type.get_int64())
             result_type = lang_type.get_int_type()
-        elif type_left.is_dec() or type_right.is_dec():    
+        elif type_left.is_dec() or type_right.is_dec():
             result_type = lang_type.get_dec_type()
-            
+
         return result_type, mod
     else:
         raise ValueError("Unsupported Op " + str(op))

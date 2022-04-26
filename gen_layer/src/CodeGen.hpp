@@ -60,6 +60,13 @@ enum TypePrimitive
     ARRAY = 10
 };
 
+enum DebugFlags
+{
+    NO_DEBUG = 0,
+    SHOW_OPCODE_ON_EXEC = 1,
+    SHOW_OPCODE_ON_GEN = 2
+};
+
 class CodeGen
 {
 public:
@@ -68,6 +75,7 @@ public:
     void opt();
     void output(std::string output);
     void readInput(FormatReader& reader);
+    void validate();
 
 private:
 
@@ -103,7 +111,7 @@ private:
     const llvm::Target* mTarget;
     llvm::TargetMachine* mTargetMachine;
     llvm::IRBuilder<> mBuilder;
-    bool mDebug;
+    DebugFlags mDebug;
 };
 
 

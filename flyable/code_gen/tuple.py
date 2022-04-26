@@ -49,7 +49,7 @@ def python_tuple_new_alloca(visitor: ParserVisitor, size: int):
     return tuple_result
 
 
-def python_tuple_set(code_gen: gen.CodeGen, builder: CodeBuilder, list: int, index: int, item: int):
+def python_tuple_set(code_gen: gen.CodeGen, builder: CodeBuilder, tuple: int, index: int, item: int):
     """
     Generate the code to set an element in a Python Tuple
     """
@@ -57,7 +57,7 @@ def python_tuple_set(code_gen: gen.CodeGen, builder: CodeBuilder, list: int, ind
                            code_type.get_py_obj_ptr(code_gen)]
     set_item_func = code_gen.get_or_create_func("PyTuple_SetItem", code_type.get_int32(),
                                                 set_item_args_types, gen.Linkage.EXTERNAL)
-    return builder.call(set_item_func, [list, index, item])
+    return builder.call(set_item_func, [tuple, index, item])
 
 
 def python_tuple_set_unsafe(visitor: ParserVisitor, tuple: int, index: int, item: int):
@@ -67,10 +67,7 @@ def python_tuple_set_unsafe(visitor: ParserVisitor, tuple: int, index: int, item
     """
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
-    tuple = builder.ptr_cast(tuple, code_gen.get_py_tuple_struct().to_code_type().get_ptr_to())
-    content_type = code_type.get_array_of(code_type.get_py_obj_ptr(code_gen), index + 1).get_ptr_to()
-    content = builder.ptr_cast(python_tuple_get_content_ptr(visitor, tuple), content_type)
-    content = builder.gep(content, builder.const_int32(0), builder.const_int32(index))
+    content = python_tuple_get_unsafe_item_ptr(visitor, lang_type.get_python_obj_type(), tuple, index)
     builder.store(item, content)
 
 
@@ -103,7 +100,23 @@ def python_tuple_get_item(visitor: ParserVisitor, tuple_type: lang_type.LangType
     return result
 
 
+def python_tuple_get_unsafe_item_ptr(visitor: ParserVisitor, tuple_type: lang_type.LangType, tuple: int, index: int):
+    builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
+    content = builder.ptr_cast(tuple, code_type.get_py_obj_ptr(code_gen).get_ptr_to())
+
+    # + 3 to skip the ref count, type and counts
+    gep_index = builder.add(index, builder.const_int64(3))
+    content = builder.gep2(content, code_type.get_py_obj_ptr(code_gen), [gep_index])
+    return content
+
+
 def python_tuple_get_size_ptr(visitor: ParserVisitor, tuple: int):
     builder = visitor.get_builder()
     tuple = builder.ptr_cast(tuple, code_type.get_tuple_obj_ptr(visitor.get_code_gen()))
     return builder.gep(tuple, builder.const_int32(0), builder.const_int32(2))
+
+def python_tuple_len(visitor: ParserVisitor, tuple: int):
+    """
+    Generate the code that returns the len of the tuple
+    """
+    return visitor.get_builder().load(python_tuple_get_size_ptr(visitor, tuple))

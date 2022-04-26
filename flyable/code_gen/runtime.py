@@ -38,14 +38,14 @@ def create_unicode(code_gen: CodeGen, builder: CodeBuilder, str: int):
                                               [CodeType(CodeType.CodePrimitive.INT8).get_ptr_to()])
     return builder.call(from_string, [str])
 
+
 def pydict_getitem(code_gen: CodeGen, builder: CodeBuilder, d: int, k: int):
     """
     Get value associated with key from the dictionary
     """
     return_type = code_type.get_py_obj_ptr(code_gen)
     args_types = [code_type.get_py_obj_ptr(code_gen), code_type.get_py_obj_ptr(code_gen)]
-    func = code_gen.get_or_create_func("PyDict_GetItem", return_type, args_types)
-
+    func = code_gen.get_or_create_func("PyDict_GetItem", return_type, args_types, _code_gen.Linkage.EXTERNAL)
     return builder.call(func, [d, k])
 
 
@@ -78,7 +78,9 @@ def py_runtime_init(code_gen: CodeGen, builder: CodeBuilder):
     return builder.call(init_func, [])
 
 
-def value_to_pyobj(code_gen: CodeGen, builder: CodeBuilder, value: int, value_type: LangType):
+def value_to_pyobj(visitor, value: int, value_type: LangType):
+    code_gen = visitor.get_code_gen()
+    builder = visitor.get_builder()
     result_type = lang_type.get_python_obj_type()
 
     if value_type.is_int():
@@ -104,11 +106,28 @@ def value_to_pyobj(code_gen: CodeGen, builder: CodeBuilder, value: int, value_ty
             return result_type, builder.load(
                 builder.global_var(code_gen.get_or_insert_const(dec_const_hint.get_value())))
     elif value_type.is_bool():
-        # TODO : Directly use the global var to avoid the func call
-        py_func = code_gen.get_or_create_func("PyBool_FromLong", code_type.get_py_obj_ptr(code_gen),
-                                              [code_type.get_int1()], _code_gen.Linkage.EXTERNAL)
+        true_block = builder.create_block("Convert bool True")
+        false_block = builder.create_block("Convert bool false")
+        continue_block = builder.create_block("Convert bool continue")
+
+        bool_alloca = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
+        builder.cond_br(value, true_block, false_block)
+
+        builder.set_insert_block(true_block)
+        true_var = builder.global_var(code_gen.get_true())
+        builder.store(true_var, bool_alloca)
+        builder.br(continue_block)
+
+        builder.set_insert_block(false_block)
+        false_var = builder.global_var(code_gen.get_false())
+        builder.store(false_var, bool_alloca)
+        builder.br(continue_block)
+
+        builder.set_insert_block(continue_block)
+        result = builder.load(bool_alloca)
+        ref_counter.ref_incr(builder, lang_type.get_python_obj_type(), result)
         result_type.add_hint(type_hint.TypeHintRefIncr())
-        return result_type, builder.call(py_func, [value])
+        return result_type, result
     elif value_type.is_none():
         none_value = builder.global_var(code_gen.get_none())
         ref_counter.ref_incr(builder, lang_type.get_python_obj_type(), none_value)

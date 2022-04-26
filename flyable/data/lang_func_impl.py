@@ -10,7 +10,9 @@ if TYPE_CHECKING:
 import flyable.data.lang_type as type
 import flyable.parse.context as context
 import flyable.data.type_hint as hint
+import flyable.code_gen.code_type as code_type
 import enum
+import flyable.data.lang_type as lang_type
 
 
 class FuncImplType(enum.IntEnum):
@@ -41,20 +43,13 @@ class LangFuncImpl:
 
     def __init__(self):
         self.__id: int = -1
-        self.__unknown: bool = False
         self.__code_func: CodeFunc | None = None
         self.__args: list[type.LangType] = []
         self.__parent_func: LangFunc | None = None
 
         self.__parse_status = LangFuncImpl.ParseStatus.NOT_STARTED
 
-        self.__return_type: type.LangType = type.LangType()
-
         self.__context: context.Context = context.Context()
-
-        self.__can_raise: bool = False
-
-        self.__has_yield: bool = False
 
         self.__impl_type: FuncImplType = FuncImplType.NOT_IMPL
 
@@ -95,25 +90,11 @@ class LangFuncImpl:
             raise Exception(f"Function implementation has no parent function")
         return self.__parent_func
 
-    def set_unknown(self, unknown: bool):
-        self.__unknown = unknown
-
-    def is_unknown(self):
-        return self.__unknown
-
     def set_parse_status(self, status: ParseStatus):
         self.__parse_status = status
 
     def get_parse_status(self):
         return self.__parse_status
-
-    def get_return_type(self):
-        return self.__return_type
-
-    def set_return_type(self, return_type: type.LangType):
-        return_type = copy.deepcopy(return_type)
-        hint.remove_hint_type(return_type, hint.TypeHintRefIncr)
-        self.__return_type = return_type
 
     def set_code_func(self, func: CodeFunc):
         self.__code_func = func
@@ -124,29 +105,8 @@ class LangFuncImpl:
     def get_context(self):
         return self.__context
 
-    def set_can_raise(self, can_raise: bool):
-        """
-        Set if the implementation can potentially raise an exception during his execution
-        """
-        self.__can_raise = can_raise
-
-    def can_raise(self):
-        """
-        Return if the implementation can potentially raise an exception during his execution
-        """
-        return self.__can_raise
-
-    def set_yield(self, _yield: bool):
-        """
-        Set if the function contains a yield
-        """
-        self.__has_yield = _yield
-
-    def has_yield(self):
-        """
-        Returns if the function contains a yield. It might contain one and return False if it has not been visited yet
-        """
-        return self.__has_yield
+    def get_return_type(self):
+        return lang_type.get_python_obj_type()
 
     def clear_info(self):
         # We need to keep global variable for global funcs
@@ -159,6 +119,27 @@ class LangFuncImpl:
         else:
             self.__context.clear_info()
         self.__code_func = None
+
+    def get_code_func_args_signature(self, gen):
+        if self.__impl_type == FuncImplType.TP_CALL:
+            return [code_type.get_py_obj_ptr(gen)] * 3
+        elif self.__impl_type == FuncImplType.VEC_CALL:
+            return [code_type.get_py_obj_ptr(gen), code_type.get_py_obj_ptr(gen).get_ptr_to(), code_type.get_int64(),
+                    code_type.get_py_obj_ptr(gen)]
+        else:
+            raise ValueError("Valid type expected to get signature")
+
+    def get_full_name(self):
+        extension = ""
+        if self.get_impl_type() == FuncImplType.TP_CALL:
+            extension = "@tp@"
+        elif self.get_impl_type() == FuncImplType.VEC_CALL:
+            extension = "@vec@"
+        elif self.get_impl_type() == FuncImplType.SPECIALIZATION:
+            extension = "@spec@"
+        else:
+            raise ValueError("Valid impl type expected")
+        return self.__parent_func.get_name() + extension
 
     def __str__(self):
         result = str(self.__return_type) + " : "

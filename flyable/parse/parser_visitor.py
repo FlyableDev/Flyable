@@ -1,1384 +1,1580 @@
-from __future__ import annotations
+import sys
 
-import ast
-import copy
-from ast import *
-from typing import TYPE_CHECKING, Any, Union, TypeAlias, Generic, Type, Optional, TypeVar
-
-import flyable.code_gen.caller as caller
 import flyable.code_gen.code_gen as gen
-import flyable.code_gen.cond as cond
-import flyable.code_gen.debug as debug
-import flyable.parse.exception.unsupported as unsupported
-import flyable.code_gen.dict as gen_dict
-import flyable.code_gen.exception as excp
-import flyable.code_gen.fly_obj as fly_obj
-import flyable.code_gen.list as gen_list
-import flyable.code_gen.module as gen_module
-import flyable.code_gen.op_call as op_call
-import flyable.code_gen.ref_counter as ref_counter
-import flyable.code_gen.runtime as runtime
-import flyable.code_gen.set as gen_set
-import flyable.code_gen.slice as gen_slice
-import flyable.code_gen.tuple as gen_tuple
-import flyable.code_gen.unpack as unpack
-import flyable.data.attribute
-import flyable.data.attribute as _attribute
+
 import flyable.data.comp_data as comp_data
-import flyable.data.lang_class as lang_class
-import flyable.data.lang_func as lang_func
-import flyable.data.lang_type as lang_type
-import flyable.data.type_hint as hint
-import flyable.parse.adapter as adapter
-import flyable.parse.build_in as build
-from flyable.parse.variable import Variable
+import dis as dis
+import flyable.code_gen.code_type as code_type
 import flyable.code_gen.code_gen as _gen
-from flyable.data.lang_type import LangType, code_type, get_none_type
-from flyable.code_gen.code_builder import CodeBuilder
-from flyable.data.lang_func_impl import LangFuncImpl
+import flyable.code_gen.runtime as runtime
+import flyable.code_gen.caller as caller
+import flyable.code_gen.fly_obj as fly_obj
+import flyable.code_gen.cond as _cond
+import flyable.code_gen.ref_counter as ref_counter
+import flyable.data.lang_type as lang_type
+import flyable.data.lang_func_impl as func_impl
+import flyable.code_gen.set as gen_set
+import flyable.code_gen.function as func
+import flyable.code_gen.unpack as unpack
+import flyable.code_gen.op_call as op_call
+import flyable.code_gen.list as gen_list
+import flyable.code_gen.dict as gen_dict
+import flyable.code_gen.tuple as gen_tuple
+import flyable.parse.version as version
+import flyable.code_gen.function as function
+import flyable.code_gen.iterator as gen_iter
+import flyable.code_gen.exception as excp
 
-if TYPE_CHECKING:
-    from flyable.parse.parser import Parser
-    from flyable.code_gen.code_gen import CodeGen
-
-AstSubclass = TypeVar('AstSubclass', bound=AST)
-
-AstSubclassOrList = AstSubclass | list[AstSubclass]
+import flyable.parse.exception.unsupported as unsupported
 
 
-class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
+class DuckParserVisitor:
 
-    def __init__(self, parser: Parser, code_gen: CodeGen, func_impl: LangFuncImpl):
+    def __init__(self, codegen, builder):
+        self.__builder = builder
+        self.__code_gen = codegen
+
+    def get_builder(self):
+        return self.__builder
+
+    def get_code_gen(self):
+        return self.__code_gen
+
+
+class ParserVisitor:
+
+    def __init__(self, parser, code_gen, func_impl):
         self.__code_gen: gen.CodeGen = code_gen
-        self.__assign_type: LangType = LangType()
-        self.__assign_value = None
-        self.__last_type: Union[LangType, None] = LangType()
-        self.__last_value: int | None = None
-        self.__aug_mode = False
-        self.__func: LangFuncImpl = func_impl
+        self.__func = func_impl
         self.__parser = parser
         self.__data: comp_data.CompData = parser.get_data()
-        self.__current_node: Optional[AstSubclass] = None
-        self.__reset_visit = False
+        self.__code_obj = None
+        self.__bytecode = None
+        self.__context = func_impl.get_context()
 
-        self.__assign_depth = 0
+        self.__frame_ptr_value = None
 
-        self.__out_blocks = []  # Hierarchy of blocks to jump when a context is over
-        self.__cond_blocks = []  # Hierarchy of current blocks that might not get executed
-        self.__exception_blocks = []  # Hierarchy of blocks to jump when an exception occur to dispatch it
+        self.__kw_names = {}
+        self.__jumps_instr = {}
+        self.__instructions = []
+        self.__current_instr_index = - 1
+        self.__entry_block = None
+        self.__content_block = None
+        self.__name = None  # Contains the value that contains the ptr to the name
+        self.__consts = []
+        self.__stack = []
+        self.__blocks_stack = []
+        self.__stack_states = []
 
-        self.__get_code_func().clear_blocks()
+    def run(self):
+        self.__setup()
+        self.__bytecode = dis.Bytecode(self.__func.get_parent_func().get_source_code())
+        if sys.version_info.major == 3 and sys.version_info.minor >= 11:
+            self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0])
+        else:
+            self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0], show_caches=True)
+        self.__code_obj = self.__bytecode.codeobj
+        self.__frame_ptr_value = 0
 
-        self.__entry_block = self.__get_code_func().add_block("Entry block")
+        self.__build_const()
 
-        self.__builder: CodeBuilder = self.__get_code_func().get_builder()
-        self.__builder.set_insert_block(self.__entry_block)
+        for instr in self.__bytecode:
+            self.__instructions.append(instr)
+            if instr.is_jump_target:
+                new_block = self.__builder.create_block("Instr:" + instr.opname)
+                self.__jumps_instr[instr] = new_block
+        print("---")
+        self.__setup_argument()
 
-    def parse(self):
-        self.__last_type = None
-        self.__reset_visit = True
-        while self.__reset_visit:
-            self.__reset_info()
-            self.__reset_visit = False
-            self.__parse_begin()
-            self.visit(self.__func.get_parent_func().get_node().body)
-            self.__parse_over()
+        for i, instr in enumerate(self.__instructions):
+            self.__current_instr_index = i
+            print(instr.opname + (" x" if instr in self.__jumps_instr else "") + " " + str(len(self.__stack)))
+            self.__visit_instr(instr)
 
-    def __parse_begin(self):
-
-        self.__setup_default_args()
-
-        # Setup argument as var
-
-        impl_type = self.__func.get_impl_type()
-        if impl_type == lang_func.FuncImplType.SPECIALIZATION:
-            for i, var in enumerate(self.__func.get_context().vars_iter()):
-                if var.is_arg():
-                    var.set_code_gen_value(i)
-
-        # For vec and tp functions, arguments are actually inside the array
-        # We load them when we start the function
-        # 1 is the codegen value of the list argument
-        # If it's a method and we load the first argument from the callable object (id 0)
-        is_method = self.__func.get_parent_func().get_class() is not None
-        for i, var in enumerate(self.__func.get_context().vars_iter()):
-            if var.is_arg():
-                if (impl_type == lang_func.FuncImplType.TP_CALL or impl_type == lang_func.FuncImplType.VEC_CALL) \
-                        and is_method and i == 0:
-                    method_instance = self.__builder.ptr_cast(0, code_type.get_py_obj_ptr(
-                        self.__code_gen).get_ptr_to())
-                    self_ptr = self.__builder.gep2(method_instance, code_type.get_py_obj_ptr(self.__code_gen),
-                                                   [self.__builder.const_int32(3)])
-                    var.set_code_gen_value(self.__builder.load(self_ptr))
-                elif impl_type == lang_func.FuncImplType.TP_CALL:
-                    index_value = self.__builder.const_int32(i - 1 if is_method else i)
-                    found_ptr = gen_list.python_list_array_get_item_unsafe(self,
-                                                                           lang_type.get_list_of_python_obj_type(),
-                                                                           1, index_value)
-                    var.set_code_gen_value(found_ptr)
-                elif impl_type == lang_func.FuncImplType.VEC_CALL:
-                    index_value = self.__builder.const_int32(i - 1 if is_method else i)
-                    found_ptr = self.__builder.gep2(1, code_type.get_py_obj_ptr(self.__code_gen), [index_value])
-                    found_ptr = self.__builder.load(found_ptr)
-                    var.set_code_gen_value(found_ptr)
-
-        self.__content_block = self.__builder.create_block("Main Content")
-        self.__builder.set_insert_block(self.__content_block)
-
-    def __parse_over(self):
-        # When parsing is done we can put the final br of the entry block
         self.__builder.set_insert_block(self.__entry_block)
         self.__builder.br(self.__content_block)
 
-        self.__get_code_func().set_return_type(self.__func.get_return_type().to_code_type(self.__code_gen))
         self.__code_gen.fill_not_terminated_block(self)
 
-        self.__func.set_parse_status(lang_func.LangFuncImpl.ParseStatus.ENDED)
+    def __setup_argument(self):
+        callable_value = 0
+        args_value = 1
+        kwargs = 2
+        if self.__func.get_impl_type() == func_impl.FuncImplType.TP_CALL:
+            for i, arg in enumerate(self.__func.get_parent_func().get_node().args.args):
+                arg_var = self.get_or_gen_var(arg.arg)
+                index = self.__builder.const_int64(i)
+                item_ptr = gen_tuple.python_tuple_get_unsafe_item_ptr(self, lang_type.get_python_obj_type(), 1, index)
+                arg_var.set_code_value(item_ptr)
+        elif self.__func.get_impl_type() == func_impl.FuncImplType.VEC_CALL:
+            for i, arg in enumerate(self.__func.get_parent_func().get_node().args.args):
+                arg_var = self.get_or_gen_var(arg.arg)
+                item_ptr = self.__builder.gep2(args_value, code_type.get_py_obj_ptr(self.__code_gen),
+                                               [self.__builder.const_int64(i)])
+                arg_var.set_code_value(item_ptr)
 
-    def visit(self, node: AstSubclassOrList):
-        self.__current_node = node  # type: ignore
-        if isinstance(node, list):
-            for e in node:  # type: AstSubclass
-                super().visit(e)
-            return
+    def __visit_instr(self, instr):
 
-        if hasattr(node, "context") and node.context is None:  # type: ignore
-            return
+        if instr in self.__jumps_instr:
+            insert_block = self.__jumps_instr[instr]
+            # If we're not already the on the block
+            if self.__builder.get_current_block() != insert_block:
+                self.__builder.br(insert_block)
+                self.__builder.set_insert_block(insert_block)
 
-        super().visit(node)
-
-    def visit_node(self, node: AstSubclassOrList):
-        return self.__visit_node(node)
-
-    def __visit_node(self, node: AstSubclassOrList):
-        self.visit(node)
-        return self.__last_type, self.__last_value
-
-    def visit_Assign(self, node: Assign) -> Any:
-        self.__assign_depth += 1
-        targets = []
-        values = []
-
-        if isinstance(node.targets[0], ast.Tuple) or isinstance(node.targets[0], ast.List):  # mult assign
-            for e in node.targets[0].elts:
-                targets.append(e)
+        method_to_visit = "visit_" + instr.opname.lower()
+        if hasattr(self, method_to_visit):
+            getattr(self, method_to_visit)(instr)
         else:
-            targets.append(node.targets)
+            raise Exception("Unsupported op " + instr.opname)
 
-        if isinstance(node.value, ast.Tuple) or isinstance(node.value, ast.List):
-            for e in node.value.elts:
-                values.append(e)
-        else:
-            values.append(node.value)
+    def __setup(self):
+        signature = self.__func.get_code_func_args_signature(self.__code_gen)
+        code_func = self.__code_gen.get_or_create_func(self.__func.get_full_name(),
+                                                       code_type.get_py_obj_ptr(self.__code_gen),
+                                                       signature, _gen.Linkage.INTERNAL)
 
-        if len(targets) == 1:  # Normal assign
-            self.__assign_type, self.__assign_value = self.__visit_node(node.value)
+        self.__func.set_code_func(code_func)
+        self.__entry_block = self.__func.get_code_func().add_block("Entry block")
 
-            if not hint.is_incremented_type(self.__assign_type):
-                ref_counter.ref_incr(self.__builder, self.__assign_type, self.__assign_value)
-            hint.remove_hint_type(self.__assign_type, hint.TypeHintRefIncr)
-            self.__reset_last()
-            self.__last_type, self.__last_value = self.__visit_node(node.targets)
-        else:  # Mult assign
-            if len(targets) >= len(values):  # unpack
-                value_type, value_value = self.__visit_node(node.value)
-                unpack.unpack_assignation(self, targets, value_type, value_value, node)
+        self.__builder = self.__func.get_code_func().get_builder()
+
+        self.__content_block = self.__builder.create_block()
+        self.__builder.set_insert_block(self.__content_block)
+
+    def __build_const(self):
+        for const_obj in self.__code_obj.co_consts:
+            self.__consts.append(self.__gen_const_value(const_obj))
+
+    def __gen_const_value(self, const_obj):
+        if const_obj is None:
+            new_const = self.__builder.global_var(self.__code_gen.get_none())
+        elif isinstance(const_obj, str):
+            new_const = self.__builder.global_var(self.__code_gen.get_or_insert_str(const_obj))
+            new_const = self.__builder.load(new_const)
+        elif isinstance(const_obj, bool):
+            if const_obj:
+                bool_var = self.__code_gen.get_true()
             else:
-                self.__parser.throw_error("Incorrect amount of value to unpack", node.lineno, node.end_col_offset)
+                bool_var = self.__code_gen.get_false()
+            new_const = self.__builder.global_var(bool_var)
+        elif isinstance(const_obj, int):
+            const_value = self.__builder.const_int64(const_obj)
+            new_const = runtime.value_to_pyobj(self, const_value, lang_type.get_int_type())
+            new_const = new_const[1]
+        elif isinstance(const_obj, tuple):
+            global_tuple = self.__code_gen.get_or_insert_const(const_obj)
+            new_const = self.__builder.global_var(global_tuple)
+            new_const = self.__builder.load(new_const)
+        elif isinstance(const_obj, frozenset):
+            global_set = self.__code_gen.get_or_insert_const(const_obj)
+            new_const = self.__builder.global_var(global_set)
+            new_const = self.__builder.load(new_const)
+        elif type(const_obj).__name__ == "code":
+            new_const = None
+        else:
+            raise Exception(
+                "Not supported const of type " + str(type(const_obj)) + "with content " + str(const_obj))
+        return new_const
 
-        self.__reset_last()
-        self.__assign_depth -= 1
+    """"
+    General instructions
+    """
 
-    def visit_AnnAssign(self, node: AnnAssign) -> Any:
-        self.__assign_depth += 1
-        if node.value is not None:
-            self.__assign_type, self.__assign_value = self.__visit_node(node.value)
-            self.__reset_last()
-
-            if not hint.is_incremented_type(self.__assign_type):
-                ref_counter.ref_incr(self.__builder, self.__assign_type, self.__assign_value)
-            hint.remove_hint_type(self.__assign_type, hint.TypeHintRefIncr)
-
-            self.__last_type, self.__last_value = self.__visit_node(node.target)
-            self.__reset_last()
-
-        self.__assign_depth -= 1
-
-    def visit_BinOp(self, node: BinOp) -> Any:
-        left_type, left_value = self.__visit_node(node.left)
-        self.__reset_last()
-        right_type, right_value = self.__visit_node(node.right)
-        self.__visit_node(node.op)
-        self.__last_type, self.__last_value = op_call.bin_op(self, node.op, left_type, left_value, right_type,
-                                                             right_value)
-        ref_counter.ref_decr_incr(self, left_type, left_value)
-        ref_counter.ref_decr_incr(self, right_type, right_value)
-
-    def visit_UnaryOp(self, node: UnaryOp) -> Any:
-        value_type, value = self.__visit_node(node.operand)
-
-        self.__last_type, self.__last_value = op_call.unary_op(self, value_type, value, node)
-        ref_counter.ref_decr_incr(self, value_type, value)
-
-    def visit_BoolOp(self, node: BoolOp) -> Any:
-        types = []
-        values = []
-        for e in node.values:
-            type, value = self.__visit_node(e)
-            types.append(type)
-            values.append(value)
-
-        current_type = types[0]
-        current_value = values[0]
-        for i in range(1, len(types)):
-            type_buffer, value_buffer = current_type, current_value
-            current_type, current_value = op_call.bool_op(self, node.op, current_type, current_value, types[i],
-                                                          values[i])
-            ref_counter.ref_decr_incr(self, type_buffer, value_buffer)
-
-        self.__last_type, self.__last_value = current_type, current_value
-
-    def visit_Compare(self, node: Compare) -> Any:
-        from flyable.parse.content.compare import parse_compare
-        self.__last_type, self.__last_value = parse_compare(self, node)
-
-    def visit_AugAssign(self, node: AugAssign) -> Any:
-        import flyable.tool.token_change as token_change
-
-        token_store = token_change.find_token_store(node)
-
-        # Run what we can of the target. The visitor will stop if it finds a none context
-        node.ctx = None
-        base_type, base_value = self.__visit_node(node.target)
-
-        # Load value first
-        self.__last_type = base_type
-        self.__last_value = base_value
-        token_store.ctx = ast.Load()
-        left_type, left_value = self.__visit_node(token_store)
-
-        ref_counter.ref_incr(self.__builder, left_type, left_value)
-
-        self.__reset_last()
-        right_type, right_value = self.__visit_node(node.value)
-
-        # Operate value and target together
-        self.__assign_type, self.__assign_value = op_call.bin_op(self, node.op, left_type, left_value, right_type,
-                                                                 right_value)
-
-        # And now do the assign
-        self.__last_type = base_type
-        self.__last_value = base_value
-        token_store.ctx = ast.Store()
-        self.__visit_node(token_store)
-
-        # Decrement the left load if needed
-        ref_counter.ref_decr_incr(self, left_type, left_value)
-
-        # Decrement the right load if needed
-        ref_counter.ref_decr_incr(self, right_type, right_value)
-
-        # Increment the assignation if there is a need for it
-        if not hint.is_incremented_type(self.__assign_type):
-            ref_counter.ref_incr(self.__builder, self.__assign_type, self.__assign_value)
-
-    def visit_Expr(self, node: Expr) -> Any:
-        # Represent an expression with the return value unused
-        self.__reset_last()
-        self.__last_type, self.__last_value = self.__visit_node(node.value)
-
-        ref_counter.ref_decr_incr(self, self.__last_type, self.__last_value)
-
-    def visit_Expression(self, node: Expression) -> Any:
-        self.__reset_last()
-        self.__last_type, self.__last_value = self.__visit_node(node.body)
-
-    def visit_NamedExpr(self, node: NamedExpr) -> Any:
-        self.__assign_type, self.__assign_value = self.__visit_node(node.value)
-        self.__reset_last()
-        self.__last_type, self.__last_value = self.__visit_node(node.target)
-
-    def visit_arg(self, node: arg) -> Any:
+    def visit_nop(self, instr):
         pass
 
-    def visit_arguments(self, node: arguments) -> Any:
+    def visit_resume(self, instr):
         pass
 
-    def visit_Name(self, node: Name) -> Any:
-        # Name can represent multiple things
-        # Is it a declared variable ?
-        found_var = self.__find_active_var(node.id)
-        if found_var is not None:
-            if isinstance(found_var, gen.GlobalVar) and found_var.get_code_gen_value().belongs_to_module():
-                # Imported module, retrieve stored global reference
-                variable_reference = self.__builder.global_var(found_var.get_code_gen_value())
-                self.__last_value = self.__builder.load(variable_reference)
-                self.__last_type = copy.copy(found_var.get_type())
-                self.__last_value = self.__builder.load(variable_reference)
+    def visit_cache(self, instr):
+        pass
 
-                if self.__last_type.is_python_obj() and not found_var.is_module():
-                    self.__last_type = lang_type.get_python_obj_type()
-                    self.__last_type.add_hint(hint.TypeHintRefIncr())
-                    self.__last_value = fly_obj.py_obj_get_attr(self, self.__last_value, found_var.get_name())
-            elif isinstance(found_var, Variable) and found_var.belongs_to_module():
-                self.__last_type = copy.deepcopy(found_var.get_type())
-                self.__last_value = self.__builder.load(found_var.get_code_gen_value())
+    def visit_pop_top(self, instr):
+        type, value = self.pop()
+        ref_counter.ref_decr(self, type, value)
 
-                if self.__last_type.is_python_obj() and not found_var.is_module():
-                    self.__last_type = lang_type.get_python_obj_type()
-                    self.__last_type.add_hint(hint.TypeHintRefIncr())
-                    self.__last_value = fly_obj.py_obj_get_attr(self, self.__last_value, found_var.get_name())
+    def visit_rot_two(self, instr):
+        buffer = self.__stack[-2]
+        self.__stack[-2] = self.__stack[-1]
+        self.__stack[-1] = buffer
+
+    def visit_rot_three(self, instr):
+        buffer = self.__stack[-1]
+        self.__stack[-1] = self.__stack[-2]
+        self.__stack[-2] = self.__stack[-3]
+        self.__stack[-3] = buffer
+
+    def visit_rot_four(self, instr):
+        buffer = self.__stack[-1]
+        self.__stack[-1] = self.__stack[-2]
+        self.__stack[-2] = self.__stack[-3]
+        self.__stack[-3] = self.__stack[-4]
+        self.__stack[-4] = buffer
+
+    def visit_rot_n(self, instr):
+        buffer = self.__stack[-1]
+        for i in range(instr.arg):
+            if i + 1 == instr.arg:
+                self.__stack[-instr.arg] = buffer
             else:
-                self.__last_type = found_var.get_type()
-                if found_var.is_global():
-                    self.__last_value = self.__builder.global_var(found_var.get_code_gen_value())
-                else:
-                    if found_var.get_code_gen_value() is None:
-                        if not found_var.is_global():
-                            found_var.set_code_gen_value(
-                                self.generate_entry_block_var(found_var.get_type().to_code_type(self.__code_gen), True))
+                self.__stack[-i - 1] = self.__stack[-i - 2]
 
-                    self.__last_value = found_var.get_code_gen_value()
+    def visit_dup_top(self, instr):
+        type, value = self.__stack[-1]
+        self.push(type, value)
+        ref_counter.ref_incr(self.__builder, type, value)
 
-                # Args don't live inside an alloca so they don't need to be loaded
-                if not found_var.is_arg():
-                    if isinstance(node.ctx, Store):
-                        # If it tries to assign a global variable in a local context without the global keyword,
-                        # instead declare a new local variable in the function context
-                        if not found_var.is_global():
-                            found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
-                            alloca_value = self.generate_entry_block_var(
-                                self.__assign_type.to_code_type(self.__code_gen), True)
-                            found_var.set_code_gen_value(alloca_value)
-                            self.__builder.store(self.__assign_value, alloca_value)
-                            self.__last_value = found_var.get_code_gen_value()
-                            self.__last_type = copy.copy(found_var.get_type())
-                            self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
-                        # Else assign new value to variable
-                        else:
-                            # Decrement the old content
-                            old_content = self.__builder.load(self.__last_value)
-                            ref_counter.ref_decr_nullable(self, found_var.get_type(), old_content)
+    def visit_dup_top_two(self, instr):
+        type, value = self.__stack[-2]
+        self.push(type, value)
+        ref_counter.ref_incr(self.__builder, type, value)
+        type, value = self.__stack[-2]
+        self.push(type, value)
+        ref_counter.ref_incr(self.__builder, type, value)
 
-                            # The variable might have a new type
-                            var_type = lang_type.get_most_common_type(self.__data, found_var.get_type(),
-                                                                      self.__assign_type)
-                            if found_var.get_type() != var_type:
-                                found_var.set_type(var_type)
-                                if found_var.is_global():
-                                    self.__data.set_changed(True)
-                                else:
-                                    self.__reset_visit = True
+    def visit_copy(self, instr):
+        index = instr.arg
+        type, value = self.__stack[-index]
+        self.push(type, value)
+        ref_counter.ref_incr(self.__builder, type, value)
 
-                            # Store the new content
-                            value_assign = self.__assign_value
-                            if self.__last_type.is_python_obj():
-                                _, value_assign = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_assign,
-                                                                         self.__assign_type)
-                            hint.remove_hint_type(self.__last_type, hint.TypeHintConstInt)
-                            self.__builder.store(value_assign, self.__last_value)
-                            self.__last_become_assign()
-                    else:
-                        # if found_var.is_global() and found_var.get_context() != self.__func.get_context():
-                        #    self.__parser.throw_error("Not found variable '" + node.id + "'", node.lineno, node.col_offset)
-                        self.__last_value = self.__builder.load(self.__last_value)
-                        self.__last_type = copy.copy(found_var.get_type())
-                        self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
-                else:
-                    self.__last_value = found_var.get_code_gen_value()
-                    self.__last_type = found_var.get_type()
-        elif build.get_build_in_name(node.id) is not None:  # An element in the build-in module
-            self.__last_type = lang_type.get_python_obj_type()
-            module = self.__builder.global_var(self.__code_gen.get_build_in_module())
-            module = self.__builder.load(module)
-            self.__last_value = fly_obj.py_obj_get_attr(self, module, node.id)
-        elif isinstance(node.ctx, Store):  # not found so declaring a variable
-            found_var = self.__func.get_context().add_var(node.id, self.__assign_type)
-            if self.__func.get_parent_func().is_global():
-                var_name = f"@global@var@{found_var.get_name()}@{self.__func.get_parent_func().get_file().get_path()}"
-                new_global_var = gen.GlobalVar(var_name, self.__assign_type.to_code_type(self.__code_gen))
-                found_var.set_code_gen_value(new_global_var)
-                found_var.set_global(True)
-                self.__code_gen.add_global_var(new_global_var)
-                self.__builder.store(self.__assign_value, self.__builder.global_var(new_global_var))
-                self.__last_become_assign()
-            else:
-                alloca_value = self.generate_entry_block_var(self.__assign_type.to_code_type(self.__code_gen), True)
-                found_var.set_code_gen_value(alloca_value)
-                self.__builder.store(self.__assign_value, alloca_value)
-                self.__last_value = found_var.get_code_gen_value()
-            self.__last_type = copy.copy(found_var.get_type())
-            self.__last_type.add_hint(hint.TypeHintSourceLocalVariable(found_var))
-        else:
-            self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
+    def visit_swap(self, instr):
+        index = (-instr.arg)
+        buffer = self.__stack[-1]
+        self.__stack[-1] = self.__stack[index]
+        self.__stack[index] = buffer
 
-    def visit_Attribute(self, node: Attribute) -> Any:
-        self.__reset_last()
+    def visit_push_null(self, instr):
+        self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
 
-        module_lookup = ""
-        attributes = []
-        node_copy = copy.deepcopy(node)
+    """"
+    Unary operations
+    """
 
-        while isinstance(node_copy, ast.Attribute):
-            attributes.append(node_copy.attr)
-            node_copy = node_copy.value
+    def visit_unary_positive(self, instr):
+        value_type, value = self.pop()
+        op_func = self.__code_gen.get_or_create_func("PyNumber_Positive",
+                                                     code_type.get_py_obj_ptr(self.__code_gen),
+                                                     [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                     _gen.Linkage.EXTERNAL)
+        new_value = self.__builder.call(op_func, [value])
+        new_value_type = lang_type.get_python_obj_type()
+        ref_counter.ref_decr(self, value_type, value)
+        self.push(new_value_type, new_value)
 
-        if isinstance(node_copy, ast.Name):
-            # This is a.b, not e.g. a().b
-            attributes.append(node_copy.id)
-            attributes.reverse()
-            module_lookup = '.'.join(attributes)
-        else:
-            # need to get a in a().b
-            self.visit(node_copy)
+    def visit_unary_negative(self, instr):
+        value_type, value = self.pop()
+        op_func = self.__code_gen.get_or_create_func("PyNumber_Negative",
+                                                     code_type.get_py_obj_ptr(self.__code_gen),
+                                                     [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                     _gen.Linkage.EXTERNAL)
+        new_value = self.__builder.call(op_func, [value])
+        new_value_type = lang_type.get_python_obj_type()
+        ref_counter.ref_decr(self, value_type, value)
+        self.push(new_value_type, new_value)
 
-        # Because of how we store modules, let's condense this then search
-        module_prefix = "@flyable@global@module@"
-        module_name = module_prefix + module_lookup
+    def visit_unary_not(self, instr):
+        value_type, value = self.pop()
+        new_value_type, new_value = caller.call_obj(self, "__not__", value, value_type, [], [])
+        ref_counter.ref_decr(self, value_type, value)
+        self.push(new_value_type, new_value)
 
-        # check global imports
-        module = self.__code_gen.get_global_var(module_name)
+    def visit_unary_invert(self, instr):
+        value_type, value = self.pop()
+        op_func = self.__code_gen.get_or_create_func("PyNumber_Invert",
+                                                     code_type.get_py_obj_ptr(self.__code_gen),
+                                                     [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                     _gen.Linkage.EXTERNAL)
+        new_value = self.__builder.call(op_func, [value])
+        new_value_type = lang_type.get_python_obj_type()
+        ref_counter.ref_decr(self, value_type, value)
+        self.push(new_value_type, new_value)
 
-        # check local imports
-        if not module:
-            module = self.__find_active_var(module_lookup)
+    def visit_get_iter(self, instr):
+        value_type, value = self.pop()
 
-        node_copy.id = module_lookup
+        get_iter_func = self.__code_gen.get_or_create_func("PyObject_GetIter",
+                                                           code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                           _gen.Linkage.EXTERNAL)
+        iter_value = self.__builder.call(get_iter_func, [value])
 
-        if module is not None:
-            # If we store the 'access level' module then we can return, no need to check the node attribute
-            # e.g. "import os.path" results in us storing the module as "<module_prefix>os.path"
-            # therefore, if we try to access this directly in the code then we can visit this node and return the module directly
-            node_copy.id = module_lookup
-            self.__last_type, self.__last_value = self.__visit_node(node_copy)
-            return
-        else:
-            # It's still possible that this is a module access so:
-            #   recursively check for an imported module for attribute access
-            module_name = module_lookup
-            for range_idx in range(len(attributes)):
-                module_name = '.'.join(attributes[:range_idx - 1])
-                global_module_lookup = module_prefix + module_name
-                module = self.__code_gen.get_global_var(global_module_lookup)
-                node_copy.id = module_name
-                if module:
-                    self.__last_type, self.__last_value = self.__visit_node(node_copy)
-                    break
-            if not module:
-                # Access is not from an imported module, visit node value
-                self.__last_type, self.__last_value = self.__visit_node(node.value)
+        ref_counter.ref_decr(self, value_type, value)
 
-        str_value = node.attr
-        if self.__last_type.is_python_obj():  # Python obj attribute. Type is unknown
-            self.__last_type = lang_type.get_python_obj_type()
-            if isinstance(node.ctx, ast.Store):
-                _, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, self.__assign_value,
-                                                   self.__assign_type)
-                fly_obj.py_obj_set_attr(self, self.__last_value, str_value, py_obj)
-                self.__last_become_assign()
-            elif isinstance(node.ctx, ast.Del):
-                fly_obj.py_obj_del_attr(self, self.__last_value, str_value)
-            else:
-                self.__last_type.add_hint(hint.TypeHintRefIncr())
-                self.__last_value = fly_obj.py_obj_get_attr(self, self.__last_value, str_value)
-        elif self.__last_type.is_obj():  # Flyable obj. The attribute type might be known. GEP access for more speed
-            attr = self.__data.get_class(self.__last_type.get_id()).get_attribute(str_value)
-            if attr is not None:  # We found the attribute
-                first_index = self.__builder.const_int32(0)
-                second_index = self.__builder.const_int32(fly_obj.get_obj_attribute_start_index() + attr.get_id())
-                attr_index = self.__builder.gep(self.__last_value, first_index, second_index)
+        self.push(None, iter_value)
+        print(self.__stack)
 
-                if isinstance(node.ctx, ast.Store):
-
-                    common_type = lang_type.get_most_common_type(self.__data, attr.get_type(), self.__assign_type)
-                    if attr.get_type() != common_type:  # Type mismatch between the attribute and the new assign
-                        # Change the type of the attribute
-                        attr.set_type(common_type)
-                        self.__data.set_changed(True)  # Tell we changed an attribute to trigger a new compilation
-
-                    if attr.get_type().is_python_obj():
-                        self.__assign_type, self.__assign_value = runtime.value_to_pyobj(
-                            self.__code_gen, self.__builder, self.__assign_value, self.__assign_type)
-
-                    self.__builder.store(self.__assign_value, attr_index)
-                    self.__last_become_assign()
-                else:
-                    self.__last_value = self.__builder.load(attr_index)
-                    self.__last_type = copy.copy(attr.get_type())
-                    self.__last_type.add_hint(hint.TypeHintSourceAttribute(attr))
-            else:  # Attribute not found. It might be a declaration !
-                if isinstance(node.ctx, ast.Store):
-                    self.__data.set_changed(True)
-                    new_attr = flyable.data.attribute.Attribut()
-                    new_attr.set_name(node.attr)
-                    new_attr.set_type(self.__assign_type)
-                    self.__data.get_class(self.__last_type.get_id()).add_attribute(new_attr)
-                    first_index = self.__builder.const_int32(0)
-                    second_index = self.__builder.const_int32(
-                        fly_obj.get_obj_attribute_start_index() + new_attr.get_id())
-                    attr_index = self.__builder.gep(self.__last_value, first_index, second_index)
-
-                    if new_attr.get_type().is_python_obj():
-                        self.__assign_type, self.__assign_value = runtime.value_to_pyobj(
-                            self.__code_gen, self.__builder, self.__assign_value, self.__assign_type)
-
-                    self.__builder.store(self.__assign_value, attr_index)
-
-                    self.__last_become_assign()
-                else:
-                    self.__parser.throw_error("Attribute '" + node.attr + "' not declared", node.lineno,
-                                              node.end_col_offset)
-                self.__last_become_assign()
-        else:
-            str_error = self.__last_type.to_str(self.__data)
-            self.__parser.throw_error("Attribute " + str_value + " unrecognized from " + str_error, node.lineno,
-                                      node.end_col_offset)
-
-    def visit_Call(self, node: Call) -> Any:
-        type_buffer = self.__last_type
-        args_types = []
-        args = []
-        kwargs = {}
-
-        for kw in node.keywords:
-            self.__reset_last()
-            key = ast.Constant()
-            key.value = kw.arg
-
-            _, key_value = self.__visit_node(key)
-            _, value = self.__visit_node(kw.value)
-
-            kwargs[key_value] = value
-
-        for e in node.args:
-            self.__reset_last()
-            type, arg = self.__visit_node(e)
-            args_types.append(type)
-            args.append(arg)
-            self.__last_type = None
-        self.__last_type = type_buffer
-
-        self.__reset_last()
-
-        if isinstance(node.func, ast.Attribute):
-            self.__last_type, self.__last_value = self.__visit_node(node.func.value)
-            name_call = node.func.attr
-        elif isinstance(node.func, ast.Name):
-            name_call = node.func.id
-        else:
-            raise NotImplementedError("Call func node not supported")
-
-        module_prefix = "@flyable@global@module@"
-        module_global_func_name = module_prefix + name_call
-        module_global_func_reference = self.__code_gen.get_global_var(module_global_func_name)
-
-        if self.__last_type is None or self.__last_type.is_module():
-            build_in_func = build.get_build_in(name_call)
-            call_python_module = False
-            if build_in_func is not None and self.__last_type is None:  # Build-in func call
-                if isinstance(build_in_func, build.BuildInFunc):
-                    type_values = build_in_func.parse(args_types, args, self)
-                    if type_values is None:
-                        call_python_module = True
-                    else:
-                        self.__last_type, self.__last_value = type_values
-                else:
-                    call_python_module = True
-
-                if call_python_module:
-                    self.__last_type = lang_type.get_python_obj_type()
-                    module = self.__builder.global_var(self.__code_gen.get_build_in_module())
-                    module = self.__builder.load(module)
-                    self.__last_type, self.__last_value = caller.call_obj(self, name_call, module,
-                                                                          lang_type.get_python_obj_type(), args,
-                                                                          args_types, kwargs)
-            elif module_global_func_reference or (
-                    self.__find_active_var(name_call) and self.__find_active_var(name_call).belongs_to_module()):
-                # global module function
-                node.func.id = name_call
-                self.__last_type, self.__last_value = self.__visit_node(node.func)
-                if self.__last_type.is_python_obj():
-                    self.__last_type, self.__last_value = caller.call_obj(self, '__call__', self.__last_value,
-                                                                          self.__last_type,
-                                                                          args, args_types, kwargs)
-
-            else:
-                if self.__last_type is None:
-                    file = self.__func.get_parent_func().get_file()
-                else:
-                    file = self.__data.get_file(self.__last_type.get_id())
-
-                if file is None:
-                    raise Exception("File of function called not found")
-
-                content = file.find_content_by_name(name_call)
-
-                if isinstance(content, lang_class.LangClass):
-                    # New instance class call
-                    self.__last_type = lang_type.get_obj_type(content.get_id())
-                    self.__last_type.add_hint(hint.TypeHintRefIncr())
-                    self.__last_value = fly_obj.allocate_flyable_instance(self, content)
-
-                    # Call the constructor
-                    caller.call_obj(self, "__init__", self.__last_value, self.__last_type, args, args_types, kwargs,
-                                    True)
-
-                elif isinstance(content, lang_func.LangFunc):
-                    # Func call
-                    func_impl_to_call = adapter.adapt_func(content, args_types, self.__data, self.__parser)
-                    if func_impl_to_call is not None:
-                        if not func_impl_to_call.is_unknown():
-                            self.__last_type = func_impl_to_call.get_return_type()
-                        else:
-                            self.__parser.throw_error("Impossible to resolve function" +
-                                                      func_impl_to_call.get_parent_func().get_name(), node.lineno,
-                                                      node.col_offset)
-                        self.__last_value = self.__builder.call(func_impl_to_call.get_code_func(), args)
-                        if func_impl_to_call.get_return_type().is_unknown():
-                            self.__last_type = lang_type.get_none_type()
-                            self.__last_value = self.__builder.const_int32(0)
-                    else:
-                        self.__parser.throw_error("Function " + node.func.id + " not found", node.lineno,
-                                                  node.end_col_offset)
-                elif content is None:
-                    # If content is None, this could still be the __call__ method on a class
-                    self.__last_type, self.__last_value = self.__visit_node(node.func)
-                    calling_class = self.__data.get_class(self.__last_type.get_id())
-                    method_name = "__call__"
-                    func_to_call = calling_class.get_func(method_name)
-
-                    if func_to_call is not None:
-                        self.__last_type, self.__last_value = caller.call_obj(self, method_name, self.__last_value,
-                                                                              self.__last_type, args, args_types,
-                                                                              kwargs)
-                        if self.__last_type.is_unknown():
-                            self.__last_type = lang_type.get_none_type()
-                            self.__last_value = self.__builder.const_int32(0)
-                    else:
-                        str_error = f"Method '{method_name}' not found"
-                        self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
-                else:
-                    self.__parser.throw_error("'" + name_call + "' unrecognized", node.lineno, node.end_col_offset)
-        elif self.__last_type.is_python_obj() or self.__last_type.is_collection():  # Python call object
-            self.__last_type, self.__last_value = caller.call_obj(self, name_call, self.__last_value, self.__last_type,
-                                                                  args, args_types, kwargs)
-        elif self.__last_type.is_obj():
-            _class = self.__data.get_class(self.__last_type.get_id())
-            func_to_call = _class.get_func(name_call)
-            if func_to_call is None:
-                str_error = "Not method '" + name_call + "' found"
-                self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
-            else:
-                self.__last_type, self.__last_value = caller.call_obj(self, name_call, self.__last_value,
-                                                                      self.__last_type, args, args_types, kwargs)
-                if self.__last_type.is_unknown():
-                    self.__last_type = lang_type.get_none_type()
-                    self.__last_value = self.__builder.const_int32(0)
-        else:
-            str_error = "Call unrecognized with " + self.__last_type.to_str(self.__data)
-            self.__parser.throw_error(str_error, node.lineno, node.end_col_offset)
-
-        self.__last_type.add_hint(hint.TypeHintRefIncr())
-        ref_counter.ref_decr_multiple_incr(self, args_types, args)
-
-    def visit_Subscript(self, node: Subscript) -> Any:
-        value_type, value = self.__visit_node(node.value)
-
-        index_type, index_value = self.__visit_node(node.slice)
-
-        if isinstance(node.ctx, ast.Store):
-            source = hint.get_type_source(value_type)
-            # TODO: find a better fix to support a store in a 2+D list (define types for a precise range)
-            if source is not None:
-                source_data = source.get_source()
-
-            common_type = lang_type.get_most_common_type(self.__data, value_type, self.__assign_type)
-
-            if common_type != value_type:
-                if isinstance(source_data, Variable):
-                    source_data.set_type(common_type)
-                    if source_data.is_global():
-                        self.__data.set_changed(True)  # A modification of global variable means recompile globally
-                    else:
-                        self.__reset_visit = True  # A new type for local variable means a local new code generation
-                elif isinstance(source_data, _attribute.Attribute):
-                    source_data.set_type(common_type)
-                    self.__data.set_changed(True)  # Need to take in account the new type of the attribute
-
-        args_types = [index_type]
-        args = [index_value]
-
-        if isinstance(node.ctx, ast.Store):
-            func_name = "__setitem__"
-            args_types += [self.__assign_type]
-            args += [self.__assign_value]
-        elif isinstance(node.ctx, ast.Del):
-            func_name = "__delitem__"
-        else:  # load
-            func_name = "__getitem__"
-
-        if value_type.is_primitive():
-            self.__parser.throw_error("'[]' can't be used on a primitive type", node.lineno, node.end_col_offset)
-        else:
-            self.__last_type, self.__last_value = caller.call_obj(self, func_name, value, value_type, args, args_types,
-                                                                  {})
-
-        ref_counter.ref_decr_multiple_incr(self, args_types, args)
-
-    def visit_Slice(self, node: Slice) -> Any:
-        def parse_slice_part(expression: Optional[expr]):
-            """Parses the slice part and returns the correct type and value"""
-            if expression is not None:
-                slice_part_type, slice_part_value = self.__visit_node(expression)
-                slice_part_type, slice_part_value = runtime.value_to_pyobj(
-                    self.__code_gen, self.__builder,
-                    slice_part_value,
-                    slice_part_type
-                )
-            else:
-                slice_part_type = lang_type.get_none_type()
-                slice_part_value = self.__builder.load(self.__builder.global_var(self.__code_gen.get_none()))
-            return slice_part_type, slice_part_value
-
-        lower_type, lower_value = parse_slice_part(node.lower)
-        upper_type, upper_value = parse_slice_part(node.upper)
-        step_type, step_value = parse_slice_part(node.step)
-
-        self.__last_type = lang_type.get_python_obj_type()
-        self.__last_value = gen_slice.py_slice_new(self, lower_value, upper_value, step_value)
-
-    def visit_Delete(self, node: Delete) -> Any:
-        for target in node.targets:
-            self.__visit_node(target)
-
-    def visit_Break(self, node: Break) -> Any:
-        if len(self.__out_blocks) > 0:
-            self.__builder.br(self.__out_blocks[-1])
-        else:
-            self.__parser.throw_error("'break' outside a loop", node.lineno, node.end_col_offset)
-
-    def visit_Return(self, node: Return) -> Any:
-        # If return is void, assumes a return type of None (which python does)
-        if node.value is None:
-            return_type, return_value = lang_type.get_none_type(), self.__builder.const_int32(0)
-        else:
-            return_type, return_value = self.__visit_node(node.value)
-
-        if not hint.is_incremented_type(return_type):  # Need to increment if we return to be consistent to CPython
-            ref_counter.ref_incr(self.__builder, return_type, return_value)
-
-        return_type.clear_hints()
-
-        ref_counter.decr_all_variables(self)
-
-        if self.__func.get_return_type().is_unknown():
-            self.__func.set_return_type(return_type)
-            self.__builder.ret(return_value)
-        elif return_type == self.__func.get_return_type():
-            self.__builder.ret(return_value)
-        else:
-            if not self.__func.get_return_type().is_python_obj():
-                # We need to re-visit the function since we change the return type
-                self.__func.set_return_type(lang_type.get_python_obj_type())
-                self.__reset_visit = True
-            conv_type, conv_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, return_value, return_type)
-            self.__builder.ret(conv_value)
-
-    # FIXME: issues #39 & #41 and then complete the visitor
-    def visit_Global(self, node: Global) -> Any:
-        file = self.__func.get_parent_func().get_file()
-        for name in node.names:
-            global_var = self.__code_gen.get_global_var(f"@global@var@{name}@{file.get_path()}")
-            _type = lang_type.from_code_type(global_var.get_type())
-            local_var = self.__func.get_context().add_var(name, _type)
-            local_var.set_code_gen_value(global_var)
-            local_var.set_global(True)
-            local_var.set_type(_type)
-
-    #  FIXME: issues #39 & #41 and then complete the visitor
-    def visit_Nonlocal(self, node: Nonlocal) -> Any:
+    def visit_get_yield_from_iter(self, instr):
         raise unsupported.FlyableUnsupported()
 
-    def visit_Pass(self, node: Pass) -> Any:
+    """"
+    Binary operations
+    """
+
+    def visit_binary_op(self, instr):
+        op_type = instr.arg
+        op = op_call.get_binary_op_func_to_call(op_type)
+        self.binary_or_inplace_visit(op)
+
+    def visit_binary_power(self, instr):
+        self.binary_or_inplace_visit("_PyNumber_PowerNoMod")
+
+    def visit_binary_multiply(self, instr):
+        self.binary_or_inplace_visit("PyNumber_Multiply")
+
+    def visit_binary_matrix_multiply(self, instr):
+        self.binary_or_inplace_visit("PyNumber_MatrixMultiply")
+
+    def visit_binary_floor_divide(self, instr):
+        self.binary_or_inplace_visit("PyNumber_FloorDivide")
+
+    def visit_binary_true_divide(self, instr):
+        self.binary_or_inplace_visit("PyNumber_TrueDivide")
+
+    def visit_binary_modulo(self, instr):
+        self.binary_or_inplace_visit("PyNumber_Remainder")
+        # TODO: we should check if it's a string formatting and call PyUnicode_Format
+
+    def visit_binary_add(self, instr):
+        self.binary_or_inplace_visit("PyNumber_Add")
+        # TODO: we should check if it's a concatenation
+
+    def visit_binary_subtract(self, instr):
+        self.binary_or_inplace_visit("PyNumber_Subtract")
+
+    def visit_binary_subscr(self, instr):
+        sub_type, sub_value = self.pop()
+        container_type, container_value = self.pop()
+        get_item_func = self.__code_gen.get_or_create_func("PyObject_GetItem",
+                                                           code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                           _gen.Linkage.EXTERNAL)
+        get_value = self.__builder.call(get_item_func, [container_value, sub_value])
+        ref_counter.ref_decr(self, container_type, container_value)
+        ref_counter.ref_decr(self, sub_type, sub_value)
+        self.push(None, get_value)
+
+    def visit_binary_lshift(self, instr):
+        self.binary_or_inplace_visit("PyNumber_Lshift")
+
+    def visit_binary_rshift(self, instr):
+        self.binary_or_inplace_visit("PyNumber_Rshift")
+
+    def visit_binary_and(self, instr):
+        self.binary_or_inplace_visit("PyNumber_And")
+
+    def visit_binary_xor(self, instr):
+        self.binary_or_inplace_visit("PyNumber_Xor")
+
+    def visit_binary_or(self, instr):
+        self.binary_or_inplace_visit("PyNumber_Or")
+
+    """
+    In-place operations
+    """
+
+    def visit_inplace_power(self, instr):
+        self.binary_or_inplace_visit("_PyNumber_InPlacePowerNoMod")
+
+    def visit_inplace_multiply(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceMultiply")
+
+    def visit_inplace_matrix_multiply(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceMatrixMultiply")
+
+    def visit_inplace_floor_divide(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceFloorDivide")
+
+    def visit_inplace_true_divide(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceTrueDivide")
+
+    def visit_inplace_modulo(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceRemainder")
+
+    def visit_inplace_add(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceAdd")
+        # TODO: we should check if it's a concatenation
+
+    def visit_inplace_subtract(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceSubtract")
+
+    def visit_inplace_subscr(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_inplace_lshift(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceLshift")
+
+    def visit_inplace_rshift(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceRshift")
+
+    def visit_inplace_and(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceAnd")
+
+    def visit_inplace_xor(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceXor")
+
+    def visit_inplace_or(self, instr):
+        self.binary_or_inplace_visit("PyNumber_InPlaceOr")
+
+    def visit_store_subscr(self, instr):
+        sub_type, sub_value = self.pop()
+        container_type, container_value = self.pop()
+        value_type, value_value = self.pop()
+        set_item_func = self.__code_gen.get_or_create_func("PyObject_SetItem",
+                                                           code_type.get_int32(),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 3,
+                                                           _gen.Linkage.EXTERNAL)
+        self.__builder.call(set_item_func, [container_value, sub_value, value_value])
+        ref_counter.ref_decr(self, value_type, value_value)
+        ref_counter.ref_decr(self, container_type, container_value)
+        ref_counter.ref_decr(self, sub_type, sub_value)
+
+    def visit_delete_subscr(self, instr):
+        sub_type, sub_value = self.pop()
+        container_type, container_value = self.pop()
+        get_item_func = self.__code_gen.get_or_create_func("PyObject_DelItem",
+                                                           code_type.get_int32(),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                           _gen.Linkage.EXTERNAL)
+        self.__builder.call(get_item_func, [container_value, sub_value])
+        ref_counter.ref_decr(self, container_type, container_value)
+        ref_counter.ref_decr(self, sub_type, sub_value)
+
+    """
+    Coroutine opcodes
+    """
+
+    def visit_get_awaitable(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_get_aiter(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_get_anext(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_end_async_for(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_before_async_with(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_setup_async_with(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_async_gen_wrap(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    """
+    Compare
+    """
+
+    def visit_compare_op(self, instr):
+        right_type, right_value = self.pop()
+        left_type, left_value = self.pop()
+
+        compare_func = self.__code_gen.get_or_create_func("PyObject_RichCompare",
+                                                          code_type.get_py_obj_ptr(self.__code_gen),
+                                                          [code_type.get_py_obj_ptr(self.__code_gen),
+                                                           code_type.get_py_obj_ptr(self.__code_gen),
+                                                           code_type.get_int32()],
+                                                          _gen.Linkage.EXTERNAL)
+
+        compare_value = self.__builder.call(compare_func,
+                                            [left_value, right_value, self.__builder.const_int32(instr.arg)])
+
+        self.push(None, compare_value)
+        ref_counter.ref_decr(self, left_type, left_value)
+        ref_counter.ref_decr(self, right_type, right_value)
+
+    def visit_is_op(self, instr):
+        right_type, right_value = self.pop()
+        left_type, left_value = self.pop()
+
+        result_val = self.__builder.eq(fly_obj.get_py_obj_type_ptr(self.__builder, left_value),
+                                       fly_obj.get_py_obj_type_ptr(self.__builder, right_value))
+
+        if instr.arg:
+            self.__builder.neg(result_val)
+
+        result_type, result_value = runtime.value_to_pyobj(self, result_val, lang_type.get_bool_type())
+        ref_counter.ref_incr(self.__builder, result_type, result_value)
+        self.push(result_type, result_value)
+
+        ref_counter.ref_decr(self, left_type, left_value)
+        ref_counter.ref_decr(self, right_type, right_value)
+
+    def visit_contains_op(self, instr):
+        right_type, right_value = self.pop()
+        left_type, left_value = self.pop()
+
+        """
+        CPython has a special case for __contains__ where the left and right args are reversed
+        ex: "a" in "abc" --> "abc".__contains__("a")
+        """
+
+        contains_func = self.__code_gen.get_or_create_func("PySequence_Contains", code_type.get_int32(),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                           _gen.Linkage.EXTERNAL)
+        result_val = self.__builder.call(contains_func, [right_value, left_value])
+        one = self.__builder.const_int32(1)
+
+        if instr.arg:
+            result_val = self.__builder.ne(result_val, one)
+        else:
+            result_val = self.__builder.eq(result_val, one)
+
+        result_type, result_val = runtime.value_to_pyobj(self, result_val, lang_type.get_bool_type())
+        ref_counter.ref_incr(self.__builder, result_type, result_val)
+        self.push(result_type, result_val)
+
+        ref_counter.ref_decr(self, left_type, left_value)
+        ref_counter.ref_decr(self, right_type, right_value)
+
+    """
+    Call
+    """
+
+    def visit_kw_names(self, instr):
+        self.__kw_names = self.__code_obj.co_consts[instr.arg]
+
+    def visit_precall(self, instr):
         pass
 
-    def visit_Constant(self, node: Constant) -> Any:
-        if isinstance(node.value, bool):
-            self.__last_type = lang_type.get_bool_type()
-            self.__last_type.add_hint(hint.TypeHintConstBool(node.value))
-            self.__last_value = self.__builder.const_int1(node.value)
-        elif isinstance(node.value, int):
-            self.__last_type = lang_type.get_int_type()
-            self.__last_value = self.__builder.const_int64(node.value)
-            self.__last_type.add_hint(hint.TypeHintConstInt(node.value))
-        elif isinstance(node.value, float):
-            self.__last_type = lang_type.get_dec_type()
-            self.__last_type.add_hint(hint.TypeHintConstDec(node.value))
-            self.__last_value = self.__builder.const_float64(node.value)
-        elif isinstance(node.value, str):
-            self.__last_type = lang_type.get_python_obj_type()
-            self.__last_type.add_hint(hint.TypeHintConstStr(node.value))
-            self.__last_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(node.value))
-            self.__last_value = self.__builder.load(self.__last_value)
-        elif isinstance(node.value, bytes):
-            self.__last_type = lang_type.get_python_obj_type()
-            self.__last_type.add_hint(hint.TypeHintRefIncr())
-            self.__last_value = flyable.code_gen.runtime.create_bytes_object(self.__code_gen, self.__builder,
-                                                                             node.value)
-        elif node.value is None:
-            self.__last_type = lang_type.get_none_type()
-            self.__last_value = self.__builder.const_int32(0)
-        else:
-            self.__parser.throw_error("Undefined '" + node.id + "'", node.lineno, node.col_offset)
+    def visit_call(self, instr):
 
-    def visit_IfExp(self, node: IfExp) -> Any:
-        true_cond = self.__builder.create_block("If True")
-        false_cond = self.__builder.create_block("If False")
-        continue_cond = self.__builder.create_block("Continue If")
+        args_count = instr.arg
 
-        test_type, test_value = self.__visit_node(node.test)
-        self.__reset_last()
+        result_value = self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen))
 
-        cond_type, cond_value = cond.value_to_cond(self, test_type, test_value)
-        self.__builder.cond_br(cond_value, true_cond, false_cond)
+        arg_types = []
+        arg_values = []
+        for i in range(args_count):
+            new_type, new_value = self.pop()
+            arg_types.append(new_type)
+            arg_values.append(new_value)
 
-        # If true put the true value in the internal var
-        self.__builder.set_insert_block(true_cond)
-        true_type, true_value = self.__visit_node(node.body)
-        self.__builder.br(continue_cond)
-        self.__reset_last()
+        arg_types.reverse()
+        arg_values.reverse()
 
-        # If false put the false value in the internal var
-        self.__builder.set_insert_block(false_cond)
-        false_type, false_value = self.__visit_node(node.orelse)
+        first_type, first_value = self.pop()  # Callable or self
+        second_type, second_value = self.pop()  # NULL or method
 
-        common_type = lang_type.get_most_common_type(self.__data, true_type, false_type)
-        new_var = self.generate_entry_block_var(common_type.to_code_type(self.__code_gen))
+        is_method_block = self.__builder.create_block()
+        not_method_block = self.__builder.create_block()
+        continue_block = self.__builder.create_block()
 
-        self.__builder.set_insert_block(true_cond)
-        true_value = self.__code_gen.convert_type(self.__builder, self.__code_gen, true_type, true_value, common_type)
-        self.__builder.store(true_value, new_var)
-        self.__builder.br(continue_cond)
+        is_meth = self.__builder.ne(second_value, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
+        self.__builder.cond_br(is_meth, is_method_block, not_method_block)
 
-        self.__builder.set_insert_block(false_cond)
-        false_value = self.__code_gen.convert_type(self.__builder, self.__code_gen, false_type, false_value,
-                                                   common_type)
-        self.__builder.store(false_value, new_var)
-        self.__builder.br(continue_cond)
+        self.__builder.set_insert_block(is_method_block)
+        ref_counter.ref_incr(self.__builder, first_type, first_value)
+        ref_counter.ref_incr(self.__builder, second_type, second_value)
+        value = caller.call_callable(self, first_value, second_value, [first_value] + arg_values, self.__kw_names)
+        self.__builder.store(value, result_value)
+        self.__builder.br(continue_block)
 
-        self.__builder.set_insert_block(continue_cond)
-        self.__last_type = common_type
-        self.__last_value = self.__builder.load(new_var)
+        self.__builder.set_insert_block(not_method_block)
+        ref_counter.ref_incr(self.__builder, first_type, first_value)
+        value = caller.call_callable(self, first_value, first_value, arg_values, self.__kw_names)
+        self.__builder.store(value, result_value)
+        self.__builder.br(continue_block)
 
-    def visit_If(self, node: If) -> Any:
-        block_go = self.__builder.create_block()
-        block_continue = self.__builder.create_block()
+        self.__builder.set_insert_block(continue_block)
 
-        # If there is relevant info
-        has_other_block = node.orelse is not None or (isinstance(node.orelse, list) and len(node.orelse) > 0)
-        if has_other_block:
-            other_block = self.__builder.create_block()
+        self.push(None, self.__builder.load(result_value))
+        self.__kw_names = {}
 
-        cond_type_test, cond_value_test = self.__visit_node(node.test)
+        for i, arg_value in enumerate(arg_values):
+            ref_counter.ref_decr(self, arg_types[i], arg_value)
 
-        cond_type, cond_value = cond.value_to_cond(self, cond_type_test, cond_value_test)
+    def visit_call_function(self, instr):
+        args_count = instr.arg
 
-        ref_counter.ref_decr_incr(self, cond_type_test, cond_value_test)
-        ref_counter.ref_decr_incr(self, cond_type, cond_value)
+        arg_types = []
+        arg_values = []
+        for i in range(args_count):
+            new_type, new_value = self.pop()
+            arg_types.append(new_type)
+            arg_values.append(new_value)
 
-        if has_other_block:
-            self.__builder.cond_br(cond_value, block_go, other_block)
-        else:
-            self.__builder.cond_br(cond_value, block_go, block_continue)
+        arg_types.reverse()
+        arg_values.reverse()
 
-        self.__builder.set_insert_block(block_go)
-        self.__visit_node(node.body)
-        self.__builder.br(block_continue)
+        callable_type, callable_value = self.pop()
 
-        if has_other_block:
-            self.__builder.set_insert_block(other_block)
-            self.__visit_node(node.orelse)
-            self.__builder.br(block_continue)
+        call_result_value = caller.call_callable(self, callable_value, callable_value, arg_values, self.__kw_names)
+        self.push(None, call_result_value)
+        self.__kw_names = {}
 
-        self.__builder.set_insert_block(block_continue)
+        for i, arg_value in enumerate(arg_values):
+            ref_counter.ref_decr(self, arg_types[i], arg_value)
 
-    def visit_For(self, node: For) -> Any:
-        import flyable.parse.content.for_loop as for_loop
-        for_loop.parse_for_loop(node, self)
+    def visit_call_function_ex(self):
+        raise unsupported.FlyableUnsupported()
 
-    def visit_While(self, node: While) -> Any:
-        block_cond = self.__builder.create_block("Condition While")
-        block_while_in = self.__builder.create_block("In While")
-        block_else = self.__builder.create_block("Else While") if node.orelse is not None else None
-        block_continue = self.__builder.create_block("After While")
+    def visit_call_function_kw(self, instr):
+        args_count = instr.a
+        tuple_type, tuple_args = self.pop()
+        args = []
+        arg_types = []
+        for i in range(args_count):
+            new_arg_type, new_arg = self.pop()
+            args.insert(0, new_arg)
+            arg_types.insert(0, arg_types)
+        call_result_type, call_result_value = caller.call_callable(self, callable, args, {})
+        for i, arg in enumerate(args):
+            ref_counter.ref_decr(self, arg_types[i], arg)
+        ref_counter.ref_decr(self, tuple_type, tuple_args)
 
-        self.__builder.br(block_cond)
-        self.__builder.set_insert_block(block_cond)
+    def visit_load_method(self, instr):
+        found_attr = self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen))
+        str_value = self.__code_obj.co_names[instr.arg]
+        str_var = self.__code_gen.get_or_insert_str(str_value)
+        str_var = self.__builder.load(self.__builder.global_var(str_var))
 
-        test_type, test_value = self.__visit_node(node.test)
-        cond_type, cond_value = cond.value_to_cond(self, test_type, test_value)
+        value_type, value = self.pop()
 
-        ref_counter.ref_decr_incr(self, test_type, test_value)
-        ref_counter.ref_decr_incr(self, cond_type, cond_value)
+        get_method_func = self.__code_gen.get_or_create_func("_PyObject_GetMethod",
+                                                             code_type.get_int32(),
+                                                             ([code_type.get_py_obj_ptr(self.__code_gen)] * 2) +
+                                                             [code_type.get_py_obj_ptr(self.__code_gen).get_ptr_to()],
+                                                             _gen.Linkage.EXTERNAL)
 
-        if node.orelse is None:
-            self.__builder.cond_br(cond_value, block_while_in, block_continue)
-        else:
-            self.__builder.cond_br(cond_value, block_while_in, block_else)
+        is_method = self.__builder.call(get_method_func, [value, str_var, found_attr])
 
-        # Setup the while loop content
-        self.__builder.set_insert_block(block_while_in)
-        self.__out_blocks.append(block_continue)  # In case of a break we want to jump after the while loop
-        self.__visit_node(node.body)
-        self.__out_blocks.pop()
-        self.__builder.br(block_cond)
+        first_push_alloca = self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen))
+        second_push_alloca = self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen))
 
-        if node.orelse is not None:
-            self.__builder.set_insert_block(block_else)
-            self.__visit_node(node.orelse)
-            self.__builder.br(block_continue)
+        is_method_block = self.__builder.create_block()
+        not_method_block = self.__builder.create_block()
+        continue_block = self.__builder.create_block()
 
-        self.__builder.set_insert_block(block_continue)
+        is_method = self.__builder.ne(is_method, self.__builder.const_int32(0))
+        self.__builder.cond_br(is_method, is_method_block, not_method_block)
 
-    def visit_With(self, node: With) -> Any:
-        items = node.items
-        all_vars_with = []
-        with_types = []
-        for with_item in items:
-            type, value = self.__visit_node(with_item.context_expr)
-            with_types.append(type)
-            if type.is_obj() or type.is_python_obj():
-                if with_item.optional_vars is not None:
-                    with_var = self.__func.get_context().add_var(str(with_item.optional_vars.id), type)
-                    all_vars_with.append(with_var)
-                    self.__builder.store(value, with_var.get_code_gen_value())
-                else:
-                    all_vars_with.append(None)
+        self.__builder.set_insert_block(is_method_block)
+        self.__builder.store(self.__builder.load(found_attr), first_push_alloca)
+        self.__builder.store(value, second_push_alloca)
+        self.__builder.br(continue_block)
 
-                # def __exit__(self, exc_type, exc_value, traceback)
-                exit_args_type = [type] + ([lang_type.get_python_obj_type()] * 3)
-                caller.call_obj(self, "__enter__", value, type, [value], [type], {})
+        self.__builder.set_insert_block(not_method_block)
+        self.__builder.store(self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)), first_push_alloca)
+        self.__builder.store(self.__builder.load(found_attr), second_push_alloca)
+        self.__builder.br(continue_block)
 
-                exit_values = [value] + ([self.__builder.const_null(code_type.get_int8_ptr())] * 3)
-                caller.call_obj(self, "__exit__", value, type, exit_values, exit_args_type, {})
-            else:
-                self.__parser.throw_error("Type " + type.to_str(self.__data) +
-                                          " can't be used in a with statement", node.lineno, node.end_col_offset)
-        self.__visit_node(node.body)
+        self.__builder.set_insert_block(continue_block)
 
-        # After the with the var can't be accessed anymore
-        for var in all_vars_with:
-            if var is not None:
-                var.set_use(False)
+        self.push(None, self.__builder.load(first_push_alloca))
+        self.push(value_type, self.__builder.load(second_push_alloca))
 
-    def visit_comprehension(self, node: comprehension) -> Any:
-        target_name = node.target.id
-        iter_type, iter_value = self.__visit_node(node.iter)
-        target_var = self.__func.get_context().add_var(target_name, iter_type)
-        alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-        target_var.set_code_gen_value(alloca_value)
-        self.__last_type, self.__last_value = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
-                                                              [iter_type], {})
+    def visit_call_method(self, instr):
+        args_count = instr.arg
+        args = []
+        arg_types = []
+        for i in range(args_count):
+            new_arg_type, new_arg = self.pop()
+            args.insert(0, new_arg)
+            arg_types.insert(0, arg_types)
+        callable_type, callable = self.pop()
+        call_result_type, call_result_value = caller.call_callable(self, callable, args, {})
+        self.push(call_result_type, call_result_value)
 
-    def visit_ListComp(self, node: ListComp) -> Any:
-        result_array = gen_list.instanciate_python_list(self.__code_gen, self.__builder, self.__builder.const_int64(0))
+    def visit_make_function(self, instr):
+        raise unsupported.FlyableUnsupported()
 
-        block_continue = self.__builder.create_block()
-        prev_for_block = None
+    """
+    Block stack
+    """
 
-        for i, e in enumerate(node.generators):
-            iter_type, iter_value = self.__visit_node(e.iter)
-            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [], {})
+    def visit_pop_block(self, instr):
+        self.pop_block()
 
-            block_for = self.__builder.create_block()
-            self.__builder.br(block_for)
-            self.__builder.set_insert_block(block_for)
+    def visit_pop_except(self, instr):
+        self.pop()
 
-            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [], {})
+    def visit_load_const(self, instr):
+        const_value = self.__consts[instr.arg]
+        ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), const_value)
+        self.push(None, const_value)
 
-            null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
-            excp.py_runtime_clear_error(self.__code_gen, self.__builder)
+    def visit_load_name(self, instr):
+        name = self.__code_obj.co_names[instr.arg]
+        var = self.get_or_gen_var(name)
+        self.push(None, self.__builder.load(var.get_code_value()))
 
-            test = self.__builder.eq(next_value, null_ptr)
+    def visit_store_name(self, instr):
+        name = self.__code_obj.co_names[instr.arg]
+        var = self.get_or_gen_var(name)
+        store_type, store_value = self.pop()
+        self.__builder.store(store_value, var.get_code_value())
 
-            block_for_in = self.__builder.create_block()
-            if i == 0:
-                self.__builder.cond_br(test, block_continue, block_for_in)
-            else:
-                self.__builder.cond_br(test, prev_for_block, block_for_in)
+    def visit_delete_name(self, instr):
+        name = self.__code_obj.co_names[instr.arg]
+        str_value = self.__code_gen.get_or_insert_str(name)
+        str_var = self.__builder.global_var(str_value)
+        str_var = self.__builder.load(str_var)
+        global_map = func.py_function_get_globals(self, 0)
+        del_item_func = self.__code_gen.get_or_create_func("PyObject_DelItem", code_type.get_int32(),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                           _gen.Linkage.EXTERNAL)
+        self.__builder.call(del_item_func, [global_map, str_var])
 
-            # inside for loop
-            self.__builder.set_insert_block(block_for_in)
+    def visit_store_attr(self, instr):
+        name = self.__code_obj.co_names[instr.arg]
+        owner_type, owner_value = self.pop()
+        v_type, v_value = self.pop()
+        fly_obj.py_obj_set_attr(self, owner_value, name, v_value, None)
+        ref_counter.ref_decr(self, v_type, v_value)
+        ref_counter.ref_decr(self, owner_type, owner_value)
 
-            if isinstance(e.target, ast.Name):
-                name = e.target.id
-                new_var = self.__func.get_context().add_var(name, iter_type)
-                alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-                new_var.set_code_gen_value(alloca_value)
-                self.__builder.store(next_value, new_var.get_code_gen_value())
-            elif isinstance(e.target, ast.Tuple) or isinstance(e.target, ast.List):
-                targets = []
-                for t in e.target.elts:
-                    targets.append(t)
-                unpack.unpack_assignation(self, targets, next_type, next_value, node)
+    def visit_delete_attr(self, instr):
+        name = self.__code_obj.co_names[instr.arg]
+        owner_type, owner_value = self.pop()
+        null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        fly_obj.py_obj_set_attr(self, owner_value, name, null_value)
+        ref_counter.ref_decr(self, owner_type, owner_value)
 
-            # validate that each if is true
-            for j, test in enumerate(e.ifs):
-                block_cond = self.__builder.create_block()
-                cond_type_test, cond_value_test = self.__visit_node(test)
-                cond_type, cond_value = cond.value_to_cond(self, cond_type_test, cond_value_test)
-                self.__builder.cond_br(cond_value, block_cond, block_for)
-                self.__builder.set_insert_block(block_cond)
+    def visit_store_global(self, instr):
+        str_name = self.__code_obj.co_names[instr.arg]
+        str_var = self.__code_gen.get_or_insert_str(str_name)
+        str_var = self.__builder.global_var(str_var)
+        str_var = self.__builder.load(str_var)
+        v_type, v_value = self.pop()
+        val_type, val_value = runtime.value_to_pyobj(self, v_value, v_type)
 
-            if i == len(node.generators) - 1:
-                elt_type, elt_value = self.__visit_node(node.elt)
-                py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
-                gen_list.python_list_append(self, result_array, py_obj_type, py_obj)
-                self.__builder.br(block_for)
+        globals = function.py_function_get_globals(self, 0)
+        gen_dict.python_dict_set_item(self, globals, str_var, val_value)
+        ref_counter.ref_decr(self, v_type, v_value)
 
-            prev_for_block = block_for
+    def visit_delete_global(self, instr):
+        str_name = self.__code_obj.co_names[instr.arg]
+        str_var = self.__code_gen.get_or_insert_str(str_name)
+        str_var = self.__builder.global_var(str_var)
+        str_var = self.__builder.load(str_var)
+        global_map = func.py_function_get_globals(self, 0)
+        gen_dict.python_dict_del_item(self, global_map, str_var)
 
-        self.__builder.set_insert_block(block_continue)
-        self.__last_type = lang_type.get_list_of_python_obj_type()
-        self.__last_value = result_array
+    def visit_setup_with(self, instr):
+        raise unsupported.FlyableUnsupported()
 
-    def visit_List(self, node: List) -> Any:
-        elts_types = []
-        elts_values = []
-        common_type = None
-        for e in node.elts:
-            type, value = self.__visit_node(e)
-            elts_types.append(type)
-            elts_values.append(value)
-            self.__last_value = None
-            if common_type is None:
-                common_type = type
-            else:
-                common_type = lang_type.get_most_common_type(self.__data, common_type, type)
+    def visit_before_with(self, instr):
+        raise unsupported.FlyableUnsupported()
 
-        array = gen_list.instanciate_python_list(self.__code_gen, self.__builder,
-                                                 self.__builder.const_int64(len(elts_values)))
-        self.__last_value = array
+    def visit_unpack_sequence(self, instr):
+        seq_type, seq = self.pop()
+        unpack.unpack_iterable(self, seq_type, seq, instr.arg, -1)
+        ref_counter.ref_decr(self, seq_type, seq)
 
-        if common_type is None:
-            self.__last_type = lang_type.get_list_of_python_obj_type()
-        else:
-            self.__last_type = lang_type.get_list_of_python_obj_type()
-            for e in elts_types:
-                self.__last_type.add_hint(hint.TypeHintCollectionContentHint(e))
+    def visit_unpack_sequence_adaptive(self, instr):
+        raise unsupported.FlyableUnsupported
 
-        # Give the hints that specific that the returned new array is ref recounted
-        self.__last_type.add_hint(hint.TypeHintRefIncr())
+    def visit_unpack_sequence_two_tuple(self, instr):
+        raise unsupported.FlyableUnsupported
 
-        for i, e in enumerate(elts_values):
-            py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
-            index = self.__builder.const_int64(i)
-            gen_list.python_list_set(self, self.__last_value, index, py_obj)
-            if not hint.is_incremented_type(py_obj_type):
-                ref_counter.ref_incr(self.__builder, py_obj_type, py_obj)
+    def visit_unpack_sequence_tuple(self, instr):
+        seq_type, seq = self.__stack[-1]
+        if not seq_type.is_tuple():
+            self.visit_unpack_sequence(instr)
+        unpack.unpack_list_or_tuple(self, seq_type, seq, instr)
+        ref_counter.ref_decr(self, seq_type, seq)
 
-    def visit_Tuple(self, node: Tuple) -> Any:
-        elts_types = []
-        elts_values = []
-        for e in node.elts:
-            type, value = self.__visit_node(e)
-            elts_types.append(type)
-            elts_values.append(value)
-            self.__last_value = None
+    def visit_unpack_sequence_list(self, instr):
+        seq_type, seq = self.__stack[-1]
+        if not seq_type.is_list():
+            self.visit_unpack_sequence(instr)
+        unpack.unpack_list_or_tuple(self, seq_type, seq, instr)
+        ref_counter.ref_decr(self, seq_type, seq)
 
-        self.__last_type = lang_type.get_tuple_of_python_obj_type()
+    def visit_unpack_ex(self, instr):
+        seq_type, seq = self.pop()
+        nb_args_before_list = instr.arg & 0xFF
+        nb_args_after_list = instr.arg >> 8
+        unpack.unpack_iterable(self, seq_type, seq, nb_args_before_list, nb_args_after_list)
+        ref_counter.ref_decr(self, seq_type, seq)
+
+    """
+    Data structure
+    """
+
+    def visit_build_tuple(self, instr):
+        element_counts = instr.arg
+        import flyable.code_gen.tuple as gen_tuple
         new_tuple = gen_tuple.python_tuple_new(self.__code_gen, self.__builder,
-                                               self.__builder.const_int64(len(elts_values)))
-        self.__last_value = new_tuple
-        self.__last_type.add_hint(hint.TypeHintRefIncr())
+                                               self.__builder.const_int64(element_counts))
+        for i in reversed(range(element_counts)):
+            e_type, e_value = self.pop()
+            index_value = self.__builder.const_int64(i)
+            gen_tuple.python_tuple_set_unsafe(self, new_tuple, index_value, e_value)
+        self.push(None, new_tuple)
 
-        for i, e in enumerate(elts_values):
-            py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
-            ref_counter.ref_incr(self.__builder, py_obj_type, py_obj)
-            gen_tuple.python_tuple_set_unsafe(self, self.__last_value, i, py_obj)
+    def visit_build_list(self, instr):
+        element_counts = instr.arg
+        import flyable.code_gen.list as gen_list
+        new_list = gen_list.instanciate_python_list(self.__code_gen, self.__builder,
+                                                    self.__builder.const_int64(element_counts))
+        element_counts = instr.arg
+        for i in reversed(range(element_counts)):
+            e_type, e_value = self.pop()
+            index_value = self.__builder.const_int64(i)
+            obj_ptr = gen_list.python_list_array_get_item_ptr_unsafe(self, lang_type.get_python_obj_type(), new_list,
+                                                                     index_value)
+            self.__builder.store(e_value, obj_ptr)
+        self.push(None, new_list)
 
-    def visit_SetComp(self, node: SetComp) -> Any:
-        null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
-        result_set = gen_set.instanciate_python_set(self, null_value)
+    def visit_list_extend(self, instr):
+        index = instr.arg
+        iter_type, iter_value = self.pop()
+        list_type, list_value = self.__stack[-index]
+        extend_func = self.__code_gen.get_or_create_func("_PyList_Extend", code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(extend_func, [list_value, iter_value])
+        ref_counter.ref_decr(self, iter_type, iter_value)
 
-        block_continue = self.__builder.create_block()
-        prev_for_block = None
+    def visit_list_to_tuple(self, instr):
+        list_type, list_value = self.pop()
+        list_as_tuple_func = self.__code_gen.get_or_create_func("PyList_AsTuple",
+                                                                code_type.get_py_obj_ptr(self.__code_gen),
+                                                                [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                                _gen.Linkage.EXTERNAL)
+        new_tuple_value = self.__builder.call(list_as_tuple_func, [list_value])
+        self.push(None, new_tuple_value)
+        ref_counter.ref_decr(self, list_type, list_value)
 
-        for i, e in enumerate(node.generators):
-            iter_type, iter_value = self.__visit_node(e.iter)
-            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [], {})
+    def visit_build_set(self, instr):
+        counts = instr.arg
+        iter_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        # Iter is NULL in this case
+        new_set = gen_set.instanciate_python_set(self, iter_value)
 
-            block_for = self.__builder.create_block()
-            self.__builder.br(block_for)
-            self.__builder.set_insert_block(block_for)
+        for i in range(counts):
+            element_type, element_value = self.pop()
+            py_element_type, py_element_value = runtime.value_to_pyobj(self, element_value, element_type)
+            gen_set.python_set_add(self, new_set, py_element_value)
+            ref_counter.ref_decr(self, element_type, element_value)
+        self.push(lang_type.get_set_of_python_obj_type(), new_set)
 
-            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [], {})
+    def visit_set_update(self, instr):
+        index = instr.arg
+        iter_type, iter_value = self.pop()
+        list_type, list_value = self.__stack[-index]
+        extend_func = self.__code_gen.get_or_create_func("_PySet_Update", code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(extend_func, [list_value, iter_value])
+        ref_counter.ref_decr(self, iter_type, iter_value)
 
-            null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
-            excp.py_runtime_clear_error(self.__code_gen, self.__builder)
-
-            test = self.__builder.eq(next_value, null_ptr)
-
-            block_for_in = self.__builder.create_block()
-            if i == 0:
-                self.__builder.cond_br(test, block_continue, block_for_in)
-            else:
-                self.__builder.cond_br(test, prev_for_block, block_for_in)
-
-            # inside for loop
-            self.__builder.set_insert_block(block_for_in)
-
-            if isinstance(e.target, ast.Name):
-                name = e.target.id
-                new_var = self.__func.get_context().add_var(name, iter_type)
-                alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-                new_var.set_code_gen_value(alloca_value)
-                self.__builder.store(next_value, new_var.get_code_gen_value())
-            elif isinstance(e.target, ast.Tuple) or isinstance(e.target, ast.List):
-                targets = []
-                for t in e.target.elts:
-                    targets.append(t)
-                unpack.unpack_assignation(self, targets, next_type, next_value, node)
-
-            # validate that each if is true
-            for j, test in enumerate(e.ifs):
-                block_cond = self.__builder.create_block()
-                cond_type, cond_value = self.__visit_node(test)
-                cond_type, cond_value = cond.value_to_cond(self, cond_type, cond_value)
-                self.__builder.cond_br(cond_value, block_cond, block_for)
-                self.__builder.set_insert_block(block_cond)
-
-            if i == len(node.generators) - 1:
-                elt_type, elt_value = self.__visit_node(node.elt)
-                obj_to_set_type, obj_to_set_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value,
-                                                                           elt_type)
-                gen_set.python_set_add(self, result_set, obj_to_set_value)
-                self.__builder.br(block_for)
-
-            prev_for_block = block_for
-
-        self.__builder.set_insert_block(block_continue)
-        self.__last_type = lang_type.get_set_of_python_obj_type()
-        self.__last_value = result_set
-
-    def visit_Set(self, node: Set) -> Any:
-        set_type = lang_type.get_set_of_python_obj_type()
-        null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
-        new_set = gen_set.instanciate_python_set(self, null_value)
-        for e in node.elts:
-            type, value = self.__visit_node(e)
-            py_typ, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, value, type)
-            gen_set.python_set_add(self, new_set, py_obj)
-        self.__last_value = new_set
-        self.__last_type = set_type
-        self.__last_type.add_hint(hint.TypeHintRefIncr())
-
-    def visit_DictComp(self, node: DictComp) -> Any:
-        result_dict = gen_dict.python_dict_new(self)
-
-        block_continue = self.__builder.create_block()
-        prev_for_block = None
-
-        for i, e in enumerate(node.generators):
-            iter_type, iter_value = self.__visit_node(e.iter)
-
-            iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [], {})
-
-            block_for = self.__builder.create_block()
-            self.__builder.br(block_for)
-            self.__builder.set_insert_block(block_for)
-
-            next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [], {})
-
-            null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
-            excp.py_runtime_clear_error(self.__code_gen, self.__builder)
-
-            test = self.__builder.eq(next_value, null_ptr)
-
-            block_for_in = self.__builder.create_block()
-            if i == 0:
-                self.__builder.cond_br(test, block_continue, block_for_in)
-            else:
-                self.__builder.cond_br(test, prev_for_block, block_for_in)
-
-            # inside for loop
-            self.__builder.set_insert_block(block_for_in)
-
-            if isinstance(e.target, ast.Name):
-                name = e.target.id
-                new_var = self.__func.get_context().add_var(name, iter_type)
-                alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-                new_var.set_code_gen_value(alloca_value)
-                self.__builder.store(next_value, new_var.get_code_gen_value())
-            elif isinstance(e.target, ast.Tuple) or isinstance(e.target, ast.List):
-                targets = []
-                for t in e.target.elts:
-                    targets.append(t)
-                unpack.unpack_assignation(self, targets, next_type, next_value, node)
-
-            # validate that each if is true
-            for j, test in enumerate(e.ifs):
-                block_cond = self.__builder.create_block()
-                cond_type, cond_value = self.__visit_node(test)
-                cond_type, cond_value = cond.value_to_cond(self, cond_type, cond_value)
-                self.__builder.cond_br(cond_value, block_cond, block_for)
-                self.__builder.set_insert_block(block_cond)
-
-            if i == len(node.generators) - 1:
-                key_type, key_value = self.__visit_node(node.key)
-                value_type, value_value = self.__visit_node(node.value)
-                obj_key_type, obj_key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value,
-                                                                     key_type)
-                obj_value_type, obj_value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value,
-                                                                         value_type)
-                gen_dict.python_dict_set_item(self, result_dict, obj_key_value, obj_value_value)
-                self.__builder.br(block_for)
-
-            prev_for_block = block_for
-
-        self.__builder.set_insert_block(block_continue)
-        self.__last_type = lang_type.get_dict_of_python_obj_type()
-        self.__last_value = result_dict
-
-    def visit_Dict(self, node: Dict) -> Any:
+    def visit_build_map(self, instr):
+        import flyable.code_gen.dict as gen_dict
         new_dict = gen_dict.python_dict_new(self)
-        for i, e in enumerate(node.values):
-            key_type, key_value = self.__visit_node(node.keys[i])
-            value_type, value_value = self.__visit_node(node.values[i])
+        keys = []
+        values = []
+        for i in range(instr.arg):
+            values.append((self.pop()))
+            keys.append((self.pop()))
+        for i in reversed(range(instr.arg)):
+            key_type, key_value = keys[i]
+            value_type, value_value = values[i]
+            py_key_type, py_key_value = runtime.value_to_pyobj(self, key_value, key_type)
+            py_value_type, py_value_value = runtime.value_to_pyobj(self, value_value, value_type)
 
-            _, key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
-            _, value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
+            gen_dict.python_dict_set_item(self, new_dict, py_key_value, py_value_value)
+            ref_counter.ref_decr(self, key_type, key_value)
+            ref_counter.ref_decr(self, value_type, value_value)
 
-            gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
-            self.__last_value = None
-        self.__last_value = new_dict
-        self.__last_type = lang_type.get_dict_of_python_obj_type()
+        self.push(lang_type.get_dict_of_python_obj_type(), new_dict)
 
-    def visit_Try(self, node: Try) -> Any:
-        import flyable.parse.content.content_try as content_try
-        content_try.parse_try(self, node)
+    def visit_build_const_key_map(self, instr):
+        import flyable.code_gen.dict as gen_dict
+        import flyable.code_gen.tuple as gen_tuple
+        new_dict = gen_dict.python_dict_new(self)
+        keys_type, keys_value = self.pop()
+        values = []
+        for i in range(instr.arg):
+            values.append((self.pop()))
+        values.reverse()
+        for i in range(instr.arg):
+            value_type, value_value = values[i]
+            py_value_type, py_value_value = runtime.value_to_pyobj(self, value_value, value_type)
+            key_value = gen_tuple.python_tuple_get_unsafe_item_ptr(self, keys_type, keys_value,
+                                                                   self.__builder.const_int64(i))
+            key_value = self.__builder.load(key_value)
+            gen_dict.python_dict_set_item(self, new_dict, key_value, py_value_value)
+            ref_counter.ref_decr(self, value_type, value_value)
 
-    def visit_Raise(self, node: Raise) -> Any:
-        self.__func.set_can_raise(True)  # There is a raise so it can raise an exception
+        ref_counter.ref_decr(self, keys_type, keys_value)
+        self.push(lang_type.get_dict_of_python_obj_type(), new_dict)
 
-        if node.cause is not None:
-            self.__last_type, self.__last_value = self.__visit_node(node.cause)
+    def visit_dict_update(self, instr):
+        index = instr.arg
+        update_type, update_value = self.pop()
+        dict_type, dict_value = self.__stack[-index]
+        update_func = self.__code_gen.get_or_create_func("PyDict_Update", code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(update_func, [dict_value, update_value])
 
-        self.__last_type, self.__last_value = self.__visit_node(node.exc)
+    def visit_dict_merge(self, instr):
+        update_type, update_value = self.pop()
+        dict_type, dict_value = self.__stack[-instr.arg]
+        two = self.__builder.const_int64(2)
+        dict_merge_func = self.__code_gen.get_or_create_func("_PyDict_MergeEx",
+                                                             code_type.get_py_obj_ptr(self.__code_gen),
+                                                             [code_type.get_py_obj_ptr(self.__code_gen),
+                                                              code_type.get_py_obj_ptr(self.__code_gen),
+                                                              code_type.get_int32()],
+                                                             _gen.Linkage.EXTERNAL)
+        self.__builder.call(dict_merge_func, [dict_value, update_value, two])
+        ref_counter.ref_decr(self, update_type, update_value)
 
-        excp.raise_exception(self, self.__last_value)
+    def visit_set_add(self, instr):
+        item_type, item_value = self.pop()
+        set_type, set_value = self.__stack[-instr.arg]
+        gen_set.python_set_add(self, set_value, item_value)
+        ref_counter.ref_decr(self, item_type, item_value)
 
-        excp.handle_raised_excp(self)
+    def visit_list_append(self, instr):
+        item_type, item_value = self.pop()
+        list_type, list_value = self.__stack[-instr.arg]
+        gen_list.python_list_append(self, list_value, item_type, item_value)
 
-    def visit_Assert(self, node: Assert) -> Any:
-        test_type, test_value = self.__visit_node(node.test)
-        test_type, test_value = cond.value_to_cond(self, test_type, test_value)
+    def visit_map_add(self, instr):
+        value_type, value_value = self.pop()
+        key_type, key_value = self.pop()
+        dict_type, dict_value = self.__stack[-instr.arg]
+        gen_dict.python_dict_set_item(self, dict_value, key_value, value_value)
 
-        block_raise = self.__builder.create_block()
-        block_continue = self.__builder.create_block()
+    def visit_copy_dict_without_keys(self, instr):
+        raise unsupported.FlyableUnsupported()
 
-        self.__builder.cond_br(test_value, block_continue, block_raise)
-
-        self.__builder.set_insert_block(block_raise)
-        self.__func.set_can_raise(True)
-
-        if node.msg is not None:
-            msg_type, msg_value = self.__visit_node(node.msg)
+    def visit_get_len(self, instr):
+        top_type, top_value = self.__stack[-1]
+        if top_type.is_list():
+            len = gen_list.python_list_len(self, top_value)
+        elif top_type.is_tuple():
+            len = gen_tuple.python_tuple_len(self, top_value)
+        elif top_type.is_set():
+            len = gen_set.python_set_len(self, top_value)
+        elif top_type.is_dict():
+            len = gen_dict.python_dict_len(self, top_value)
         else:
-            msg_type = lang_type.get_python_obj_type()
-            msg_type.add_hint(hint.TypeHintConstStr(""))
-            msg_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(""))
-            msg_value = self.__builder.load(msg_value)
+            len_func = self.__code_gen.get_or_create_func("PyObject_Length", code_type.get_int64(),
+                                                          [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                          _gen.Linkage.EXTERNAL)
+            len = self.__builder.call(len_func, [top_value])
 
-        msg_type, msg_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, msg_value, msg_type)
-        excp.raise_assert_error(self, msg_value)
+        self.push(lang_type.get_int_type(), len)
 
-        excp.raise_index_error(self)
-        excp.handle_raised_excp(self)
-        self.__builder.ret_null()
+    def visit_match_mapping(self, instr):
+        py_tpflags_mapping = self.__builder.const_int64(64)
+        subject_type, subject_value = self.__stack[-1]
 
-        self.__builder.set_insert_block(block_continue)
+        subject_type = fly_obj.get_py_obj_type(self.__builder, subject_value)
+        tp_flag = function.py_obj_type_get_tp_flag_ptr(self, subject_type)
+        tp_flag = self.__builder.load(tp_flag)
 
-    def visit_Yield(self, node: Yield) -> Any:
-        if not self.__func.has_yield():
-            self.__func.set_yield(True)
-            self.__reset_visit = True
-        raise Exception("Yield not supported")
+        match = self.__builder._and(tp_flag, py_tpflags_mapping)
+        zero = self.__builder.const_int64(0)
+        res = self.__builder.ne(match, zero)
+        self.push(lang_type.get_bool_type(), res)
+        ref_counter.ref_incr(self.__builder, lang_type.get_bool_type(), res)
 
-    def visit_YieldFrom(self, node: YieldFrom) -> Any:
-        if not self.__func.has_yield():
-            self.__func.set_yield(True)
-            self.__reset_visit = True
-        raise Exception("Yield not supported")
+    def visit_match_sequence(self, instr):
+        py_tpflags_sequence = self.__builder.const_int64(32)
+        subject_type, subject_value = self.__stack[-1]
 
-    def visit_Import(self, node: Import) -> Any:
-        for e in node.names:
-            import_name = e.asname or e.name
-            import_names = import_name.split('.')
-            for i in range(len(import_names)):
-                to_import = '.'.join(import_names[:i + 1])
-                if self.__code_gen.get_global_var(f"@flyable@global@module@{to_import}"):
-                    # module already imported
-                    continue
-                file = self.__data.get_file(to_import)
-                if file is None:  # Python module
-                    module_type = lang_type.get_python_obj_type()  # A Python module
-                    content = gen_module.import_py_module(self.__code_gen, self.__builder, to_import)
-                else:  # Flyable module
-                    module_type = lang_type.get_module_type(file.get_id())
-                    content = self.__builder.const_int32(file.get_id())
+        subject_type = fly_obj.get_py_obj_type(self.__builder, subject_value)
+        tp_flag = function.py_obj_type_get_tp_flag_ptr(self, subject_type)
+        tp_flag = self.__builder.load(tp_flag)
 
-                module_code_type = module_type.to_code_type(self.__code_gen)
+        match = self.__builder._and(tp_flag, py_tpflags_sequence)
+        zero = self.__builder.const_int64(0)
+        res = self.__builder.ne(match, zero)
+        self.push(lang_type.get_bool_type(), res)
+        ref_counter.ref_incr(self.__builder, lang_type.get_bool_type(), res)
 
-                new_var = self.__func.get_context().add_var(to_import, module_type)
-                if self.__func.get_parent_func().is_global():
-                    new_global_var = gen.GlobalVar("@flyable@global@module@" + to_import, module_code_type)
-                    new_var.set_global(True)
-                    new_var.set_code_gen_value(new_global_var)
-                    self.__code_gen.add_global_var(new_global_var)
-                    module_store = self.__builder.global_var(new_global_var)
-                else:
-                    new_var_value = self.generate_entry_block_var(module_code_type)
-                    new_var.set_code_gen_value(new_var_value)
-                    new_var.set_belongs_to_module(True)
-                    new_var.set_is_module(True)
-                    module_store = new_var_value
-                self.__builder.store(content, module_store)
+    def visit_match_keys(self, instr):
+        # TODO: do the visit with the runtime. Previously to 3.11 this instruction also pushed a boolean value
+        #  indicating success (True) or failure (False).
+        keys_type, keys_value = self.__stack[-1]
+        subject_type, subject_value = self.__stack[-2]
+        keys_size = gen_tuple.python_tuple_len(self, keys_value)
+        new_tuple_value = gen_tuple.python_tuple_new(self.__code_gen, self.__builder, keys_size)
+        new_tuple = self.generate_entry_block_var(code_type.get_tuple_obj_ptr(self.__code_gen))
+        self.__builder.store(new_tuple_value, new_tuple)
+        index_value = self.generate_entry_block_var(code_type.get_int64())
+        self.__builder.store(self.__builder.const_int64(0), index_value)
 
-    def visit_ImportFrom(self, node: ImportFrom) -> Any:
-        module_name = node.module
-        for e in node.names:
-            import_name = e.asname or e.name
-            file = self.__data.get_file(e.name)
-            if file is None:  # Python module
-                module_type = lang_type.get_python_obj_type()  # A Python module
-                content = gen_module.import_py_module(self.__code_gen, self.__builder, f"{module_name}")
-            else:  # Flyable module
-                module_type = lang_type.get_module_type(file.get_id())
-                content = self.__builder.const_int32(file.get_id())
+        next_block = self.__builder.create_block("Next Block")
+        check_index_block = self.__builder.create_block("Check Index Block")
+        set_item_block = self.__builder.create_block("Set Item Block")
+        null_block = self.__builder.create_block("Null Block")
+        continue_block = self.__builder.create_block("Continue Block")
+        self.__builder.br(check_index_block)
 
-            module_code_type = module_type.to_code_type(self.__code_gen)
+        self.__builder.set_insert_block(check_index_block)
+        test = self.__builder.lt(index_value, keys_size)
+        self.__builder.cond_br(test, next_block, continue_block)
 
-            new_var = self.__func.get_context().add_var(import_name, module_type)
-            if self.__func.get_parent_func().is_global():
-                new_global_var = gen.GlobalVar("@flyable@global@module@" + import_name, module_code_type,
-                                               containing_module=module_name)
-                new_var.set_global(True)
-                new_var.set_code_gen_value(new_global_var)
-                self.__code_gen.add_global_var(new_global_var)
-                module_store = self.__builder.global_var(new_global_var)
-            else:
-                new_var_value = self.generate_entry_block_var(module_code_type)
-                new_var.set_code_gen_value(new_var_value)
-                new_var.set_belongs_to_module(True)
-                module_store = new_var_value
-            self.__builder.store(content, module_store)
+        self.__builder.set_insert_block(next_block)
+        args_types = [lang_type.get_int_type()]
+        args = [index_value]
+        item_type, item_value = caller.call_obj(self, "__getitem__", keys_value, keys_type, args, args_types, {})
+        # TODO: we should check that item_value has no duplicates in keys
+        dict_value = gen_dict.python_dict_get_item(self, subject_value, item_value)
+        null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        test = self.__builder.eq(dict_value, null_ptr)
+        self.__builder.cond_br(test, null_block, set_item_block)
 
-    def visit_ClassDef(self, node: ClassDef) -> Any:
+        self.__builder.set_insert_block(set_item_block)
+        gen_tuple.python_tuple_set_unsafe(self, new_tuple, index_value, dict_value)
+        incr_index = self.__builder.add(index_value, self.__builder.const_int64(1))
+        self.__builder.store(incr_index, index_value)
+        self.__builder.br(check_index_block)
+
+        self.__builder.set_insert_block(null_block)
+        self.__builder.store(null_ptr, new_tuple)
+        self.__builder.br(continue_block)
+
+        self.__builder.set_insert_block(continue_block)
+        self.push(lang_type.get_tuple_of_python_obj_type(), new_tuple)
+
+    def visit_build_slice(self, instr):
+        slices_count = instr.arg
+        if slices_count == 3:
+            step_type, step = self.pop()
+        else:
+            step_type, step = None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        stop_type, stop = self.pop()
+        start_type, start = self.pop()
+        new_slice_func = self.__code_gen.get_or_create_func("PySlice_New", code_type.get_py_obj_ptr(self.__code_gen),
+                                                            [code_type.get_py_obj_ptr(self.__code_gen)] * 3,
+                                                            _gen.Linkage.EXTERNAL)
+        new_slice = self.__builder.call(new_slice_func, [start, stop, step])
+        self.push(None, new_slice)
+        ref_counter.ref_decr(self, start_type, start)
+        ref_counter.ref_decr(self, stop_type, stop)
+        ref_counter.ref_decr_nullable(self, step_type, step)
+
+    """
+    Attr
+    """
+
+    def visit_load_attr(self, instr):
+        name = self.__code_obj.co_names[instr.arg]
+        value_type, value = self.pop()
+        new_attr = fly_obj.py_obj_get_attr(self, value, name, None)
+        self.push(None, new_attr)
+        ref_counter.ref_decr(self, value_type, value)
+
+    """
+    JUMP
+    """
+
+    def visit_jump_forward(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        self.__builder.br(block_to_jump)
+
+    def visit_jump_backward(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        self.__builder.br(block_to_jump)
+
+    def visit_jump_backward_no_interrupt(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        self.__builder.br(block_to_jump)
+
+    def visit_pop_jump_forward_if_true(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__get_else_instr_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_true(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__get_else_instr_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_forward_if_false(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__get_else_instr_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_false(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__get_else_instr_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_forward_if_not_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__get_else_instr_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.ne(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_not_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__get_else_instr_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.ne(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_forward_if_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, instr.arg)
+        else_block = self.__get_else_instr_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.eq(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_backward_if_none(self, instr):
+        block_to_jump = self.get_block_to_jump_by(instr.offset, -instr.arg)
+        else_block = self.__get_else_instr_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.eq(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_if_true(self, instr):
+        block_to_jump = self.get_block_to_jump_to(instr.arg)
+        else_block = self.__get_else_instr_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_if_false(self, instr):
+        block_to_jump = self.get_block_to_jump_to(instr.arg)
+        else_block = self.__get_else_instr_block()
+        value_type, value = self.pop()
+        cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_jump_if_not_exc_match(self, instr):
+        self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
+
+    def visit_jump_if_true_or_pop(self, instr):
+        self.visit_pop_jump_if_true(instr)
+
+    def visit_jump_if_false_or_pop(self, instr):
+        self.visit_pop_jump_if_false(instr)
+
+    def visit_pop_jump_if_not_none(self, instr):
+        block_to_jump = self.get_block_to_jump_to(instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.ne(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_pop_jump_if_none(self, instr):
+        block_to_jump = self.get_block_to_jump_to(instr.arg)
+        else_block = self.__builder.create_block()
+        value_type, value = self.pop()
+        none_value = self.__builder.global_var(self.__code_gen.get_none())
+        cond_value = self.__builder.eq(none_value, value)
+        ref_counter.ref_decr(self, value_type, value)
+        self.__builder.cond_br(cond_value, block_to_jump, else_block)
+        self.__builder.set_insert_block(else_block)
+
+    def visit_jump_absolute(self, instr):
+        block_to_jump = self.get_block_to_jump_to(instr.arg)
+        self.__builder.br(block_to_jump)
+
+    def visit_for_iter(self, instr):
+        print(self.__stack)
+        iterable_type, iterator_value = self.top()
+
+        next_value = gen_iter.call_iter_next_direct(self, iterator_value)
+        self.push(None, next_value)
+
+        ref_counter.ref_decr(self, iterable_type, iterator_value)
+        null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        test = self.__builder.eq(next_value, null_ptr)
+        continue_block = self.get_block_to_jump_by(instr.offset, instr.arg)
+        next_block = self.__builder.create_block("Next Block")
+        self.__builder.cond_br(test, continue_block, next_block)
+
+        # clear the global excp when we leave the loop
+        self.__builder.set_insert_block(continue_block)
+        excp.py_runtime_clear_error(self.__code_gen, self.__builder)
+
+        self.__builder.set_insert_block(next_block)
+
+    def visit_load_global(self, instr):
+        namei = instr.arg
+        if version.get_python_version() >= version.PythonVersion.VERSION_3_11:
+            if namei & 1:
+                self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
+            namei = namei >> 1
+        var_name = self.__code_obj.co_names[namei]
+
+        str_name_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(var_name))
+        str_name_value = self.__builder.load(str_name_value)
+
+        import builtins
+        if hasattr(builtins, var_name):
+            dict_value = func.py_function_get_builtins(self, self.__frame_ptr_value)
+        else:
+            dict_value = func.py_function_get_globals(self, self.__frame_ptr_value)
+        global_value = func.py_dict_get_item(self, dict_value, str_name_value)
+        self.push(None, global_value)
+
+    def visit_setup_finally(self, instr):
         pass
 
-    def visit_FunctionDef(self, node: FunctionDef) -> Any:
+    def visit_load_fast(self, instr):
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        value = self.__builder.load(found_var.get_code_value())
+        ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), value)
+        self.push(lang_type.get_python_obj_type(), value)
+
+    def visit_store_fast(self, instr):
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        store_type, store_value = self.pop()
+        found_var = self.get_or_gen_var(var_name)
+        self.__builder.store(store_value, found_var.get_code_value())
+
+    def visit_delete_fast(self, instr):
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        self.__builder.store(null_value, found_var.get_code_value())
+
+    def visit_load_closure(self, instr):
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        value = self.__builder.load(found_var.get_code_value())
+        ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), value)
+        self.push(lang_type.get_python_obj_type(), value)
+
+    def visit_copy_free_vars(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_make_cell(self, instr):
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        initial = self.__builder.load(found_var.get_code_value())
+        py_cell_get = self.__code_gen.get_or_create_func("PyCell_New",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        cell = self.__builder.call(py_cell_get, [initial])
+        self.__builder.store(cell, found_var.get_code_value())
+
+    def visit_load_deref(self, instr):
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        cell = self.__builder.load(found_var.get_code_value())
+        py_cell_get = self.__code_gen.get_or_create_func("PyCell_GET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        value = self.__builder.call(py_cell_get, [cell])
+        ref_counter.ref_incr(self.__builder, lang_type.get_python_obj_type(), value)
+        self.push(lang_type.get_python_obj_type(), value)
+
+    def visit_load_classderef(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_store_deref(self, instr):
+        v = self.pop()
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        cell = self.__builder.load(found_var.get_code_value())
+
+        py_cell_get = self.__code_gen.get_or_create_func("PyCell_GET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        oldobj = self.__builder.call(py_cell_get, [cell])
+
+        py_cell_set = self.__code_gen.get_or_create_func("PyCell_SET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(py_cell_set, [cell, v])
+
+        ref_counter.ref_decr_nullable(self.__builder, lang_type.get_python_obj_type(), oldobj)
+
+    def visit_delete_deref(self, instr):
+        var_name = self.__code_obj.co_varnames[instr.arg]
+        found_var = self.get_or_gen_var(var_name)
+        cell = self.__builder.load(found_var.get_code_value())
+
+        py_cell_get = self.__code_gen.get_or_create_func("PyCell_GET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                         _gen.Linkage.EXTERNAL)
+        oldobj = self.__builder.call(py_cell_get, [cell])
+
+        null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        py_cell_set = self.__code_gen.get_or_create_func("PyCell_SET",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+        self.__builder.call(py_cell_set, [cell, null_value])
+
+        ref_counter.ref_decr(self.__builder, lang_type.get_python_obj_type(), oldobj)
+
+    def visit_return_value(self, instr):
+        value_type, value = self.pop()
+        self.__builder.ret(value)
+
+    def visit_yield_value(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_yield_from(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_return_generator(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_send(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    """
+    Miscellaneous opcodes
+    """
+
+    def visit_print_expr(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_setup_annotations(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_import_star(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_import_name(self, instr):
+        raise unsupported.FlyableUnsupported()
+        name = self.__code_obj.co_names[instr.arg]
+        name_global_var = self.__code_gen.get_or_insert_str(name)
+        name_str = self.__builder.global_var(name_global_var)
+        name_str = self.__builder.load(name_str)
+        from_type, from_value = self.pop()
+        level_type, level_value = self.pop()
+
+        import_call = self.__code_gen.get_or_create_func("flyable_import_name",
+                                                         code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 3,
+                                                         _gen.Linkage.EXTERNAL)
+
+        import_value = self.__builder.call(import_call, [name_str, from_value, level_value])
+
+        self.push(None, import_value)
+
+    def visit_import_from(self, instr):
+        raise unsupported.FlyableUnsupported()
+        name_type, name_value = self.pop()
+        from_type, from_value = self.pop()
+
+    def visit_reraise(self, instr):
+        lasti = instr.arg
+
+        if lasti:
+            self.__lasti = lasti
+
+        # val_type, val_value = self.pop()
+
+        new_re_func = self.__code_gen.get_or_create_func("Py_NewRef", code_type.get_py_obj_ptr(self.__code_gen),
+                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                         _gen.Linkage.EXTERNAL)
+
+    def visit_prep_reraise_star(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_raise_varargs(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_with_except_start(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_load_assertion_error(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_load_build_class(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_build_string(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_extended_arg(self, instr):
+        # the disassembler takes care of this one
         pass
+
+    def visit_format_value(self, instr):
+        which_conversion = instr.arg & 0x3
+        have_fmt_spec = (instr.arg & 0x4) == 0x4
+
+        fmt_spec = self.pop()[1] if have_fmt_spec else self.__builder.const_null(
+            code_type.get_py_obj_ptr(self.__code_gen))
+        value_type, value_value = self.pop()
+
+        match which_conversion:
+            case 0x0:
+                conv_fn = None
+            case 0x1:
+                conv_fn = "PyObject_Str"
+            case 0x2:
+                conv_fn = "PyObject_Repr"
+            case 0x3:
+                conv_fn = "PyObject_ASCII"
+            case _:
+                conv_fn = None
+                self.__parser.throw_error("unexpected conversion flag " + str(which_conversion), None, None)
+
+        if conv_fn != None:
+            conv_func = self.__code_gen.get_or_create_func(conv_fn, code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                           _gen.Linkage.EXTERNAL)
+            value_value = self.__builder.call(conv_func, [value_value])
+        else:
+            conv_func = self.__code_gen.get_or_create_func("PyObject_Format", code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                           _gen.Linkage.EXTERNAL)
+            value_value = self.__builder.call(conv_func, [value_value, fmt_spec])
+
+        self.push(value_type, value_value)
+        ref_counter.ref_decr(self, value_type, value_value)
+        ref_counter.ref_decr_nullable(self, lang_type.get_python_obj_type(), fmt_spec)
+
+    def visit_match_class(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_gen_start(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    def visit_have_argument(self, instr):
+        pass
+
+    def visit_push_exc_info(self, instr):
+        self.__blocks_stack.append(None)
+        self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
+
+    def visit_check_exc_match(self, instr):
+        r_type, r_value = self.pop()
+        right_type, right_value = runtime.value_to_pyobj(self, r_value, r_type)
+        left_type, left_value = self.top()
+        left_type, left_value = runtime.value_to_pyobj(self, left_value, left_type)
+
+        excp_math_func = self.__code_gen.get_or_create_func("PyErr_GivenExceptionMatches", code_type.get_int32(),
+                                                            [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                            _gen.Linkage.EXTERNAL)
+
+        excp_match = self.__builder.call(excp_math_func, [left_value, right_value])
+        excp_match = self.__builder.int_cast(excp_match, code_type.get_int64())
+        match_type, match_value = runtime.value_to_pyobj(self, excp_match, lang_type.get_int_type())
+        self.push(match_type, match_value)
+        ref_counter.ref_decr(self, r_type, r_value)
+
+    def visit_check_eg_match(self, instr):
+        raise unsupported.FlyableUnsupported()
+
+    """
+    Visitor methods
+    """
+
+    def push(self, type, value):
+        if type is None:
+            type = lang_type.get_python_obj_type()
+
+        if not isinstance(value, int):
+            raise TypeError("Value expected to be a int instead of " + str(value))
+
+        self.__stack.append((type, value))
+
+    def pop(self):
+        value_pop = self.__stack.pop(-1)
+        return value_pop
+
+    def top(self):
+        return self.__stack[-1]
+
+    def peek(self, index):
+        return self.__stack[-index - 1]
+
+    def stack_size(self):
+        return len(self.__stack)
+
+    def get_block_to_jump_to(self, x):
+        offset_to_reach = x * 2
+        for instr in self.__instructions:
+            if instr.offset == offset_to_reach:
+                block_to_reach = self.__jumps_instr[instr]
+                return block_to_reach
+        raise ValueError("Didn't find an instruction for the offset to reach " + str(x))
+
+    def get_block_to_jump_by(self, current_offset, x):
+        offset_to_reach = current_offset + x * 2 + 2  # We add 2 to get to the next instruction
+        for instr in self.__instructions:
+            if instr.offset == offset_to_reach:
+                block_to_reach = self.__jumps_instr[instr]
+                return block_to_reach
+        raise ValueError("Didn't find an instruction for the offset to reach " + str(offset_to_reach))
+
+    def push_block(self, block):
+        self.__blocks_stack.append(block)
+
+    def pop_block(self):
+        return self.__blocks_stack.pop()
+
+    def __get_code_func(self):
+        code_func = self.__func.get_code_func()
+        return code_func
+
+    def __get_else_instr_block(self):
+        if self.__current_instr_index + 1 < len(self.__instructions):
+            else_instr = self.__instructions[self.__current_instr_index + 1]
+            if else_instr in self.__jumps_instr:
+                return self.__jumps_instr[else_instr]
+        return self.__builder.create_block()
+
+    def __multiple_instr_jump(self, instr):
+        """
+        return if whether a instruction can be jumped from two different instructions
+        """
+        count = 0
+        if instr.is_jump_target:
+            for i, e in enumerate(self.__instructions):
+                if e.opname.lower().contains("jump") and e.arg * 2 == instr.offset:
+                    count += 1
+        return count > 1
+
+    def get_func(self):
+        return self.__func
 
     def get_code_gen(self):
         return self.__code_gen
@@ -1386,112 +1582,29 @@ class ParserVisitor(NodeVisitor, Generic[AstSubclass]):
     def get_builder(self):
         return self.__builder
 
-    def get_data(self):
-        return self.__data
-
-    def get_parser(self):
-        return self.__parser
-
-    def get_current_node(self):
-        return self.__current_node
-
-    def get_func(self):
-        return self.__func
-
-    def get_except_block(self):
-        if len(self.__exception_blocks) > 0:
-            return self.__exception_blocks[-1]
-        return None
-
-    def get_entry_block(self):
-        return self.__entry_block
-
-    def generate_entry_block_var(self, code_type, need_to_be_nulled=False):
+    def generate_entry_block_var(self, alloca_type):
         current_block = self.__builder.get_current_block()
         self.__builder.set_insert_block(self.__entry_block)
-        new_alloca = self.__builder.alloca(code_type)
-        if need_to_be_nulled:
-            self.__builder.store(self.__builder.const_null(code_type), new_alloca)
+        new_alloca = self.__builder.alloca(alloca_type)
         self.__builder.set_insert_block(current_block)
         return new_alloca
 
-    def add_except_block(self, block):
-        self.__exception_blocks.append(block)
+    def get_or_gen_var(self, var_name):
+        found_var = self.__context.get_var(var_name)
+        if found_var is None:
+            found_var = self.__context.add_var(var_name, lang_type.get_python_obj_type())
+            found_var.set_code_value(self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen)))
+        return found_var
 
-    def pop_except_block(self):
-        return self.__exception_blocks.pop()
+    def binary_or_inplace_visit(self, op_type):
+        right_type, right_value = self.pop()
+        left_type, left_value = self.pop()
 
-    def add_out_block(self, block):
-        self.__out_blocks.append(block)
-
-    def pop_out_block(self):
-        self.__out_blocks.pop()
-
-    def reset_last(self):
-        self.__reset_last()
-
-    def set_assign_type(self, assign_type):
-        self.__assign_type = assign_type
-
-    def set_assign_value(self, assign_value):
-        self.__assign_value = assign_value
-
-    def __reset_last(self):
-        self.__last_type = None
-        self.__last_value = None
-
-    def __last_become_assign(self):
-        self.__last_value = self.__assign_value
-        self.__last_type = self.__assign_type
-
-    def __setup_default_args(self):
-        if isinstance(self.__func.get_parent_func().get_node(), ast.FunctionDef):  #
-            args_count = self.__func.get_parent_func().get_args_count()
-            default_args = self.__func.get_parent_func().get_node().args.defaults
-            current = 0
-            for i in range(args_count - len(default_args), args_count):
-                arg_type, arg_value = self.__visit_node(default_args[current])
-                new_var = self.__func.get_context().add_var(self.__func.get_parent_func().get_arg(i).arg, arg_type)
-                new_var_alloca = self.generate_entry_block_var(arg_type.to_code_type(self.__code_gen))
-                self.__builder.store(arg_value, new_var_alloca)
-                new_var.set_code_gen_value(new_var_alloca)
-                current += 1
-
-    def __find_active_var(self, name: str):
-        result = self.__func.get_context().find_active_var(name)
-        if isinstance(result, Variable) and result.is_global():
-            parent_func = self.__func.get_parent_func().get_file().get_global_func()
-            if parent_func is not None:
-                impl = parent_func.get_impl(4)
-                return impl.get_context().find_active_var(name)
-        return result
-
-    def __get_code_func(self):
-        code_func = self.__func.get_code_func()
-        if code_func is None:
-            raise Exception(
-                f"Could not instantiate ParserVisitor with function implementation {self.__func.get_id()}. Was the CodeFunc generated?")
-        return code_func
-
-    def __reset_info(self):
-        self.__assign_type: LangType = LangType()
-        self.__assign_value = None
-        self.__last_type = LangType()
-        self.__last_value = None
-        self.__current_node = None
-        self.__reset_visit = False
-
-        self.__assign_depth = 0
-
-        self.__out_blocks.clear()
-        self.__cond_blocks.clear()
-        self.__exception_blocks.clear()
-
-        # Invalidate the codegen value of the variable
-        for var in self.__func.get_context().vars_iter():
-            var.set_code_gen_value(None)
-
-        self.__get_code_func().clear_blocks()
-        self.__entry_block = self.__get_code_func().add_block("Entry block")
-
-        self.__builder.set_insert_block(self.__entry_block)
+        op_func = self.__code_gen.get_or_create_func(op_type,
+                                                     code_type.get_py_obj_ptr(self.__code_gen),
+                                                     [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                     _gen.Linkage.EXTERNAL)
+        op_result = self.__builder.call(op_func, [left_value, right_value])
+        ref_counter.ref_decr(left_value)
+        ref_counter.ref_decr(right_value)
+        self.push(None, op_result)

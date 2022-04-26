@@ -1,5 +1,34 @@
 import ast
+import enum
 
+
+class BinOp(enum.IntEnum):
+    NB_ADD = 0,
+    NB_AND = 1,
+    NB_FLOOR_DIVIDE = 2,
+    NB_LSHIFT = 3,
+    NB_MATRIX_MULTIPLY = 4,
+    NB_MULTIPLY = 5,
+    NB_REMAINDER = 6,
+    NB_OR = 7,
+    NB_POWER = 8,
+    NB_RSHIFT = 9,
+    NB_SUBTRACT = 10,
+    NB_TRUE_DIVIDE = 11,
+    NB_XOR = 12,
+    NB_INPLACE_ADD = 13,
+    NB_INPLACE_AND = 14,
+    NB_INPLACE_FLOOR_DIVIDE = 15,
+    NB_INPLACE_LSHIFT = 16,
+    NB_INPLACE_MATRIX_MULTIPLY = 17,
+    NB_INPLACE_MULTIPLY = 18,
+    NB_INPLACE_REMAINDER = 19,
+    NB_INPLACE_OR = 20,
+    NB_INPLACE_POWER = 21,
+    NB_INPLACE_RSHIFT = 22,
+    NB_INPLACE_SUBTRACT = 23,
+    NB_INPLACE_TRUE_DIVIDE = 24,
+    NB_INPLACE_XOR = 25,
 
 def is_op_cond(op: ast.operator):
     return op.__class__ in {

@@ -8,7 +8,7 @@ void flyable_codegen_run(char* data,int size,char* path)
     gen.init();
     FormatReader reader(data,size);
     gen.readInput(reader);
-
+    gen.validate();
     gen.opt();
     gen.output(std::string(path));
 }
@@ -154,13 +154,29 @@ void CodeGen::readInput(FormatReader& reader)
 {
     if(reader.readString() == "**Flyable format**")
     {
-        mDebug = reader.readInt32() == 1;
+        mDebug = (DebugFlags) reader.readInt32();
         readStructs(reader);
         readGlobalVars(reader);
         readFuncs(reader);
     }
     else
         std::cout<<"Flyable code generation format unrecognized"<<std::endl;
+}
+
+void CodeGen::validate()
+{
+    auto &functionList = mModule->getFunctionList();
+    for(auto &function : functionList)
+    {
+        std::string errorString;
+        llvm::raw_string_ostream rso(errorString);
+        if(llvm::verifyFunction(function,&rso))
+        {
+            std::cout<<function.getName().str()<<std::endl;
+            std::cout<<rso.str()<<std::endl;
+            std::cout<<std::endl;
+        }
+    }
 }
 
 
@@ -286,7 +302,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                 int beforeOpcodeIndex = current->getCurrentIndex();
 
                 std::string debugText;
-                if(mDebug)
+                if(mDebug == SHOW_OPCODE_ON_EXEC || mDebug == SHOW_OPCODE_ON_GEN)
                     debugText = readDebugStack(*current);
 
                 int opcode = current->readInt32();
@@ -300,7 +316,7 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
 
                 if(canRunBlock)
                 {
-                    if(mDebug)
+                    if(mDebug == SHOW_OPCODE_ON_EXEC)
                     {
                         llvm::FunctionType* funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(mContext),llvm::ArrayRef<llvm::Type*>({llvm::Type::getInt8PtrTy(mContext)}),false);
                         llvm::Value* strValue = mBuilder.CreateGlobalString(llvm::StringRef(debugText));
@@ -313,6 +329,11 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                         func = mModule->getOrInsertFunction("flyable_debug_print_int64",funcType);
                         mBuilder.CreateCall(func,{llvm::ConstantInt::get(llvm::Type::getInt64Ty(mContext),opcode,true)});
                     }
+                    else if(mDebug == SHOW_OPCODE_ON_GEN)
+                    {
+                        std::cout<<debugText<<std::endl<<opcode<<std::endl<<std::endl;
+                    }
+
 
                     switch(opcode)
                     {

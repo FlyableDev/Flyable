@@ -14,22 +14,26 @@ import flyable.code_gen.rich_compare as rich_compare
 import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as hint
-import flyable.parse.adapter as adapter
 import flyable.parse.shortcut as shortcut
 from flyable.parse.parser_visitor import ParserVisitor
 
 
 def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_type.LangType, args: list[int],
-             args_type: list[lang_type.LangType], kwargs: dict[int, int], optional=False,
+             args_type: list[lang_type.LangType], kwargs: dict[int, int] = {}, optional=False,
              protocol=True, shortcuts=True) -> tuple[lang_type.LangType | None, int | None]:
     """
     Call a method independent from the called type.
-    There is 3 calls scenario:
-    - Direct flyable method call
-    - Virtual flyable method call
-    - Python runtime method call
+    There is 4 calls scenario:
+    - Direct flyable method call (statically known)
+    - Python runtime method call (dynamically resolved)
+    - Python call protocols (dynamically resolved)
+    - Shortcuts : Instructions directly generated for a known type (statically resolved)
     """
+    code_gen = visitor.get_code_gen()
+    builder = visitor.get_builder()
     if obj_type.is_obj():
+        raise NotImplementedError("We don't do specialize call right now")
+        """
         # Traditional and direct obj call
         called_class = visitor.get_data().get_class(obj_type.get_id())
         called_func = called_class.get_func(func_name)
@@ -48,12 +52,13 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
         if code_func is None:
             raise Exception(f"Function {called_impl} has no code_func")
         return return_type, visitor.get_builder().call(code_func, [obj] + args)
+        """
     elif obj_type.is_python_obj() or obj_type.is_collection() or obj_type.is_primitive():
         did_caller_conversion = False
         # The caller can be a primitive, convert if it's the case
         if obj_type.is_primitive():
             did_caller_conversion = True
-            obj_type, obj = runtime.value_to_pyobj(visitor.get_code_gen(), visitor.get_builder(), obj, obj_type)
+            obj_type, obj = runtime.value_to_pyobj(visitor, obj, obj_type)
         # the args for the different handlers
         handlers_args = [visitor, func_name, obj, obj_type, args, args_type, kwargs]
         nb_args = len(args)
@@ -67,26 +72,20 @@ def call_obj(visitor: ParserVisitor, func_name: str, obj: int, obj_type: lang_ty
         # Special case where the call is a binary number protocol
         elif num.is_number_binary_func_valid(func_name, nb_args):  # Number protocol
             return _handle_binary_number_protocol(*handlers_args)
-
         # Special case where the call is a ternary number protocol
         elif num.is_number_ternary_func_valid(func_name, nb_args) or (
-                num.handle_pow_func_special_case(func_name, args, args_type, visitor)
-        ):
+                num.handle_pow_func_special_case(func_name, args, args_type, visitor)):
             return _handle_ternary_number_protocol(*handlers_args)
-            # return _handle_default(*handlers_args)
-
         # Special case where the call is an inquiry number protocol
         elif num.is_number_inquiry_func_valid(func_name, nb_args):
             result = _handle_inquiry_number_protocol(*handlers_args)
-
         elif _iter.is_iter_func_name(func_name) and len(args) == 0:  # Iter protocol
-            return lang_type.get_python_obj_type(
-                hint.TypeHintRefIncr()), _iter.call_iter_protocol(visitor, func_name, obj)
+            return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), _iter.call_iter_protocol(visitor, func_name,
+                                                                                                   obj)
         elif rich_compare.is_func_name_rich_compare(func_name) and len(args) == 1:  # Rich Compare protocol
-            instance_type = fly_obj.get_py_obj_type(visitor.get_builder(), obj)
-            result = rich_compare.call_rich_compare_protocol(
-                visitor, func_name, obj_type, obj, instance_type, args_type, args
-            )
+            instance_type = fly_obj.get_py_obj_type(builder, obj)
+            result = rich_compare.call_rich_compare_protocol(visitor, func_name, obj_type, obj, instance_type,
+                                                             args_type, args)
             return lang_type.get_python_obj_type(hint.TypeHintRefIncr()), result
         else:  # Python call
             result = _handle_default(*handlers_args)
@@ -135,9 +134,7 @@ def _handle_default(visitor: ParserVisitor, func_name: str, obj: int, obj_type: 
     args_type = copy.copy(args_type)
 
     for i, (arg, arg_type) in enumerate(zip(py_args, args_type)):
-        args_type[i], py_args[i] = runtime.value_to_pyobj(
-            visitor.get_code_gen(), visitor.get_builder(), arg, arg_type
-        )
+        args_type[i], py_args[i] = runtime.value_to_pyobj(visitor, arg, arg_type)
 
     return_type = lang_type.get_python_obj_type()
     return_type.add_hint(hint.TypeHintRefIncr())
@@ -146,12 +143,10 @@ def _handle_default(visitor: ParserVisitor, func_name: str, obj: int, obj_type: 
     return result
 
 
-# https://docs.python.org/3/c-api/method.html
-def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args: list[int], kwargs: dict[int, int]):
+def call_callable(visitor: ParserVisitor, obj: int, callable: int, args: list[int], kwargs: dict[int, int]):
     code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
 
-    # the found attribute is the callable function
-    func_to_call = fly_obj.py_obj_get_attr(visitor, obj, func_name)
+    func_to_call = callable
 
     call_result_var = visitor.generate_entry_block_var(code_type.get_py_obj_ptr(code_gen))
 
@@ -190,6 +185,13 @@ def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args:
     result = builder.load(call_result_var)
     ref_counter.ref_decr(visitor, lang_type.get_python_obj_type(), func_to_call)
 
-    excp.check_excp(visitor, result)
+    # excp.check_excp(visitor, result)
 
     return result
+
+
+# https://docs.python.org/3/c-api/method.html
+def generate_python_call(visitor: ParserVisitor, obj: int, func_name: str, args: list[int], kwargs: dict[int, int]):
+    code_gen, builder = visitor.get_code_gen(), visitor.get_builder()
+    obj_callable = fly_obj.py_obj_get_attr(visitor, obj, func_name)
+    return call_callable(visitor, obj, obj_callable, args, kwargs)

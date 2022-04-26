@@ -1,7 +1,7 @@
 from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING
-import flyable.data.lang_type as type
+import flyable.data.lang_type as lang_type
 import flyable.data.type_hint as hint
 
 if TYPE_CHECKING:
@@ -14,7 +14,7 @@ class Variable:
     def __init__(self, id=0):
         self.__id = id
         self.__name: str = ""
-        self.__type: type.LangType = type.LangType()
+        self.__type = lang_type.LangType()
         self.__is_initialized: bool = False
         self.__in_use: bool = True
         self.__code_gen_value = None
@@ -51,7 +51,7 @@ class Variable:
     def get_name(self):
         return self.__name
 
-    def set_type(self, type: type.LangType):
+    def set_type(self, type: lang_type.LangType):
         type = copy.deepcopy(type)
         hint.remove_hint_type(type, hint.TypeHintRefIncr)
         hint.remove_hint_type(type, hint.TypeHintDataSource)
@@ -69,10 +69,10 @@ class Variable:
     def is_arg(self):
         return self.__is_arg
 
-    def set_code_gen_value(self, value: int | GlobalVar):
+    def set_code_value(self, value: int | GlobalVar):
         self.__code_gen_value = value
 
-    def get_code_gen_value(self):
+    def get_code_value(self):
         return self.__code_gen_value
 
     def is_global(self):

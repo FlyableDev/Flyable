@@ -56,7 +56,7 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
     num_call_args_types = []
 
     for i, (arg, arg_type) in enumerate(zip(args, args_types, strict=True)):
-        new_type, new_value = runtime.value_to_pyobj(code_gen, builder, arg, arg_type)
+        new_type, new_value = runtime.value_to_pyobj(visitor, arg, arg_type)
         num_call_args.append(new_value)
         num_call_args_types.append(new_type)
 
@@ -66,11 +66,9 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
     as_number = gen_type.py_object_type_get_tp_as_number_ptr(visitor, instance_type)
     as_number = builder.load(as_number)
     as_number = builder.ptr_cast(as_number, code_type.get_int8_ptr().get_ptr_to())
-    is_number_null = builder.eq(
-        as_number, builder.const_null(code_type.get_int8_ptr().get_ptr_to())
-    )
-
+    is_number_null = builder.eq(as_number, builder.const_null(code_type.get_int8_ptr().get_ptr_to()))
     builder.cond_br(is_number_null, basic_call_block, number_call_block)
+
     builder.set_insert_block(number_call_block)
     func_to_call = builder.gep2(as_number, code_type.get_int8_ptr(), [slot])
     func_to_call = builder.load(func_to_call)
@@ -99,17 +97,8 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
             raise Exception("Could not call pow protocol")
         builder.store(basic_call_value, protocol_result)
     else:
-        basic_call_type, basic_call_value = caller.call_obj(
-            visitor,
-            func_name,
-            obj,
-            obj_type,
-            num_call_args,
-            num_call_args_types,
-            {},
-            False,
-            False,
-        )
+        basic_call_type, basic_call_value = caller.call_obj(visitor, func_name, obj, obj_type, num_call_args,
+                                                            num_call_args_types, {}, False, False, False)
 
         if basic_call_value is None:
             raise Exception("Could not call fallback protocol")
@@ -128,7 +117,6 @@ def call_number_protocol(visitor: ParserVisitor, func_name: str, obj_type: lang_
     elif is_number_ternary_func(func_name):
         return builder.load(protocol_result)
     else:
-        print("DWwad")
         raise NotImplementedError("Unsupported call protocol")
 
 

@@ -5,7 +5,7 @@ from flyable.code_gen.code_writer import CodeWriter
 import flyable.debug.debug_flags as debug_flags
 import inspect
 import flyable.code_gen.code_gen as gen
-from flyable.debug.debug_flags_list import FLAG_SHOW_OPCODE_ON_EXEC
+from flyable.debug.debug_flags_list import FLAG_SHOW_OPCODE_ON_EXEC, FLAG_SHOW_OPCODE_ON_GEN
 
 if TYPE_CHECKING:
     from flyable.code_gen.code_gen import CodeFunc
@@ -411,7 +411,7 @@ class CodeBuilder:
         return self.__gen_value()
 
     def __write_opcode(self, opcode: int):
-        if FLAG_SHOW_OPCODE_ON_EXEC.is_enabled:
+        if FLAG_SHOW_OPCODE_ON_EXEC.is_enabled or FLAG_SHOW_OPCODE_ON_GEN:
             stack_str = ""
             for stack_info in inspect.stack():
                 file = stack_info.filename

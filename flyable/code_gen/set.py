@@ -16,10 +16,10 @@ def instanciate_python_set(visitor: ParserVisitor, obj: int):
     """
     builder = visitor.get_builder()
     code_gen = visitor.get_code_gen()
-    new_list_args_types = [code_type.get_py_obj_ptr(code_gen)]
-    new_list_func = code_gen.get_or_create_func("PySet_New", code_type.get_py_obj_ptr(code_gen),
-                                                new_list_args_types, gen.Linkage.EXTERNAL)
-    return builder.call(new_list_func, [obj])
+    new_set_args_types = [code_type.get_py_obj_ptr(code_gen)]
+    new_set_func = code_gen.get_or_create_func("PySet_New", code_type.get_py_obj_ptr(code_gen),
+                                                new_set_args_types, gen.Linkage.EXTERNAL)
+    return builder.call(new_set_func, [obj])
 
 
 def python_set_add(visitor: ParserVisitor, set_obj: int, item: int):
