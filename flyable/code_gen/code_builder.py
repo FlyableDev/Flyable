@@ -137,6 +137,12 @@ class CodeBuilder:
         """
         return self.__make_op(15, value)
 
+    def floor(self, v: int):
+        """
+        Floor operation
+        """
+        return self.__make_op(17, v)
+
     def store(self, value: int, store: int):
         """
         Store value in memory

@@ -153,20 +153,20 @@ def bin_op(visitor: ParserVisitor, op: ast.operator, type_left: LangType, value_
             raise TypeError("Unsupported type for pow operator")
 
     if isinstance(op, ast.FloorDiv):
+        value_left = builder.float_cast(value_left, code_type.get_double())
+        value_right = builder.float_cast(value_right, code_type.get_double())
+
+        div = builder.div(value_left, value_right)
+        floored_div = builder.floor(div)
+
         if type_left.is_int() and type_right.is_int():
-            result = builder.div(value_left, value_right)
-            return lang_type.get_int_type(), result
+            floored_div = builder.int_cast(floored_div, code_type.get_int64())
+            result_type = lang_type.get_int_type()
+
         elif type_left.is_dec() or type_right.is_dec():
-            # cast in case it'second_value not double
-            value_right = builder.float_cast(value_right, code_type.get_double())
-            # cast in case it'second_value not double
-            value_left = builder.float_cast(value_left, code_type.get_double())
-            result = builder.div(value_left, value_right)
-            result = builder.int_cast(result, code_type.get_int64())
-            result = builder.float_cast(result, code_type.get_double())
-            return lang_type.get_dec_type(), result
-        else:
-            """Do something"""
+            result_type = lang_type.get_dec_type()
+
+        return result_type, floored_div
 
     result_type = copy.copy(type_left)
     result_type.clear_hints()  # Since an op is done we remove the constant value hint
@@ -181,7 +181,21 @@ def bin_op(visitor: ParserVisitor, op: ast.operator, type_left: LangType, value_
     elif isinstance(op, ast.Div):
         apply_op = builder.div
     elif isinstance(op, ast.Mod):
-        apply_op = builder.mod
+        value_left = builder.float_cast(value_left, code_type.get_double())
+        value_right = builder.float_cast(value_right, code_type.get_double())
+
+        div = builder.div(value_left, value_right)
+        floored_div = builder.floor(builder.float_cast(div, code_type.get_double()))
+        mul = builder.mul(value_right, floored_div)
+        mod = builder.sub(value_left, mul)
+
+        if type_left.is_int() and type_right.is_int():
+            mod = builder.int_cast(mod, code_type.get_int64())
+            result_type = lang_type.get_int_type()
+        elif type_left.is_dec() or type_right.is_dec():
+            result_type = lang_type.get_dec_type()
+
+        return result_type, mod
     else:
         raise ValueError("Unsupported Op " + str(op))
 
@@ -242,7 +256,7 @@ def cond_op(
         )
 
     # If the op is not And or Or, we cast the values to make their type match
-    if not isinstance(op, (ast.And, ast.BitAnd, ast.Or, ast.BitOr)):
+    if not isinstance(op, (ast.And, ast.BitAnd, ast.Or, ast.BitOr, ast.Is, ast.IsNot)):
         # Need to do the primitive type conversion
         _, first_value, _, second_value = __convert_type_to_match(
             visitor, op, type_left, first_value, type_right, second_value
@@ -268,9 +282,15 @@ def cond_op(
         case ast.GtE():
             apply_op = builder.gte
         case ast.Is():
-            apply_op = builder.eq
+            apply_op = lambda v1, v2: builder.eq(
+                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v1, type_left)[1],
+                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v2, type_right)[1]
+            )
         case ast.IsNot():
-            apply_op = builder.ne
+            apply_op = lambda v1, v2: builder.ne(
+                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v1, type_left)[1],
+                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v2, type_right)[1]
+            )
         case _:
             raise NotImplementedError("Compare op " + str(type(op)) + " not supported")
 
@@ -330,8 +350,11 @@ def handle_op_cond_special_cases(
         )
 
     elif op_type in {ast.Is, ast.IsNot}:
-        result = builder.eq(fly_obj.get_py_obj_type_ptr(builder, first_value),
-                            fly_obj.get_py_obj_type_ptr(builder, second_value))
+        print(f"using is for {type_left} and {type_right}")
+        result = builder.eq(
+            runtime.value_to_pyobj(visitor.get_code_gen(), builder, first_value, type_left)[1],
+            runtime.value_to_pyobj(visitor.get_code_gen(), builder, second_value, type_right)[1]
+        )
         if op_type is ast.IsNot:
             result = builder._not(result)
 

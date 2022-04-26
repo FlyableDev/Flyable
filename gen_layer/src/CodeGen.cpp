@@ -490,6 +490,28 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                         }
                         break;
 
+                        case 16:
+                        {
+                            llvm::Value* left = values[current->readInt32()];
+                            llvm::Value* right = values[current->readInt32()];
+                            values[current->readInt32()] = mBuilder.CreateFRem(left,right);
+                        }
+                        break;
+
+                        case 17:
+                        {
+                            llvm::Value* value = values[current->readInt32()];
+                            
+                            std::vector<llvm::Type*> types;
+                            types.push_back(llvm::Type::getDoubleTy(mContext));
+                            
+                            llvm::Function* func = llvm::Intrinsic::getDeclaration(mModule, llvm::Intrinsic::floor, types);
+                            llvm::ArrayRef<llvm::Value*> args_ref(value);
+                            
+                            values[current->readInt32()] = mBuilder.CreateCall(func, args_ref);
+                        }
+                        break;
+
                         case 100:
                         {
                             int valueId = current->readInt32();
