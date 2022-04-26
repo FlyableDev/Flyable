@@ -28,13 +28,28 @@ Debug flags to be enabled during the compiling, the linking and the running proc
 Pass a flag alone to enable it or pass a tuple to also give it a value
 """
 
+def get_module_paths(directory_name: str) -> str:
+    paths = []
+    for root, dirs, files in os.walk(directory_name):
+        for name in files:
+            file_path = os.path.join(root, name)
+            if file_path.endswith(".py"):
+                paths.append(file_path)
+    return paths
 
-def main(file: str, output_dir: str = ".", exec_name: str = "a"):
+def main(source: str, output_dir: str = ".", exec_name: str = "a"):
     add_step("Compiling")
     compiler = com.Compiler()
-    compiler.add_file(file)
+
+    if os.path.isfile(source):
+        compiler.add_file(source)
+    else:
+        modules = get_module_paths(output_dir)
+        for module in modules:
+            compiler.add_file(module)
+
     compiler.set_output_path(f"{output_dir}/output.o")
-    # Make sur the folder exist
+    # Make sure the folder exist
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     compiler.compile()
 
@@ -68,9 +83,9 @@ def run_code(output_dir: str, exec_name: str):
         exec_name (str): the name of the executable
     """
     add_step("Running")
-
+    
     p = Popen(
-        [output_dir + "/" + exec_name, os.getcwd() + "\\test.py"],
+        [os.path.join(output_dir, exec_name), os.path.join(os.getcwd(), "test.py")],
         cwd=os.path.dirname(os.path.realpath(sys.executable)),
         stdin=stdin,
         stdout=stdout,
@@ -85,7 +100,6 @@ def run_code(output_dir: str, exec_name: str):
 
     print("Application ended with code " + str(p.returncode))
 
-
 if __name__ == "__main__":
     # toggles on the debug flags
     enable_debug_flags(*ENABLED_DEBUG_FLAGS)
@@ -96,4 +110,11 @@ if __name__ == "__main__":
         copyfile(constants.PYTHON_3_11_DLL_PATH, f"{dir}/python311.dll")
 
     main("test.py", dir, "a")
-    run_code("./build/win64/", "a")
+
+    if platform.system() == "Windows":
+        run_code("./build/win64/", "a")
+    elif platform.system() == "Darwin":
+        run_code(str(Path("./build/macos-arm64").resolve()), "a.out")
+    elif platform.system() == "Linux":
+        run_code(str(Path("./build/linux64").resolve()), "a.out")
+
