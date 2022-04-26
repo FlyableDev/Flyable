@@ -1,7 +1,7 @@
 #include "flyable.h"
 #include "internal/pycore_frame.h"
 
-extern PyObject* _PyEval_EvalFrameDefault(PyThreadState* ts, PyFrameObject* f, int throwflag);
+extern PyObject* _PyEval_EvalFrameDefault(PyThreadState* ts, _PyInterpreterFrame* f, int throwflag);
 
 FlyableImpl* FlyableImpls = NULL;
 int FlyableImplsCount = 0;
