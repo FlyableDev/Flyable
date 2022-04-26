@@ -26,11 +26,11 @@ class Parser(ErrorThrower):
             """
             Internal class used to look at the ast get get functions
             """
-
             def __init__(self, parser):
                 self.__parser = parser
-
+                
             def visit_FunctionDef(self, node: FunctionDef) -> Any:
+                node.qualname = f"{file.get_path().replace('/', '.')[1:]}.{node.name}"
                 new_func = lang_func.LangFunc(node)
                 new_func.set_file(file)
                 file.add_func(new_func)
