@@ -303,7 +303,6 @@ class ParserVisitor:
         ref_counter.ref_decr(self, value_type, value)
 
         self.push(None, iter_value)
-        print(self.__stack)
 
     def visit_get_yield_from_iter(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -1226,7 +1225,6 @@ class ParserVisitor:
         self.__builder.br(block_to_jump)
 
     def visit_for_iter(self, instr):
-        print(self.__stack)
         iterable_type, iterator_value = self.top()
 
         next_value = gen_iter.call_iter_next_direct(self, iterator_value)
