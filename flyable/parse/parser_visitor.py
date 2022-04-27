@@ -1578,17 +1578,6 @@ class ParserVisitor:
                 return self.__jumps_instr[else_instr]
         return self.__builder.create_block()
 
-    def __multiple_instr_jump(self, instr):
-        """
-        return if whether a instruction can be jumped from two different instructions
-        """
-        count = 0
-        if instr.is_jump_target:
-            for i, e in enumerate(self.__instructions):
-                if e.opname.lower().contains("jump") and e.arg * 2 == instr.offset:
-                    count += 1
-        return count > 1
-
     def get_func(self):
         return self.__func
 
