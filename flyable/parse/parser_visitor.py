@@ -683,16 +683,47 @@ class ParserVisitor:
         self.push(value_type, self.__builder.load(second_push_alloca))
 
     def visit_call_method(self, instr):
+
         args_count = instr.arg
-        args = []
+
+        result_value = self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen))
+
         arg_types = []
+        arg_values = []
         for i in range(args_count):
-            new_arg_type, new_arg = self.pop()
-            args.insert(0, new_arg)
-            arg_types.insert(0, arg_types)
-        callable_type, callable = self.pop()
-        call_result_type, call_result_value = caller.call_callable(self, callable, args, {})
-        self.push(call_result_type, call_result_value)
+            new_type, new_value = self.pop()
+            arg_types.append(new_type)
+            arg_values.append(new_value)
+
+        arg_types.reverse()
+        arg_values.reverse()
+
+        first_type, first_value = self.pop()  # Callable or self
+        second_type, second_value = self.pop()  # NULL or method
+
+        is_method_block = self.__builder.create_block()
+        not_method_block = self.__builder.create_block()
+        continue_block = self.__builder.create_block()
+
+        is_meth = self.__builder.ne(second_value, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
+        self.__builder.cond_br(is_meth, is_method_block, not_method_block)
+
+        self.__builder.set_insert_block(is_method_block)
+        value = caller.call_callable(self, first_value, second_value, [first_value] + arg_values, {})
+        self.__builder.store(value, result_value)
+        self.__builder.br(continue_block)
+
+        self.__builder.set_insert_block(not_method_block)
+        value = caller.call_callable(self, first_value, first_value, arg_values, {})
+        self.__builder.store(value, result_value)
+        self.__builder.br(continue_block)
+
+        self.__builder.set_insert_block(continue_block)
+
+        self.push(None, self.__builder.load(result_value))
+
+        for i, arg_value in enumerate(arg_values):
+            ref_counter.ref_decr(self, arg_types[i], arg_value)
 
     def visit_make_function(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -1232,7 +1263,6 @@ class ParserVisitor:
         next_value = gen_iter.call_iter_next_direct(self, iterator_value)
         self.push(None, next_value)
 
-        ref_counter.ref_decr(self, iterable_type, iterator_value)
         null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
         test = self.__builder.eq(next_value, null_ptr)
         continue_block = self.get_block_to_jump_by(instr.offset, instr.arg)
@@ -1242,6 +1272,7 @@ class ParserVisitor:
         # clear the global excp when we leave the loop
         self.__builder.set_insert_block(continue_block)
         excp.py_runtime_clear_error(self.__code_gen, self.__builder)
+        ref_counter.ref_decr(self, iterable_type, iterator_value)
 
         self.__builder.set_insert_block(next_block)
 
