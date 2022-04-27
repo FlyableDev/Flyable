@@ -464,7 +464,20 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_async_gen_wrap(self, instr):
-        raise unsupported.FlyableUnsupported()
+        obj_type, obj_value = self.top()
+        async_gen_value_wrapper_new_func = self.__code_gen.get_or_create_func(
+            "_PyAsyncGenValueWrapperNew",
+            code_type.get_py_obj_ptr(self.__code_gen),
+            [code_type.get_py_obj_ptr(self.__code_gen)],
+            _gen.Linkage.EXTERNAL
+        )
+        new_value = self.__builder.call(
+            async_gen_value_wrapper_new_func,
+            [obj_value]
+        )
+        self.set_top(None, new_value)
+        ref_counter.ref_decr(self, obj_type, obj_value)
+        # TODO Dispatch()?
 
     """
     Compare
@@ -1520,6 +1533,9 @@ class ParserVisitor:
         value_pop = self.__stack.pop(-1)
         return value_pop
 
+    def set_top(self, new_type, new_value):
+        self.__stack[-1] = (new_type, new_value)
+
     def top(self):
         return self.__stack[-1]
 
@@ -1589,14 +1605,14 @@ class ParserVisitor:
         self.__builder.set_insert_block(current_block)
         return new_alloca
 
-    def get_or_gen_var(self, var_name):
+    def get_or_gen_var(self, var_name: str | int):
         found_var = self.__context.get_var(var_name)
         if found_var is None:
             found_var = self.__context.add_var(var_name, lang_type.get_python_obj_type())
             found_var.set_code_value(self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen)))
         return found_var
 
-    def binary_or_inplace_visit(self, op_type):
+    def binary_or_inplace_visit(self, op_type: str):
         right_type, right_value = self.pop()
         left_type, left_value = self.pop()
 
