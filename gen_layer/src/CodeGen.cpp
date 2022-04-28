@@ -9,7 +9,7 @@ void flyable_codegen_run(char* data,int size,char* path)
     FormatReader reader(data,size);
     gen.readInput(reader);
     gen.validate();
-   // gen.opt();
+    gen.opt();
     gen.output(std::string(path));
 }
 
@@ -125,12 +125,14 @@ void CodeGen::output(std::string output)
 
 
 
+    /*
     {
         //Uncomment to output the IR in a textual format
         std::ofstream outputFile("outputIR.txt");
         llvm::raw_os_ostream ir(outputFile);
         mModule->print(ir,nullptr);
     }
+    */
 
 
 
