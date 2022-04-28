@@ -9,7 +9,7 @@ void flyable_codegen_run(char* data,int size,char* path)
     FormatReader reader(data,size);
     gen.readInput(reader);
     gen.validate();
-    gen.opt();
+   // gen.opt();
     gen.output(std::string(path));
 }
 
@@ -124,14 +124,14 @@ void CodeGen::output(std::string output)
     }
 
 
-    /*
+
     {
         //Uncomment to output the IR in a textual format
         std::ofstream outputFile("outputIR.txt");
         llvm::raw_os_ostream ir(outputFile);
         mModule->print(ir,nullptr);
     }
-    */
+
 
 
     if(!hasError)
@@ -501,13 +501,13 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                         case 17:
                         {
                             llvm::Value* value = values[current->readInt32()];
-                            
+
                             std::vector<llvm::Type*> types;
                             types.push_back(llvm::Type::getDoubleTy(mContext));
-                            
+
                             llvm::Function* func = llvm::Intrinsic::getDeclaration(mModule, llvm::Intrinsic::floor, types);
                             llvm::ArrayRef<llvm::Value*> args_ref(value);
-                            
+
                             values[current->readInt32()] = mBuilder.CreateCall(func, args_ref);
                         }
                         break;
@@ -804,6 +804,30 @@ void CodeGen::readBody(llvm::Function* func,std::vector<llvm::Value*>& values,st
                         }
                         break;
 
+                        case 9997:
+                        {
+                            llvm::Type* phiType= readType(*current);
+                            int valuesCount = current->readInt32();
+                            std::vector<llvm::Value*> predValues;
+                            for(int i = 0;i < valuesCount;++i)
+                                predValues.push_back(values[current->readInt32()]);
+
+                            std::vector<llvm::BasicBlock*> predBlocks;
+                            int blocksCount = current->readInt32();
+                            for(int i = 0;i < blocksCount;++i)
+                                predBlocks.push_back(blocks[current->readInt32()]);
+
+
+                            llvm::PHINode* phi = mBuilder.CreatePHI(phiType,0);
+                            for(int i = 0;i < valuesCount;++i)
+                            {
+                                phi->addIncoming(predValues[i],predBlocks[i]);
+                            }
+
+                            values[current->readInt32()] = phi;
+                        }
+                        break;
+
                         case 9998:
                         {
                             size_t size;
@@ -904,6 +928,12 @@ bool CodeGen::tryOpcode(std::vector<llvm::Value*> values,FormatReader& reader,in
                 for(int j = 0;j < size;++j)
                     if(values[reader.readInt32()] == nullptr)
                         return false;
+            }
+            else if(currentFeed == MULT_BLOCK_FEED)
+            {
+                int size = reader.readInt32();
+                for(int j = 0;j < size;++j)
+                    reader.readInt32();
             }
             else if(currentFeed == TYPE_FEED)
             {

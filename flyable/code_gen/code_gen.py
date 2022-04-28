@@ -172,6 +172,12 @@ class CodeFunc:
         def has_br_block(self):
             return len(self.__br_blocks) > 0
 
+        def br_into(self, block):
+            """
+            return if the block branch directly into the specified block
+            """
+            return block in self.__br_blocks
+
         def needs_end(self):
             """
             Return if the block points to no other block and has no ending (return instruction)
@@ -266,6 +272,14 @@ class CodeFunc:
         self.__return_type = CodeType()
         self.__blocks = []
         self.__builder = CodeBuilder(self)
+
+    def get_pred_block(self, block):
+        # Return all the blocks that br into that block
+        result = []
+        for e in self.__blocks:
+            if e.br_into(block):
+                result.append(e)
+        return result
 
     def write_to_code(self, writer: CodeWriter):
         writer.add_str(self.__name)

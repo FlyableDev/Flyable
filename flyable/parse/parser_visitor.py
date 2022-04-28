@@ -72,7 +72,7 @@ class ParserVisitor:
         if sys.version_info.major == 3 and sys.version_info.minor >= 11:
             self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0])
         else:
-            self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0], show_caches=True)
+            self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0])
         self.__code_obj = self.__bytecode.codeobj
         self.__frame_ptr_value = 0
 
@@ -88,7 +88,7 @@ class ParserVisitor:
 
         for i, instr in enumerate(self.__instructions):
             self.__current_instr_index = i
-            print(instr.opname + (" x" if instr in self.__jumps_instr else "") + " " + str(len(self.__stack)))
+            print(instr.opname + " " + str(self.__get_diamond_instr_jump(instr)) + " ")
             self.__visit_instr(instr)
 
         self.__builder.set_insert_block(self.__entry_block)
@@ -121,6 +121,15 @@ class ParserVisitor:
             if self.__builder.get_current_block() != insert_block:
                 self.__builder.br(insert_block)
                 self.__builder.set_insert_block(insert_block)
+
+            diamond_jump = self.__get_diamond_instr_jump(instr)
+            if diamond_jump >= 2 and self.stack_size() >= 2:  # The two top values need to be replaced by an alloca load
+                values = []
+                for i in range(diamond_jump):
+                    values.append(self.pop()[1])
+                preds = self.__func.get_code_func().get_pred_block(self.__builder.get_current_block())
+                phi_value = self.__builder.phi(code_type.get_py_obj_ptr(self.__code_gen), values, preds)
+                self.push(None, phi_value)
 
         method_to_visit = "visit_" + instr.opname.lower()
         if hasattr(self, method_to_visit):
@@ -1600,12 +1609,49 @@ class ParserVisitor:
         code_func = self.__func.get_code_func()
         return code_func
 
+    def __get_diamond_instr_jump(self, instr):
+        """
+        return if whether an instruction can be jumped from two different instructions. If that is the case, then
+        it's a diamond instruction
+        """
+        count = 0
+        if instr in self.__jumps_instr:  # Is it an instruction that we can jump into
+            instr_block = self.__jumps_instr[instr]
+            for i, e in enumerate(self.__instructions):
+                if e is not instr:
+                    opname = e.opname.lower()
+                    if "jump" in opname and "forward" in opname:
+                        if self.get_block_to_jump_by(e.offset, e.arg) is instr_block:
+                            count += 1
+                    elif "jump" in opname and "backward" in opname:
+                        if self.get_block_to_jump_by(e.offset, -e.arg) is instr_block:
+                            count += 1
+                    elif "jump" in opname and e.arg * 2 == instr.offset:
+                        if self.get_block_to_jump_to(e.arg) is instr_block:
+                            count += 1
+
+                    # Also check if it's the else block of a jump statement
+                    if "jump" in opname and "if" in opname:  # Only conditional jumps have else statement
+                        if i + 1 < len(self.__instructions):
+                            else_instr = self.__instructions[i + 1]
+                            # Else statement are not a jump target according to Python diss
+                            if else_instr == instr:
+                                count += 1
+                else:  # Also check the case where a instr can be following a direct instr
+                    if i > 0:
+                        prec_instr = self.__instructions[i - 1]
+                        if "jump" not in prec_instr.opname.lower():
+                            count += 1
+        return count
+
     def __get_else_instr_block(self):
         if self.__current_instr_index + 1 < len(self.__instructions):
             else_instr = self.__instructions[self.__current_instr_index + 1]
             if else_instr in self.__jumps_instr:
                 return self.__jumps_instr[else_instr]
-        return self.__builder.create_block()
+        else_block = self.__builder.create_block()
+        self.__jumps_instr[else_instr] = else_block
+        return else_block
 
     def get_func(self):
         return self.__func

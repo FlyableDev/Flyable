@@ -355,6 +355,25 @@ class CodeBuilder:
     def func_ptr(self, func: CodeFunc):
         return self.__make_op(3002, func.get_id())
 
+    def phi(self, type_, values, pred_block):
+
+        if len(values) != len(pred_block):
+            raise ValueError("The number of values must be equal to the number of predecessor blocks")
+
+        self.__write_opcode(9997)
+        type_.write_to_code(self.writer)
+        self.writer.add_int32(len(values))
+
+        for e in values:
+            self.writer.add_int32(e)
+
+        self.writer.add_int32(len(pred_block))
+
+        for e in pred_block:
+            self.writer.add_int32(e.get_id())
+
+        return self.__gen_value()
+
     def size_of_type(self, type_: CodeType):
         self.__write_opcode(9998)
         type_.write_to_code(self.writer)

@@ -10,6 +10,7 @@ enum OpCodeFeedInfo
     ASSIGN_FEED = 3, //When a value is assigned to the list of values
     TYPE_FEED = 4, // When the value is a type
     BLOCK_FEED = 5, //When the value is a block id
+    MULT_BLOCK_FEED = 9, //When the multiple blocks are used
     DATA_64BITS = 6, //When there is 64 bits of data
     DATA_32BITS = 7, //When there is 32 bits of data
     DATA_STR = 8, //When there is a string data
@@ -65,6 +66,7 @@ std::map<int,std::vector<OpCodeFeedInfo>> OpCodesInfo =
     {3000,{DATA_32BITS,ASSIGN_FEED}},
     {3001,{DATA_STR,ASSIGN_FEED}},
     {3002,{DATA_32BITS,ASSIGN_FEED}},
+    {9997,{TYPE_FEED,MULT_VALUES_FEED,MULT_BLOCK_FEED,ASSIGN_FEED}},
     {9998,{TYPE_FEED,ASSIGN_FEED}},
     {9999,{TYPE_FEED,ASSIGN_FEED}},
     {10000,{VALUE_FEED}},
