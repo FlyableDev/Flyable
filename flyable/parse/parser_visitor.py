@@ -50,6 +50,7 @@ class ParserVisitor:
         self.__data: comp_data.CompData = parser.get_data()
         self.__code_obj = None
         self.__bytecode = None
+        self.__exception_entries = None
         self.__context = func_impl.get_context()
 
         self.__frame_ptr_value = None
@@ -65,6 +66,7 @@ class ParserVisitor:
         self.__stack = []
         self.__blocks_stack = []
         self.__stack_states = []
+        self.__exception_block = None
 
     def run(self):
         self.__setup()
@@ -74,6 +76,8 @@ class ParserVisitor:
         else:
             self.__bytecode = dis.Bytecode(self.__bytecode.codeobj.co_consts[0])
         self.__code_obj = self.__bytecode.codeobj
+        self.__exception_entries = self.__bytecode.exception_entries
+
         self.__frame_ptr_value = 0
 
         self.__build_const()
@@ -88,7 +92,7 @@ class ParserVisitor:
 
         for i, instr in enumerate(self.__instructions):
             self.__current_instr_index = i
-            print(instr.opname + " " + str(self.__get_diamond_instr_jump(instr)) + " ")
+            print(instr.opname + " " + str(self.stack_size()) + " " + str(self.__get_diamond_instr_jump(instr)) + " ")
             self.__visit_instr(instr)
 
         self.__builder.set_insert_block(self.__entry_block)
@@ -114,6 +118,8 @@ class ParserVisitor:
                 arg_var.set_code_value(item_ptr)
 
     def __visit_instr(self, instr):
+
+        self.__exception_block = self.__find_except_block(instr.positions.lineno)
 
         if instr in self.__jumps_instr:
             insert_block = self.__jumps_instr[instr]
@@ -244,7 +250,7 @@ class ParserVisitor:
 
     def visit_copy(self, instr):
         index = instr.arg
-        type, value = self.__stack[-index]
+        type, value = self.peek(index)
         self.push(type, value)
         ref_counter.ref_incr(self.__builder, type, value)
 
@@ -485,7 +491,6 @@ class ParserVisitor:
         )
         self.set_top(None, new_value)
         ref_counter.ref_decr(self, obj_type, obj_value)
-        # TODO Dispatch()?
 
     """
     Compare
@@ -1532,7 +1537,7 @@ class ParserVisitor:
         pass
 
     def visit_push_exc_info(self, instr):
-        self.__blocks_stack.append(None)
+        self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
         self.push(None, self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)))
 
     def visit_check_exc_match(self, instr):
@@ -1599,6 +1604,9 @@ class ParserVisitor:
                 return block_to_reach
         raise ValueError("Didn't find an instruction for the offset to reach " + str(offset_to_reach))
 
+    def get_exception_block(self):
+        return self.__exception_block
+
     def push_block(self, block):
         self.__blocks_stack.append(block)
 
@@ -1652,6 +1660,18 @@ class ParserVisitor:
         else_block = self.__builder.create_block()
         self.__jumps_instr[else_instr] = else_block
         return else_block
+
+    def __find_except_block(self, line):
+        if line is not None:
+            found_entry = None
+            for entry in self.__exception_entries:
+                if entry.start >= line >= entry.end:
+                    found_entry = entry
+                    break
+
+            if found_entry is not None:
+                return self.get_block_to_jump_to(found_entry.offset)
+        return None
 
     def get_func(self):
         return self.__func
