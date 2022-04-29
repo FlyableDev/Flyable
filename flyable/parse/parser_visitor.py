@@ -683,6 +683,7 @@ class ParserVisitor:
         self.__builder.set_insert_block(not_method_block)
         self.__builder.store(self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen)), first_push_alloca)
         self.__builder.store(self.__builder.load(found_attr), second_push_alloca)
+        ref_counter.ref_decr(self, value_type, value)
         self.__builder.br(continue_block)
 
         self.__builder.set_insert_block(continue_block)
@@ -691,7 +692,8 @@ class ParserVisitor:
         self.push(value_type, self.__builder.load(second_push_alloca))
 
     def visit_call_method(self, instr):
-
+        # TODO: still an issue with this opcode, call_callable seams to believe the callable is null maybe?
+        # note that this opcode is not used in python 3.11.0a7
         args_count = instr.arg
 
         result_value = self.generate_entry_block_var(code_type.get_py_obj_ptr(self.__code_gen))
