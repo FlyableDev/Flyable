@@ -1,3 +1,4 @@
+import copy
 import sys
 
 import flyable.code_gen.code_gen as gen
@@ -64,8 +65,7 @@ class ParserVisitor:
         self.__name = None  # Contains the value that contains the ptr to the name
         self.__consts = []
         self.__stack = []
-        self.__blocks_stack = []
-        self.__stack_states = []
+        self.__stack_states = {}
         self.__exception_block = None
 
     def run(self):
@@ -92,7 +92,6 @@ class ParserVisitor:
 
         for i, instr in enumerate(self.__instructions):
             self.__current_instr_index = i
-            print(instr.opname + " " + str(self.stack_size()) + " " + str(self.__get_diamond_instr_jump(instr)) + " ")
             self.__visit_instr(instr)
 
         self.__builder.set_insert_block(self.__entry_block)
@@ -121,14 +120,23 @@ class ParserVisitor:
 
         self.__exception_block = self.__find_except_block(instr.positions.lineno)
 
+        print(instr.opname + " " + str(self.stack_size()) + " " + str(self.__get_diamond_instr_jump(instr)))
+
         if instr in self.__jumps_instr:
             insert_block = self.__jumps_instr[instr]
+
+            diamond_jump = self.__get_diamond_instr_jump(instr)
+
+            # If we have a state for the stack, set it up
+            if insert_block in self.__stack_states and diamond_jump < 2:
+                # print("stack switch " + str(self.stack_size()))
+                self.__stack = copy.copy(self.__stack_states[insert_block])
+
             # If we're not already the on the block
             if self.__builder.get_current_block() != insert_block:
                 self.__builder.br(insert_block)
                 self.__builder.set_insert_block(insert_block)
 
-            diamond_jump = self.__get_diamond_instr_jump(instr)
             if diamond_jump >= 2 and self.stack_size() >= 2:  # The two top values need to be replaced by an alloca load
                 values = []
                 for i in range(diamond_jump):
@@ -1150,6 +1158,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
+        self.__setup_stack_state(else_block, block_to_jump)
         self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1159,6 +1168,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
+        self.__setup_stack_state(else_block, block_to_jump)
         self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1168,6 +1178,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
+        self.__setup_stack_state(else_block, block_to_jump)
         self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
         self.__builder.set_insert_block(else_block)
 
@@ -1177,6 +1188,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
+        self.__setup_stack_state(else_block, block_to_jump)
         self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
         self.__builder.set_insert_block(else_block)
 
@@ -1187,6 +1199,7 @@ class ParserVisitor:
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.ne(none_value, value)
         ref_counter.ref_decr(self, value_type, value)
+        self.__setup_stack_state(else_block, block_to_jump)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1197,6 +1210,7 @@ class ParserVisitor:
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.ne(none_value, value)
         ref_counter.ref_decr(self, value_type, value)
+        self.__setup_stack_state(else_block, block_to_jump)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1207,6 +1221,7 @@ class ParserVisitor:
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.eq(none_value, value)
         ref_counter.ref_decr(self, value_type, value)
+        self.__setup_stack_state(else_block, block_to_jump)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1217,6 +1232,7 @@ class ParserVisitor:
         none_value = self.__builder.global_var(self.__code_gen.get_none())
         cond_value = self.__builder.eq(none_value, value)
         ref_counter.ref_decr(self, value_type, value)
+        self.__setup_stack_state(else_block, block_to_jump)
         self.__builder.cond_br(cond_value, block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1226,6 +1242,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
+        self.__setup_stack_state(else_block, block_to_jump)
         self.__builder.cond_br(cond_value[1], block_to_jump, else_block)
         self.__builder.set_insert_block(else_block)
 
@@ -1235,6 +1252,7 @@ class ParserVisitor:
         value_type, value = self.pop()
         cond_value = _cond.value_to_cond(self, lang_type.get_python_obj_type(), value)
         ref_counter.ref_decr(self, value_type, value)
+        self.__setup_stack_state(else_block, block_to_jump)
         self.__builder.cond_br(cond_value[1], else_block, block_to_jump)
         self.__builder.set_insert_block(else_block)
 
@@ -1465,11 +1483,19 @@ class ParserVisitor:
         if lasti:
             self.__lasti = lasti
 
-        # val_type, val_value = self.pop()
+        val_type, val_value = self.pop()
 
-        new_re_func = self.__code_gen.get_or_create_func("Py_NewRef", code_type.get_py_obj_ptr(self.__code_gen),
-                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
-                                                         _gen.Linkage.EXTERNAL)
+        excp_instance_func = self.__code_gen.get_or_create_func("PyExceptionInstance_Class",
+                                                                code_type.get_py_obj_ptr(self.__code_gen),
+                                                                [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                                _gen.Linkage.EXTERNAL)
+
+        new_ref_func = self.__code_gen.get_or_create_func("Py_NewRef", code_type.get_py_obj_ptr(self.__code_gen),
+                                                          [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                          _gen.Linkage.EXTERNAL)
+
+        instance_class = self.__builder.call(excp_instance_func, [val_value])
+        new_ref = self.__builder.call(new_ref_func, [instance_class])
 
     def visit_prep_reraise_star(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -1609,12 +1635,6 @@ class ParserVisitor:
     def get_exception_block(self):
         return self.__exception_block
 
-    def push_block(self, block):
-        self.__blocks_stack.append(block)
-
-    def pop_block(self):
-        return self.__blocks_stack.pop()
-
     def __get_code_func(self):
         code_func = self.__func.get_code_func()
         return code_func
@@ -1650,7 +1670,7 @@ class ParserVisitor:
                 else:  # Also check the case where a instr can be following a direct instr
                     if i > 0:
                         prec_instr = self.__instructions[i - 1]
-                        if "jump" not in prec_instr.opname.lower():
+                        if "jump" not in prec_instr.opname.lower() and "return" not in prec_instr.opname.lower():
                             count += 1
         return count
 
@@ -1674,6 +1694,11 @@ class ParserVisitor:
             if found_entry is not None:
                 return self.get_block_to_jump_to(found_entry.offset)
         return None
+
+    def __setup_stack_state(self, block_first, block_second=None):
+        self.__stack_states[block_first] = copy.copy(self.__stack)
+        if block_second is not None:
+            self.__stack_states[block_second] = copy.copy(self.__stack)
 
     def get_func(self):
         return self.__func
