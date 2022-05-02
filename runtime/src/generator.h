@@ -7,7 +7,6 @@ extern PyObject* _PyEval_EvalFrameDefault(PyThreadState* ts, _PyInterpreterFrame
 extern _PyInterpreterFrame * _PyEval_GetFrame();
 extern PyObject* _Py_MakeCoro(PyFunctionObject *func);
 extern void _Py_LeaveRecursiveCall();
-extern PyObject* _PyErr_Occurred(PyThreadState *tstate);
 extern void _PyInterpreterState_SetEvalFrameFunc();
 
 PyObject* flyable_handle_return_generator_bytecode();

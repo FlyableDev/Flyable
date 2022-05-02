@@ -11,7 +11,6 @@ PyObject* flyable_handle_return_generator_bytecode()
     _PyFrame_SetStackPointer(frame, stack_pointer);
     _PyInterpreterFrame *gen_frame = (_PyInterpreterFrame *)gen->gi_iframe;
     _PyFrame_Copy(frame, gen_frame);
-    assert(frame->frame_obj == NULL);
     gen->gi_frame_state = FRAME_CREATED;
     gen_frame->owner = FRAME_OWNED_BY_GENERATOR;
 
@@ -48,8 +47,6 @@ PyObject* flyable_handle_return_generator_bytecode()
         /* Restore previous cframe and return. */
         tstate->cframe = cframe->previous;
         tstate->cframe->use_tracing = cframe->use_tracing;
-        assert(tstate->cframe->current_frame == frame->previous);
-        assert(!_PyErr_Occurred(tstate));
         return (PyObject *)gen;
     }
 }
