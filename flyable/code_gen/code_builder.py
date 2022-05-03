@@ -358,7 +358,8 @@ class CodeBuilder:
     def phi(self, type_, values, pred_block):
 
         if len(values) != len(pred_block):
-            raise ValueError("The number of values must be equal to the number of predecessor blocks")
+            error = "(" + str(len(values)) + "," + str(len(pred_block)) + ")"
+            raise ValueError("The number of values must be equal to the number of predecessor blocks " + error)
 
         self.__write_opcode(9997)
         type_.write_to_code(self.writer)

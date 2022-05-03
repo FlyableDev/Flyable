@@ -87,7 +87,6 @@ class ParserVisitor:
             if instr.is_jump_target:
                 new_block = self.__builder.create_block("Instr:" + instr.opname)
                 self.__jumps_instr[instr] = new_block
-        print("---")
         self.__setup_argument()
 
         for i, instr in enumerate(self.__instructions):
@@ -120,17 +119,14 @@ class ParserVisitor:
 
         self.__exception_block = self.__find_except_block(instr.positions.lineno)
 
-        print(instr.opname + " " + str(self.stack_size()) + " " + str(self.__get_diamond_instr_jump(instr)))
-
         if instr in self.__jumps_instr:
             insert_block = self.__jumps_instr[instr]
 
             diamond_jump = self.__get_diamond_instr_jump(instr)
 
-            # If we have a state for the stack, set it up
             if insert_block in self.__stack_states and diamond_jump < 2:
-                # print("stack switch " + str(self.stack_size()))
                 self.__stack = copy.copy(self.__stack_states[insert_block])
+                print("stack switch " + instr.opname + " " + str(self.stack_size()))
 
             # If we're not already the on the block
             if self.__builder.get_current_block() != insert_block:
@@ -1694,6 +1690,12 @@ class ParserVisitor:
             if found_entry is not None:
                 return self.get_block_to_jump_to(found_entry.offset)
         return None
+
+    def __is_instr_start_excp_block(self, instr):
+        for e in self.__exception_entries:
+            if e.offset == instr.offset:
+                return True
+        return False
 
     def __setup_stack_state(self, block_first, block_second=None):
         self.__stack_states[block_first] = copy.copy(self.__stack)
