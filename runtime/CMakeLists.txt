@@ -5,8 +5,6 @@ find_package(PythonLibs REQUIRED)
 
 add_library(
     runtime STATIC src/flyable.h src/module.h src/flyable.c 
-src/module.c)
-
-
+src/module.c src/generator.c src/generator.h)
 include_directories(${PYTHON_INCLUDE_DIRS})
 target_link_libraries(runtime ${PYTHON_LIBRARIES})

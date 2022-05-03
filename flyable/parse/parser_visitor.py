@@ -1432,7 +1432,9 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_return_generator(self, instr):
-        raise unsupported.FlyableUnsupported()
+        from flyable.code_gen.generator import flyable_handle_return_generator_bytecode
+        generator = flyable_handle_return_generator_bytecode(self.get_code_gen(), self.get_builder())
+        self.push(lang_type.get_python_obj_type(), generator)
 
     def visit_send(self, instr):
         raise unsupported.FlyableUnsupported()
