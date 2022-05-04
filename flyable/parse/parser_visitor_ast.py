@@ -319,6 +319,19 @@ class ParserVisitorAst(NodeVisitor):
     def visit_Attribute(self, node: Attribute) -> Any:
         self.__reset_last()
 
+        self.__last_type, self.__last_value = self.__visit_node(node.value)
+
+        attr_name = self.__code_gen.get_or_insert_str(node.attr)
+        attr_name = self.__builder.global_var(attr_name)
+        attr_name = self.__builder.load(attr_name)
+
+        get_attr = self.__code_gen.get_or_create_func("PyObject_GetAttr", code_type.get_py_obj_ptr(self.__code_gen),
+                                                      [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                      _gen.Linkage.EXTERNAL)
+
+        self.__last_value = self.__builder.call(get_attr, [self.__last_value, attr_name])
+        self.__last_type = lang_type.get_python_obj_type()
+
     def visit_Call(self, node: Call) -> Any:
         if isinstance(node.func, ast.Attribute):
             self.__last_type, self.__last_value = self.__visit_node(node.func.value)
@@ -769,7 +782,7 @@ class ParserVisitorAst(NodeVisitor):
         self.__last_type.add_hint(hint.TypeHintRefIncr())
 
         for i, e in enumerate(elts_values):
-            py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, e, elts_types[i])
+            py_obj_type, py_obj = runtime.value_to_pyobj(self, e, elts_types[i])
             ref_counter.ref_incr(self.__builder, py_obj_type, py_obj)
             gen_tuple.python_tuple_set_unsafe(self, self.__last_value, i, py_obj)
 
