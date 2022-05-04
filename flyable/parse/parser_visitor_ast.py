@@ -922,8 +922,8 @@ class ParserVisitorAst(NodeVisitor):
             key_type, key_value = self.__visit_node(node.keys[i])
             value_type, value_value = self.__visit_node(node.values[i])
 
-            _, key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value, key_type)
-            _, value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value, value_type)
+            _, key_value = runtime.value_to_pyobj(self, key_value, key_type)
+            _, value_value = runtime.value_to_pyobj(self, value_value, value_type)
 
             gen_dict.python_dict_set_item(self, new_dict, key_value, value_value)
             self.__last_value = None
@@ -977,79 +977,16 @@ class ParserVisitorAst(NodeVisitor):
         self.__builder.set_insert_block(block_continue)
 
     def visit_Yield(self, node: Yield) -> Any:
-        if not self.__func.has_yield():
-            self.__func.set_yield(True)
-            self.__reset_visit = True
-        raise Exception("Yield not supported")
+        raise unsupported.FlyableUnsupported()
 
     def visit_YieldFrom(self, node: YieldFrom) -> Any:
-        if not self.__func.has_yield():
-            self.__func.set_yield(True)
-            self.__reset_visit = True
-        raise Exception("Yield not supported")
+        raise unsupported.FlyableUnsupported()
 
     def visit_Import(self, node: Import) -> Any:
-        for e in node.names:
-            import_name = e.asname or e.name
-            import_names = import_name.split('.')
-            for i in range(len(import_names)):
-                to_import = '.'.join(import_names[:i + 1])
-                if self.__code_gen.get_global_var(f"@flyable@global@module@{to_import}"):
-                    # module already imported
-                    continue
-                file = self.__data.get_file(to_import)
-                if file is None:  # Python module
-                    module_type = lang_type.get_python_obj_type()  # A Python module
-                    content = gen_module.import_py_module(self.__code_gen, self.__builder, to_import)
-                else:  # Flyable module
-                    module_type = lang_type.get_module_type(file.get_id())
-                    content = self.__builder.const_int32(file.get_id())
-
-                module_code_type = module_type.to_code_type(self.__code_gen)
-
-                new_var = self.__func.get_context().add_var(to_import, module_type)
-                if self.__func.get_parent_func().is_global():
-                    new_global_var = gen.GlobalVar("@flyable@global@module@" + to_import, module_code_type)
-                    new_var.set_global(True)
-                    new_var.set_code_gen_value(new_global_var)
-                    self.__code_gen.add_global_var(new_global_var)
-                    module_store = self.__builder.global_var(new_global_var)
-                else:
-                    new_var_value = self.generate_entry_block_var(module_code_type)
-                    new_var.set_code_gen_value(new_var_value)
-                    new_var.set_belongs_to_module(True)
-                    new_var.set_is_module(True)
-                    module_store = new_var_value
-                self.__builder.store(content, module_store)
+        raise unsupported.FlyableUnsupported()
 
     def visit_ImportFrom(self, node: ImportFrom) -> Any:
-        module_name = node.module
-        for e in node.names:
-            import_name = e.asname or e.name
-            file = self.__data.get_file(e.name)
-            if file is None:  # Python module
-                module_type = lang_type.get_python_obj_type()  # A Python module
-                content = gen_module.import_py_module(self.__code_gen, self.__builder, f"{module_name}")
-            else:  # Flyable module
-                module_type = lang_type.get_module_type(file.get_id())
-                content = self.__builder.const_int32(file.get_id())
-
-            module_code_type = module_type.to_code_type(self.__code_gen)
-
-            new_var = self.__func.get_context().add_var(import_name, module_type)
-            if self.__func.get_parent_func().is_global():
-                new_global_var = gen.GlobalVar("@flyable@global@module@" + import_name, module_code_type,
-                                               containing_module=module_name)
-                new_var.set_global(True)
-                new_var.set_code_gen_value(new_global_var)
-                self.__code_gen.add_global_var(new_global_var)
-                module_store = self.__builder.global_var(new_global_var)
-            else:
-                new_var_value = self.generate_entry_block_var(module_code_type)
-                new_var.set_code_gen_value(new_var_value)
-                new_var.set_belongs_to_module(True)
-                module_store = new_var_value
-            self.__builder.store(content, module_store)
+        raise unsupported.FlyableUnsupported()
 
     def visit_ClassDef(self, node: ClassDef) -> Any:
         pass
