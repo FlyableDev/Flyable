@@ -9,9 +9,7 @@ import flyable.code_gen.ref_counter as ref_counter
 import flyable.code_gen.runtime as runtime
 import flyable.data.lang_type as lang_type
 import flyable.parse.op as parse_op
-from flyable.code_gen import debug
-from flyable.parse import build_in
-import flyable.code_gen.fly_obj as fly_obj
+import ast
 
 if TYPE_CHECKING:
     from flyable.parse.parser import ParserVisitor
@@ -19,19 +17,20 @@ if TYPE_CHECKING:
 
 
 def get_binary_op_func_to_call(op):
-    func_op = ["PyNumber_Add",
-               "PyNumber_And",
-               "PyNumber_FloorDivide",
-               "PyNumber_Lshift",
-               "PyNumber_MatrixMultiply",
-               "PyNumber_Multiply",
-               "PyNumber_Remainder",
-               "PyNumber_Or",
-               "_PyNumber_PowerNoMod",
-               "PyNumber_Rshift",
-               "PyNumber_Subtract",
-               "PyNumber_TrueDivide",
-               "PyNumber_Xor",
+    func_op = {ast.Add: "PyNumber_Add",
+               ast.And: "PyNumber_And",
+               ast.FloorDiv: "PyNumber_FloorDivide",
+               ast.LShift: "PyNumber_Lshift",
+               ast.MatMult: "PyNumber_MatrixMultiply",
+               ast.Mult: "PyNumber_Multiply",
+               ast.Div: "PyNumber_Remainder",
+               ast.Or: "PyNumber_Or",
+               ast.Pow: "_PyNumber_PowerNoMod",
+               ast.RShift: "PyNumber_Rshift",
+               ast.Sub: "PyNumber_Subtract",
+               ast.Div: "PyNumber_TrueDivide",
+               ast.BitXor: "PyNumber_Xor"}
+    """
                "PyNumber_InPlaceAdd",
                "PyNumber_InPlaceAnd",
                "PyNumber_InPlaceFloorDivide",
@@ -44,8 +43,26 @@ def get_binary_op_func_to_call(op):
                "PyNumber_InPlaceRshift",
                "PyNumber_InPlaceSubtract",
                "PyNumber_InPlaceTrueDivide",
-               "PyNumber_InPlaceXor"]
-    return func_op[op]
+               "PyNumber_InPlaceXor"}
+    """
+    return func_op[type(op)]
+
+
+def get_binary_aug_op_func_to_call(op):
+    func_op = {ast.Add: "PyNumber_InPlaceAdd",
+               ast.And: "PyNumber_InPlaceAnd",
+               ast.FloorDiv: "PyNumber_InPlaceFloorDivide",
+               ast.LShift: "PyNumber_InPlaceLshift",
+               ast.MatMult: "PyNumber_InPlaceMatrixMultiply",
+               ast.Mult: "PyNumber_InPlaceMultiply",
+               ast.Div: "PyNumber_InPlaceRemainder",
+               ast.Or: "PyNumber_InPlaceOr",
+               ast.Pow: "_PyNumber_InPlacePowerNoMod",
+               ast.RShift: "PyNumber_InPlaceRshift",
+               ast.Sub: "PyNumber_InPlaceSubtract",
+               ast.Div: "PyNumber_InPlaceTrueDivide",
+               ast.BitXor: "PyNumber_InPlaceXor"}
+    return func_op[type(op)]
 
 
 def __convert_type_to_match(visitor: ParserVisitor, type_left: LangType, value_left, type_right,
@@ -102,9 +119,8 @@ def bin_op(visitor: ParserVisitor, op: ast.operator, type_left: LangType, value_
     builder = visitor.get_builder()
 
     # Check the primitive type conversion
-    type_left, value_left, type_right, value_right = __convert_type_to_match(
-        visitor, op, type_left, value_left, type_right, value_right
-    )
+    type_left, value_left, type_right, value_right = __convert_type_to_match(visitor, op, type_left, value_left,
+                                                                             type_right, value_right)
 
     if (  # left
             type_left.is_obj() or type_left.is_python_obj() or type_left.is_collection()

@@ -44,8 +44,9 @@ class Parser(ErrorThrower):
     def parse_impl(self, func_impl: LangFuncImpl):
         if func_impl.get_parse_status() == impl.LangFuncImpl.ParseStatus.NOT_STARTED:
             func_impl.set_parse_status(impl.LangFuncImpl.ParseStatus.STARTED)
-            import flyable.parse.parser_visitor as parser_vis
-            vis = parser_vis.ParserVisitor(self, self.__code_gen, func_impl)
+            #import flyable.parse.parser_visitor as parser_vis
+            import flyable.parse.parser_visitor_ast as visitor_ast
+            vis = visitor_ast.ParserVisitorAst(self, self.__code_gen, func_impl)
             vis.run()
 
     def get_code_gen(self):
