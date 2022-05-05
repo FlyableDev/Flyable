@@ -241,6 +241,7 @@ class ParserVisitorAst(NodeVisitor):
         ref_counter.ref_incr(self.__builder, left_type, left_value)
 
         self.__reset_last()
+
         right_type, right_value = self.__visit_node(node.value)
 
         # Operate value and target together
@@ -562,17 +563,16 @@ class ParserVisitorAst(NodeVisitor):
 
         if isinstance(node.target, ast.Name):
             name = node.target.id
-            new_var = self.get_func().get_context().add_var(name, iter_type)
-            alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-            new_var.set_code_value(alloca_value)
+            new_var = self.get_or_gen_var(name)
+        else:
+            raise ValueError("Exception here not supported")
+
         iterable_type, iterator = caller.call_obj(self, "__iter__", iter_value, iter_type, [], [], {})
 
         self.__builder.br(block_for)
         self.__builder.set_insert_block(block_for)
 
         next_type, next_value = caller.call_obj(self, "__next__", iterator, iterable_type, [], [], {})
-
-        ref_counter.ref_incr(self.__builder, next_type, next_value)
 
         null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
 
