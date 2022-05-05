@@ -30,21 +30,6 @@ def get_binary_op_func_to_call(op):
                ast.Sub: "PyNumber_Subtract",
                ast.Div: "PyNumber_TrueDivide",
                ast.BitXor: "PyNumber_Xor"}
-    """
-               "PyNumber_InPlaceAdd",
-               "PyNumber_InPlaceAnd",
-               "PyNumber_InPlaceFloorDivide",
-               "PyNumber_InPlaceLshift",
-               "PyNumber_InPlaceMatrixMultiply",
-               "PyNumber_InPlaceMultiply",
-               "PyNumber_InPlaceRemainder",
-               "PyNumber_InPlaceOr",
-               "_PyNumber_InPlacePowerNoMod",
-               "PyNumber_InPlaceRshift",
-               "PyNumber_InPlaceSubtract",
-               "PyNumber_InPlaceTrueDivide",
-               "PyNumber_InPlaceXor"}
-    """
     return func_op[type(op)]
 
 
