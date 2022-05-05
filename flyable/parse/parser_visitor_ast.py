@@ -417,8 +417,7 @@ class ParserVisitorAst(NodeVisitor):
             """Parses the slice part and returns the correct type and value"""
             if expression is not None:
                 slice_part_type, slice_part_value = self.__visit_node(expression)
-                slice_part_type, slice_part_value = runtime.value_to_pyobj(
-                    self.__code_gen, self.__builder, slice_part_value, slice_part_type)
+                slice_part_type, slice_part_value = runtime.value_to_pyobj(self, slice_part_value, slice_part_type)
             else:
                 slice_part_type = lang_type.get_none_type()
                 slice_part_value = self.__builder.load(self.__builder.global_var(self.__code_gen.get_none()))
@@ -654,7 +653,7 @@ class ParserVisitorAst(NodeVisitor):
                 if with_item.optional_vars is not None:
                     with_var = self.__func.get_context().add_var(str(with_item.optional_vars.id), type)
                     all_vars_with.append(with_var)
-                    self.__builder.store(value, with_var.get_code_gen_value())
+                    self.__builder.store(value, with_var.get_code_value())
                 else:
                     all_vars_with.append(None)
 
@@ -679,7 +678,7 @@ class ParserVisitorAst(NodeVisitor):
         iter_type, iter_value = self.__visit_node(node.iter)
         target_var = self.__func.get_context().add_var(target_name, iter_type)
         alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-        target_var.set_code_gen_value(alloca_value)
+        target_var.set_code_value(alloca_value)
         self.__last_type, self.__last_value = caller.call_obj(self, "__iter__", iter_value, iter_type, [iter_value],
                                                               [iter_type], {})
 
@@ -717,8 +716,8 @@ class ParserVisitorAst(NodeVisitor):
                 name = e.target.id
                 new_var = self.__func.get_context().add_var(name, iter_type)
                 alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-                new_var.set_code_gen_value(alloca_value)
-                self.__builder.store(next_value, new_var.get_code_gen_value())
+                new_var.set_code_value(alloca_value)
+                self.__builder.store(next_value, new_var.get_code_value())
             elif isinstance(e.target, ast.Tuple) or isinstance(e.target, ast.List):
                 targets = []
                 for t in e.target.elts:
@@ -735,7 +734,7 @@ class ParserVisitorAst(NodeVisitor):
 
             if i == len(node.generators) - 1:
                 elt_type, elt_value = self.__visit_node(node.elt)
-                py_obj_type, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value, elt_type)
+                py_obj_type, py_obj = runtime.value_to_pyobj(self, elt_value, elt_type)
                 gen_list.python_list_append(self, result_array, py_obj_type, py_obj)
                 self.__builder.br(block_for)
 
@@ -784,7 +783,7 @@ class ParserVisitorAst(NodeVisitor):
         for i, e in enumerate(elts_values):
             py_obj_type, py_obj = runtime.value_to_pyobj(self, e, elts_types[i])
             ref_counter.ref_incr(self.__builder, py_obj_type, py_obj)
-            gen_tuple.python_tuple_set_unsafe(self, self.__last_value, i, py_obj)
+            gen_tuple.python_tuple_set_unsafe(self, self.__last_value, self.__builder.const_int64(i), py_obj)
 
     def visit_SetComp(self, node: SetComp) -> Any:
         null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
@@ -821,8 +820,8 @@ class ParserVisitorAst(NodeVisitor):
                 name = e.target.id
                 new_var = self.__func.get_context().add_var(name, iter_type)
                 alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-                new_var.set_code_gen_value(alloca_value)
-                self.__builder.store(next_value, new_var.get_code_gen_value())
+                new_var.set_code_value(alloca_value)
+                self.__builder.store(next_value, new_var.get_code_value())
             elif isinstance(e.target, ast.Tuple) or isinstance(e.target, ast.List):
                 targets = []
                 for t in e.target.elts:
@@ -839,8 +838,7 @@ class ParserVisitorAst(NodeVisitor):
 
             if i == len(node.generators) - 1:
                 elt_type, elt_value = self.__visit_node(node.elt)
-                obj_to_set_type, obj_to_set_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, elt_value,
-                                                                           elt_type)
+                obj_to_set_type, obj_to_set_value = runtime.value_to_pyobj(self, elt_value, elt_type)
                 gen_set.python_set_add(self, result_set, obj_to_set_value)
                 self.__builder.br(block_for)
 
@@ -856,7 +854,7 @@ class ParserVisitorAst(NodeVisitor):
         new_set = gen_set.instanciate_python_set(self, null_value)
         for e in node.elts:
             type, value = self.__visit_node(e)
-            py_typ, py_obj = runtime.value_to_pyobj(self.__code_gen, self.__builder, value, type)
+            py_typ, py_obj = runtime.value_to_pyobj(self, value, type)
             gen_set.python_set_add(self, new_set, py_obj)
         self.__last_value = new_set
         self.__last_type = set_type
@@ -897,8 +895,8 @@ class ParserVisitorAst(NodeVisitor):
                 name = e.target.id
                 new_var = self.__func.get_context().add_var(name, iter_type)
                 alloca_value = self.generate_entry_block_var(iter_type.to_code_type(self.__code_gen))
-                new_var.set_code_gen_value(alloca_value)
-                self.__builder.store(next_value, new_var.get_code_gen_value())
+                new_var.set_code_value(alloca_value)
+                self.__builder.store(next_value, new_var.get_code_value())
             elif isinstance(e.target, ast.Tuple) or isinstance(e.target, ast.List):
                 targets = []
                 for t in e.target.elts:
@@ -916,10 +914,8 @@ class ParserVisitorAst(NodeVisitor):
             if i == len(node.generators) - 1:
                 key_type, key_value = self.__visit_node(node.key)
                 value_type, value_value = self.__visit_node(node.value)
-                obj_key_type, obj_key_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, key_value,
-                                                                     key_type)
-                obj_value_type, obj_value_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, value_value,
-                                                                         value_type)
+                obj_key_type, obj_key_value = runtime.value_to_pyobj(self, key_value, key_type)
+                obj_value_type, obj_value_value = runtime.value_to_pyobj(self, value_value, value_type)
                 gen_dict.python_dict_set_item(self, result_dict, obj_key_value, obj_value_value)
                 self.__builder.br(block_for)
 
@@ -980,7 +976,7 @@ class ParserVisitorAst(NodeVisitor):
             msg_value = self.__builder.global_var(self.__code_gen.get_or_insert_str(""))
             msg_value = self.__builder.load(msg_value)
 
-        msg_type, msg_value = runtime.value_to_pyobj(self.__code_gen, self.__builder, msg_value, msg_type)
+        msg_type, msg_value = runtime.value_to_pyobj(self, msg_value, msg_type)
         excp.raise_assert_error(self, msg_value)
 
         excp.raise_index_error(self)
@@ -1081,7 +1077,7 @@ class ParserVisitorAst(NodeVisitor):
                 new_var = self.__func.get_context().add_var(self.__func.get_parent_func().get_arg(i).arg, arg_type)
                 new_var_alloca = self.generate_entry_block_var(arg_type.to_code_type(self.__code_gen))
                 self.__builder.store(arg_value, new_var_alloca)
-                new_var.set_code_gen_value(new_var_alloca)
+                new_var.set_code_value(new_var_alloca)
                 current += 1
 
     def __get_global_obj(self, name):
@@ -1127,7 +1123,7 @@ class ParserVisitorAst(NodeVisitor):
 
         # Invalidate the codegen value of the variable
         for var in self.__func.get_context().vars_iter():
-            var.set_code_gen_value(None)
+            var.set_code_value(None)
 
         self.__get_code_func().clear_blocks()
         self.__entry_block = self.__get_code_func().add_block("Entry block")
