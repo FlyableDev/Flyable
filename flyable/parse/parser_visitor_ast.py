@@ -784,7 +784,7 @@ class ParserVisitorAst(NodeVisitor):
         for i, e in enumerate(elts_values):
             py_obj_type, py_obj = runtime.value_to_pyobj(self, e, elts_types[i])
             ref_counter.ref_incr(self.__builder, py_obj_type, py_obj)
-            gen_tuple.python_tuple_set_unsafe(self, self.__last_value, i, py_obj)
+            gen_tuple.python_tuple_set_unsafe(self, self.__last_value, self.__builder.const_int64(i), py_obj)
 
     def visit_SetComp(self, node: SetComp) -> Any:
         null_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))

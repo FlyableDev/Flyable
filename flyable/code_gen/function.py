@@ -71,7 +71,7 @@ def call_py_func_vec_call(visitor, obj: int, func_to_call: int, args: list[int],
     if kwargs:
         kw_names = tuple_call.python_tuple_new_alloca(visitor, len(kwargs))
         for i, key in enumerate(kwargs.keys()):
-            tuple_call.python_tuple_set_unsafe(visitor, kw_names, i, key)
+            tuple_call.python_tuple_set_unsafe(visitor, kw_names, builder.const_int64(i), key)
     else:
         kw_names = builder.const_null(code_type.get_py_obj_ptr(code_gen))
 
