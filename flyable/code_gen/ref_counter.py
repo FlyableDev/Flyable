@@ -75,6 +75,7 @@ def ref_incr(builder: CodeBuilder, value_type: LangType, value: int):
 
 @__only_accept_ref_counting_type
 def ref_decr(visitor: ParserVisitor, value_type: LangType, value: int):
+    """
     code_gen = visitor.get_code_gen()
     builder = visitor.get_builder()
 
@@ -108,30 +109,6 @@ def ref_decr(visitor: ParserVisitor, value_type: LangType, value: int):
         dealloc_ptr = builder.load(dealloc_ptr)
         builder.call_ptr(dealloc_ptr, [value])
 
-        """
-        index_ptr = visitor.create_entry_alloca()
-        content_ptr = _list.python_list_get_content_ptr(visitor, value)
-        builder.store(builder.const_int32(0), index_ptr)
-
-        cond_check_block = builder.create_block()
-        array_size = _list.python_list_len(visitor, value)
-        can_delete = builder.lt(builder.load(index_ptr), array_size)
-
-        decrement_block = builder.create_block()
-        continue_block = builder.create_block()
-
-        builder.cond_br(can_delete, decrement_block, continue_block)
-
-        builder.set_insert_block(decrement_block)
-        
-        # Decrement the content
-        ref_decr(visitor, value_type.get_content(), builder.load(builder.gep(content_ptr, builder.load(index_ptr))))
-        
-        builder.br(continue_block)
-
-        builder.set_insert_block(continue_block)
-        """
-
     elif value_type.is_python_obj() or value_type.is_dict():
         obj_type = fly_obj.get_py_obj_type(visitor.get_builder(), value)
         dealloc_ptr = gen_type.py_object_type_get_dealloc_ptr(visitor, obj_type)
@@ -154,6 +131,7 @@ def ref_decr(visitor: ParserVisitor, value_type: LangType, value: int):
     builder.br(continue_block)
 
     builder.set_insert_block(continue_block)
+    """
 
 
 @__only_accept_ref_counting_type
