@@ -299,13 +299,13 @@ def cond_op(
             apply_op = builder.gte
         case ast.Is():
             apply_op = lambda v1, v2: builder.eq(
-                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v1, type_left)[1],
-                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v2, type_right)[1]
+                runtime.value_to_pyobj(visitor, v1, type_left)[1],
+                runtime.value_to_pyobj(visitor, v2, type_right)[1]
             )
         case ast.IsNot():
             apply_op = lambda v1, v2: builder.ne(
-                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v1, type_left)[1],
-                runtime.value_to_pyobj(visitor.get_code_gen(), builder, v2, type_right)[1]
+                runtime.value_to_pyobj(visitor, v1, type_left)[1],
+                runtime.value_to_pyobj(visitor, v2, type_right)[1]
             )
         case _:
             raise NotImplementedError("Compare op " + str(type(op)) + " not supported")
@@ -368,8 +368,8 @@ def handle_op_cond_special_cases(
     elif op_type in {ast.Is, ast.IsNot}:
         print(f"using is for {type_left} and {type_right}")
         result = builder.eq(
-            runtime.value_to_pyobj(visitor.get_code_gen(), builder, first_value, type_left)[1],
-            runtime.value_to_pyobj(visitor.get_code_gen(), builder, second_value, type_right)[1]
+            runtime.value_to_pyobj(visitor, first_value, type_left)[1],
+            runtime.value_to_pyobj(visitor, second_value, type_right)[1]
         )
         if op_type is ast.IsNot:
             result = builder._not(result)
