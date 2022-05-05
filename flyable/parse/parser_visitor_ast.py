@@ -229,7 +229,7 @@ class ParserVisitorAst(NodeVisitor):
         token_store = token_change.find_token_store(node)
 
         # Run what we can of the target. The visitor will stop if it finds a none context
-        node.ctx = None
+        node.ctx = ast.Load()
         base_type, base_value = self.__visit_node(node.target)
 
         # Load value first
@@ -309,7 +309,7 @@ class ParserVisitorAst(NodeVisitor):
                 ref_counter.ref_decr(self, value_type, value)
         else:  # Load
             self.__last_type = lang_type.get_python_obj_type()
-            found_var = self.get_var(node.id)
+            found_var = self.get_or_gen_var(node.id)
             if found_var is None:
                 # Var not found, so it's a global
                 var_name = node.id
