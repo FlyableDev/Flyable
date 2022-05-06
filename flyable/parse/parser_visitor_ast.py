@@ -126,6 +126,11 @@ class ParserVisitorAst(NodeVisitor):
         self.__builder.cond_br(has_keyword, kwards_block, after_kwards)
 
         self.__builder.set_insert_block(kwards_block)
+        kwards_keys = gen_dict.python_dict_get_keys(self, kwargs)
+        current_kwarg = self.generate_entry_block_var(code_type.get_int64())
+        kwards_keys_count = gen_list.python_list_len(self, kwards_keys)
+        self.__builder.store(self.__builder.const_int64(0), current_kwarg)
+
         for i, arg in enumerate(args):
             arg_str = self.__code_gen.get_or_insert_str(arg.arg)
             arg_str = self.__builder.global_var(arg_str)
@@ -148,9 +153,6 @@ class ParserVisitorAst(NodeVisitor):
         if isinstance(node, list):
             for e in node:
                 super().visit(e)
-            return
-
-        if hasattr(node, "context") and node.context is None:
             return
 
         super().visit(node)
@@ -261,9 +263,9 @@ class ParserVisitorAst(NodeVisitor):
         import flyable.tool.token_change as token_change
 
         token_store = token_change.find_token_store(node)
+        token_store.ctx = None
 
         # Run what we can of the target. The visitor will stop if it finds a none context
-        node.ctx = ast.Load()
         base_type, base_value = self.__visit_node(node.target)
 
         # Load value first
@@ -341,7 +343,7 @@ class ParserVisitorAst(NodeVisitor):
                 globals = function.py_function_get_globals(self, 0)
                 gen_dict.python_dict_set_item(self, globals, str_var, val_value)
                 ref_counter.ref_decr(self, value_type, value)
-        else:  # Load
+        elif isinstance(node.ctx, ast.Load):  # Load
             self.__last_type = lang_type.get_python_obj_type()
             found_var = self.get_or_gen_var(node.id)
             if found_var is None:
@@ -355,17 +357,17 @@ class ParserVisitorAst(NodeVisitor):
         self.__reset_last()
 
         self.__last_type, self.__last_value = self.__visit_node(node.value)
-        attr_name = self.__code_gen.get_or_insert_str(node.attr)
-        attr_name = self.__builder.global_var(attr_name)
-        attr_name = self.__builder.load(attr_name)
 
         if isinstance(node.ctx, ast.Load):
+            attr_name = self.__code_gen.get_or_insert_str(node.attr)
+            attr_name = self.__builder.global_var(attr_name)
+            attr_name = self.__builder.load(attr_name)
             get_attr = self.__code_gen.get_or_create_func("PyObject_GetAttr", code_type.get_py_obj_ptr(self.__code_gen),
                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                           _gen.Linkage.EXTERNAL)
             self.__last_value = self.__builder.call(get_attr, [self.__last_value, attr_name])
             self.__last_type = lang_type.get_python_obj_type()
-        else:
+        elif isinstance(node.ctx, ast.Store):
             fly_obj.py_obj_set_attr(self, self.__last_value, node.attr, self.__assign_value, None)
 
     def visit_Call(self, node: Call) -> Any:
