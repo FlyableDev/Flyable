@@ -458,8 +458,10 @@ class ParserVisitorAst(NodeVisitor):
     # FIXME: issues #39 & #41 and then complete the visitor
     def visit_Global(self, node: Global) -> Any:
         for name in node.names:
-            local_var = self.get_or_gen_var(node)
-            local_var.set_global(True)
+            new_var = self.get_or_gen_var(name)
+            new_var = new_var.get_code_value()
+            new_var_value = self.__get_global_obj(name)
+            self.__builder.store(new_var_value, new_var)
 
     #  FIXME: issues #39 & #41 and then complete the visitor
     def visit_Nonlocal(self, node: Nonlocal) -> Any:
