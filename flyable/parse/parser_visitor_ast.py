@@ -321,17 +321,18 @@ class ParserVisitorAst(NodeVisitor):
         self.__reset_last()
 
         self.__last_type, self.__last_value = self.__visit_node(node.value)
-
         attr_name = self.__code_gen.get_or_insert_str(node.attr)
         attr_name = self.__builder.global_var(attr_name)
         attr_name = self.__builder.load(attr_name)
 
-        get_attr = self.__code_gen.get_or_create_func("PyObject_GetAttr", code_type.get_py_obj_ptr(self.__code_gen),
-                                                      [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
-                                                      _gen.Linkage.EXTERNAL)
-
-        self.__last_value = self.__builder.call(get_attr, [self.__last_value, attr_name])
-        self.__last_type = lang_type.get_python_obj_type()
+        if isinstance(node.ctx, ast.Load):
+            get_attr = self.__code_gen.get_or_create_func("PyObject_GetAttr", code_type.get_py_obj_ptr(self.__code_gen),
+                                                          [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                          _gen.Linkage.EXTERNAL)
+            self.__last_value = self.__builder.call(get_attr, [self.__last_value, attr_name])
+            self.__last_type = lang_type.get_python_obj_type()
+        else:
+            fly_obj.py_obj_set_attr(self, self.__last_value, node.attr, self.__assign_value, None)
 
     def visit_Call(self, node: Call) -> Any:
         if isinstance(node.func, ast.Attribute):
