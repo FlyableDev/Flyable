@@ -93,22 +93,54 @@ class ParserVisitorAst(NodeVisitor):
         self.__setup_argument()
 
     def __setup_argument(self):
-        callable_value = 0
-        args_value = 1
-        kwargs = 2
+        args = self.__func.get_parent_func().get_node().args.args
         if self.__func.get_impl_type() == FuncImplType.TP_CALL:
-            for i, arg in enumerate(self.__func.get_parent_func().get_node().args.args):
+            callable_value = 0
+            args_value = 1  # Is a PyListObject*
+            kwargs = 2
+            for i, arg in enumerate(args):
                 arg_var = self.get_or_gen_var(arg.arg)
                 index = self.__builder.const_int64(i)
                 item_ptr = gen_tuple.python_tuple_get_unsafe_item_ptr(self, lang_type.get_python_obj_type(), args_value,
                                                                       index)
                 arg_var.set_code_value(item_ptr)
         elif self.__func.get_impl_type() == FuncImplType.VEC_CALL:
+            callable_value = 0
+            args_value = 1  # Is a PyObject**
+            args_count = 2
+            kwargs = 3
             for i, arg in enumerate(self.__func.get_parent_func().get_node().args.args):
                 arg_var = self.get_or_gen_var(arg.arg)
                 item_ptr = self.__builder.gep2(args_value, code_type.get_py_obj_ptr(self.__code_gen),
                                                [self.__builder.const_int64(i)])
                 arg_var.set_code_value(item_ptr)
+
+        # Match keyword arguments
+        kwards_block = self.__builder.create_block()
+        after_kwards = self.__builder.create_block()
+        kwards_change_blocks = []
+        for arg in args:
+            kwards_change_blocks.append(self.__builder.create_block())
+        null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        has_keyword = self.__builder.ne(null_ptr, kwargs)
+        self.__builder.cond_br(has_keyword, kwards_block, after_kwards)
+
+        self.__builder.set_insert_block(kwards_block)
+        for i, arg in enumerate(args):
+            arg_str = self.__code_gen.get_or_insert_str(arg.arg)
+            arg_str = self.__builder.global_var(arg_str)
+            arg_str = self.__builder.load(arg_str)
+            found_kwarg = gen_dict.python_dict_get_item(self, kwargs, arg_str)
+            found_kwarg_not_null = self.__builder.ne(found_kwarg, null_ptr)
+            if i < len(args) - 1:
+                self.__builder.cond_br(found_kwarg_not_null, kwards_change_blocks[i], kwards_change_blocks[i + 1])
+                self.__builder.set_insert_block(kwards_change_blocks[i + 1])
+            else:
+                self.__builder.cond_br(found_kwarg_not_null, kwards_change_blocks[i], after_kwards)
+
+        self.__builder.br(after_kwards)
+
+        self.__builder.set_insert_block(after_kwards)
 
     def visit(self, node):
         print(type(node))
