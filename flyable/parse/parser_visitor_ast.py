@@ -90,6 +90,7 @@ class ParserVisitorAst(NodeVisitor):
 
         self.__content_block = self.__builder.create_block()
         self.__builder.set_insert_block(self.__content_block)
+        self.__setup_argument()
 
     def __setup_argument(self):
         callable_value = 0
@@ -99,7 +100,8 @@ class ParserVisitorAst(NodeVisitor):
             for i, arg in enumerate(self.__func.get_parent_func().get_node().args.args):
                 arg_var = self.get_or_gen_var(arg.arg)
                 index = self.__builder.const_int64(i)
-                item_ptr = gen_tuple.python_tuple_get_unsafe_item_ptr(self, lang_type.get_python_obj_type(), 1, index)
+                item_ptr = gen_tuple.python_tuple_get_unsafe_item_ptr(self, lang_type.get_python_obj_type(), args_value,
+                                                                      index)
                 arg_var.set_code_value(item_ptr)
         elif self.__func.get_impl_type() == FuncImplType.VEC_CALL:
             for i, arg in enumerate(self.__func.get_parent_func().get_node().args.args):
