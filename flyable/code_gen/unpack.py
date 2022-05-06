@@ -7,6 +7,7 @@ from flyable.parse.exception import unsupported
 
 if TYPE_CHECKING:
     from flyable.parse.parser_visitor import ParserVisitor
+    from flyable.parse.parser_visitor_ast import ParserVisitorAst
 
 import flyable.code_gen.caller as caller
 from flyable.data.lang_type import *
@@ -23,20 +24,43 @@ import flyable.code_gen.runtime as runtime
 Unpacking for AST
 """
 
-def unpack_assignation(visitor: ParserVisitor, targets, value_type, value, node):
-    for target in targets:
-        if isinstance(target, ast.Starred):
-            raise unsupported.FlyableUnsupported()
+
+def unpack_assignation(visitor: ParserVisitorAst, targets, value_type, value, node):
+    arg_count, arg_count_after = check_if_starred_elmt_is_present(visitor, targets)
     if value_type.is_list() or value_type.is_tuple():
-        unpack_list_or_tuple_assignation(visitor, targets, value_type, value, node)
+        unpack_list_or_tuple_assignation(visitor, targets, value_type, value, node, arg_count, arg_count_after)
     elif value_type.is_dict():
         value = gen_dict.python_dict_get_keys(visitor, value)
         value_type = get_list_of_python_obj_type()
-        unpack_list_or_tuple_assignation(visitor, targets, value_type, value, node)
+        unpack_list_or_tuple_assignation(visitor, targets, value_type, value, node, arg_count, arg_count_after)
     else:
-        unpack_iterable_assignation(visitor, targets, value_type, value, node)
+        unpack_iterable_assignation(visitor, targets, value_type, value, node, arg_count, arg_count_after)
 
-def unpack_list_or_tuple_assignation(visitor: ParserVisitor, targets, value_type, value, node):
+
+def check_if_starred_elmt_is_present(visitor, targets):
+    arg_count = 0
+    arg_count_after = -1
+    is_starred_present = False
+    for target in targets:
+        if isinstance(target, ast.Starred):
+            if is_starred_present:
+                excp.raise_index_error(visitor)  # More than one starred elmt is present
+            arg_count_after = 0
+            is_starred_present = True
+            continue
+        if is_starred_present:
+            arg_count_after += 1
+        else:
+            arg_count += 1
+    return (arg_count, arg_count_after)
+
+
+def unpack_list_or_tuple_assignation(visitor: ParserVisitorAst, targets, value_type, value, node, arg_count,
+                                     arg_count_after):
+    # TODO: think of a better way to support starred target when value is a list or tuple
+    if arg_count_after >= 0:
+        unpack_iterable_assignation(visitor, targets, value_type, value, node, arg_count, arg_count_after)
+
     builder = visitor.get_builder()
     unpack_block = builder.create_block("Unpack")
     error_block = builder.create_block("Unpack Error")
@@ -64,19 +88,55 @@ def unpack_list_or_tuple_assignation(visitor: ParserVisitor, targets, value_type
     builder.br(continue_block)
 
     builder.set_insert_block(error_block)
-    excp.raise_index_error(visitor)     # value doesn't have as many elements as targets
+    excp.raise_index_error(visitor)  # value doesn't have as many elements as targets
 
     builder.set_insert_block(continue_block)
     ref_counter.ref_decr(visitor, value_type, value)
 
-def unpack_iterable_assignation(visitor: ParserVisitor, targets, value_type, value, node):
+
+def unpack_iterable_assignation(visitor: ParserVisitorAst, targets, value_type, value, node, arg_count,
+                                arg_count_after):
     builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
     error_block = builder.create_block("Unpack Error")
     continue_block = builder.create_block("After Unpack")
 
     iterable_type, iterator = caller.call_obj(visitor, "__iter__", value, value_type, [], [], {})
 
-    for i, target in enumerate(targets):
+    if arg_count > 0:
+        ast_iterable_unpack_first_args(visitor, targets, node, continue_block, error_block, iterable_type, iterator,
+                                   arg_count, arg_count_after)
+
+    if arg_count_after != -1:
+        args_after = builder.create_block("Args After")
+        array_type, array = unpack_rest_of_iterator_to_list(args_after, iterable_type, iterator, visitor)
+
+        builder.set_insert_block(args_after)
+        array_length = gen_list.python_list_len(visitor, array)
+        sub_list_type, sub_list_value = get_sub_list(arg_count_after, array, array_type, array_length, visitor)
+        starred_target = targets[arg_count].value
+        do_assignation(visitor, starred_target, sub_list_type, sub_list_value, node)
+
+        for j in reversed(range(1, arg_count_after + 1)):
+            index_to_subtract = builder.const_int64(j)
+            index_value = builder.sub(array_length, index_to_subtract)
+            arg_after_type, arg_after_value = caller.call_obj(visitor, "__getitem__", array, array_type, [index_value],
+                                                              [get_int_type()], {})
+            target = targets[arg_count + abs(j - arg_count_after - 1)]
+            do_assignation(visitor, target, arg_after_type, arg_after_value, node)
+
+        builder.br(continue_block)
+
+    builder.set_insert_block(error_block)
+    excp.raise_index_error(visitor)  # iterable returns more or less values then there are elements in targets
+
+    builder.set_insert_block(continue_block)
+    ref_counter.ref_decr(visitor, value_type, value)
+
+
+def ast_iterable_unpack_first_args(visitor, targets, node, continue_block, error_block, iterable_type, iterator,
+                                   arg_count, arg_count_after):
+    builder, code_gen = visitor.get_builder(), visitor.get_code_gen()
+    for i in range(arg_count):
         test_next = builder.create_block("Test Next")
         builder.br(test_next)
         builder.set_insert_block(test_next)
@@ -90,29 +150,23 @@ def unpack_iterable_assignation(visitor: ParserVisitor, targets, value_type, val
         builder.cond_br(test, error_block, unpack_block)
 
         builder.set_insert_block(unpack_block)
-        do_assignation(visitor, target, next_type, next_value, node)
+        do_assignation(visitor, targets[i], next_type, next_value, node)
 
-        if i == len(targets) - 1:
+        if i == arg_count - 1 and arg_count_after == -1:
             next_type, next_value = caller.call_obj(visitor, "__next__", iterator, iterable_type, [], [], {})
             null_ptr = builder.const_null(code_type.get_py_obj_ptr(code_gen))
             excp.py_runtime_clear_error(code_gen, builder)
             test = builder.eq(next_value, null_ptr)
             builder.cond_br(test, continue_block, error_block)
 
-    builder.set_insert_block(error_block)
-    excp.raise_index_error(visitor)     # iterable returns more or less values then there are elements in targets
 
-    builder.set_insert_block(continue_block)
-    ref_counter.ref_decr(visitor, value_type, value)
-
-
-def do_assignation(visitor: ParserVisitor, target, value_type, value, node):
+def do_assignation(visitor: ParserVisitorAst, target, value_type, value, node):
     if isinstance(target, ast.Tuple) or isinstance(target, ast.List):
         new_targets = []
         for t in target.elts:
             new_targets.append(t)
         unpack_assignation(visitor, new_targets, value_type, value, node)
-    elif isinstance(target, ast.Name) or isinstance(target, ast.Subscript):
+    elif isinstance(target, ast.Name) or isinstance(target, ast.Subscript) or isinstance(target, ast.Attribute):
         visitor.set_assign_type(value_type)
         visitor.set_assign_value(value)
         visitor.visit_node(target)
@@ -120,9 +174,11 @@ def do_assignation(visitor: ParserVisitor, target, value_type, value, node):
         visitor.get_parser().throw_error("Incorrect target type encountered when unpacking ", node.lineno,
                                          node.end_col_offset)
 
+
 """
 Unpacking for Opcodes
 """
+
 
 def unpack_list_or_tuple(visitor: ParserVisitor, seq_type, seq, instr):
     builder = visitor.get_builder()
