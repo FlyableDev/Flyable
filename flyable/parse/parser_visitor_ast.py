@@ -190,11 +190,8 @@ class ParserVisitorAst(NodeVisitor):
             self.__reset_last()
             self.__last_type, self.__last_value = self.__visit_node(node.targets)
         else:  # Mult assign
-            if len(targets) >= len(values):  # unpack
-                value_type, value_value = self.__visit_node(node.value)
-                unpack.unpack_assignation(self, targets, value_type, value_value, node)
-            else:
-                self.__parser.throw_error("Incorrect amount of value to unpack", node.lineno, node.end_col_offset)
+            value_type, value_value = self.__visit_node(node.value)
+            unpack.unpack_assignation(self, targets, value_type, value_value, node)
 
         self.__reset_last()
         self.__assign_depth -= 1
