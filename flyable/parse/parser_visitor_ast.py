@@ -444,7 +444,22 @@ class ParserVisitorAst(NodeVisitor):
             self.__last_value = self.__builder.load(result_value)
 
     def visit_Subscript(self, node: Subscript) -> Any:
-        pass
+        sequence_type, sequence = self.__visit_node(node.value)
+        slice_type, slice = self.__visit_node(node.slice)
+
+        if isinstance(node.ctx, ast.Load):
+            get_item = self.__code_gen.get_or_create_func("PyObject_GetItem", code_type.get_py_obj_ptr(self.__code_gen),
+                                                          [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                          _gen.Linkage.EXTERNAL)
+
+            self.__last_value = self.__builder.call(get_item, [sequence, slice])
+            self.__last_type = lang_type.get_python_obj_type()
+        elif isinstance(node.ctx, ast.Store):
+            set_item = self.__code_gen.get_or_create_func("PyObject_SetItem", code_type.get_py_obj_ptr(self.__code_gen),
+                                                          [code_type.get_py_obj_ptr(self.__code_gen)] * 3,
+                                                          _gen.Linkage.EXTERNAL)
+
+            self.__builder.call(set_item, [sequence, slice, self.__assign_value])
 
     def visit_Slice(self, node: Slice) -> Any:
         def parse_slice_part(expression: Optional[expr]):
