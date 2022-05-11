@@ -701,18 +701,20 @@ class ParserVisitorAst(NodeVisitor):
             type, value = self.__visit_node(with_item.context_expr)
             with_types.append(type)
             if type.is_obj() or type.is_python_obj():
+
                 if with_item.optional_vars is not None:
                     with_var = self.__func.get_context().add_var(str(with_item.optional_vars.id), type)
+                    alloca_value = self.generate_entry_block_var(type.to_code_type(self.__code_gen))
+                    with_var.set_code_value(alloca_value)
                     all_vars_with.append(with_var)
                     self.__builder.store(value, with_var.get_code_value())
                 else:
                     all_vars_with.append(None)
 
-                # def __exit__(self, exc_type, exc_value, traceback)
-                exit_args_type = [type] + ([lang_type.get_python_obj_type()] * 3)
                 caller.call_obj(self, "__enter__", value, type, [value], [type], {})
 
-                exit_values = [value] + ([self.__builder.const_null(code_type.get_int8_ptr())] * 3)
+                exit_args_type = [type] + ([lang_type.get_python_obj_type()] * 3)
+                exit_values = [value] + ([self.__builder.global_var(self.__code_gen.get_none())] * 3)
                 caller.call_obj(self, "__exit__", value, type, exit_values, exit_args_type, {})
             else:
                 self.__parser.throw_error("Type " + type.to_str(self.__data) +
