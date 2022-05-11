@@ -703,9 +703,7 @@ class ParserVisitorAst(NodeVisitor):
             if type.is_obj() or type.is_python_obj():
 
                 if with_item.optional_vars is not None:
-                    with_var = self.__func.get_context().add_var(str(with_item.optional_vars.id), type)
-                    alloca_value = self.generate_entry_block_var(type.to_code_type(self.__code_gen))
-                    with_var.set_code_value(alloca_value)
+                    with_var = self.get_or_gen_var(with_item.optional_vars.id)
                     all_vars_with.append(with_var)
                     self.__builder.store(value, with_var.get_code_value())
                 else:
