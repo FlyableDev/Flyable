@@ -229,10 +229,32 @@ class ParserVisitorAst(NodeVisitor):
         ref_counter.ref_decr_incr(self, right_type, right_value)
 
     def visit_UnaryOp(self, node: UnaryOp) -> Any:
-        value_type, value = self.__visit_node(node.operand)
+        _, operand_value = self.__visit_node(node.operand)
 
-        self.__last_type, self.__last_value = op_call.unary_op(self, value_type, value, node)
-        ref_counter.ref_decr_incr(self, value_type, value)
+        if isinstance(node.op, ast.UAdd):
+            func_str = "PyNumber_Positive"
+            return_type = code_type.get_py_obj_ptr(self.__code_gen)
+        elif isinstance(node.op, ast.USub):
+            func_str = "PyNumber_Negative"
+            return_type = code_type.get_py_obj_ptr(self.__code_gen)
+        elif isinstance(node.op, ast.Invert):
+            func_str = "PyNumber_Invert"
+            return_type = code_type.get_py_obj_ptr(self.__code_gen)
+        elif isinstance(node.op, ast.Not):
+            func_str = "PyObject_Not"
+            return_type = code_type.get_int32()
+
+        unary_op_func = self.__code_gen.get_or_create_func(func_str, return_type,
+                                                      [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                      _gen.Linkage.EXTERNAL)
+
+        self.__last_value = self.__builder.call(unary_op_func, [operand_value])
+        self.__last_type = lang_type.get_python_obj_type()
+
+        if isinstance(node.op, ast.Not):
+            self.__last_value = self.__builder.int_cast(self.__last_value, code_type.get_int1())
+            self.__last_type, self.__last_value = runtime.value_to_pyobj(self, self.__last_value, lang_type.get_bool_type())
+
 
     def visit_BoolOp(self, node: BoolOp) -> Any:
         types = []
