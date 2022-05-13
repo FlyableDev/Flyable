@@ -469,7 +469,7 @@ class ParserVisitorAst(NodeVisitor):
                 slice_part_type, slice_part_value = runtime.value_to_pyobj(self, slice_part_value, slice_part_type)
             else:
                 slice_part_type = lang_type.get_none_type()
-                slice_part_value = self.__builder.load(self.__builder.global_var(self.__code_gen.get_none()))
+                slice_part_value = self.__builder.global_var(self.__code_gen.get_none())
             return slice_part_type, slice_part_value
 
         lower_type, lower_value = parse_slice_part(node.lower)
