@@ -547,6 +547,12 @@ class ParserVisitorAst(NodeVisitor):
         if node.value is None:
             self.__last_type = lang_type.get_python_obj_type()
             self.__last_value = self.__builder.global_var(self.__code_gen.get_none())
+        elif node.value is True:
+            self.__last_type = lang_type.get_python_obj_type()
+            self.__last_value = self.__builder.global_var(self.__code_gen.get_true())
+        elif node.value is False:
+            self.__last_type = lang_type.get_python_obj_type()
+            self.__last_value = self.__builder.global_var(self.__code_gen.get_false())
         else:
             self.__last_type = lang_type.get_python_obj_type()
             constant_var = self.__code_gen.get_or_insert_const(node.value)
