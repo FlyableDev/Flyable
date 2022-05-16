@@ -17,16 +17,16 @@ def __load_lib():
     lib_path = ""
     if platform.uname()[0] == "Windows":
         path += ".\\dyn_lib\\win64"
-        lib_path = "FlyableJIT.dll"
+        lib_path = "FlyableEngine.dll"
         os.add_dll_directory(path)
         return ctypes.CDLL(lib_path)
     elif platform.uname()[0] == "Linux":
-        lib_name = "FlyableJIT.so"
+        lib_name = "FlyableEngine.so"
         path += "./dyn_lib/linux64/"
         lib_path = path
         return load_lib_and_dependecies(lib_path, lib_name)
     elif platform.system() == "Darwin" and platform.machine() == "arm64":
-        lib_name = "FlyableJIT.dylib"
+        lib_name = "FlyableEngine.dylib"
         path += "./dyn_lib/macos-arm64/"
         lib_path = path
         return load_lib_and_dependecies(lib_path, lib_name)
