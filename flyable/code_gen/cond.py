@@ -82,6 +82,48 @@ def test_obj_true(visitor: ParserVisitor, value_type: lang_type.LangType, value:
         list_size = _list.python_list_len(visitor, value)
         return builder.lt(list_size, builder.const_int64(0))
     else:
-        is_true_func = code_gen.get_or_create_func("PyObject_IsTrue", code_type.get_int32(),
-                                                   [code_type.get_py_obj_ptr(code_gen)], _gen.Linkage.EXTERNAL)
-        return builder.ne(builder.call(is_true_func, [value]), builder.const_int32(0))
+        return_value = visitor.generate_entry_block_var(code_type.get_int1())
+
+        true_const = builder.global_var(code_gen.get_true())
+        false_const = builder.global_var(code_gen.get_false())
+        none_const = builder.global_var(code_gen.get_none())
+
+        is_true_condition = builder.eq(value, true_const)
+        is_false_condition = builder.eq(value, false_const)
+        is_none_condition = builder.eq(value, none_const)
+
+        is_true_block = builder.create_block()
+        check_false_block = builder.create_block()
+        is_false_block = builder.create_block()
+        check_none_block = builder.create_block()
+        is_none_block = builder.create_block()
+        is_not_supported_block = builder.create_block()
+        continue_block = builder.create_block()
+
+        builder.cond_br(is_true_condition, is_true_block, check_false_block)
+
+        builder.set_insert_block(check_false_block)
+        builder.cond_br(is_false_condition, is_false_block, check_none_block)
+
+        builder.set_insert_block(check_none_block)
+        builder.cond_br(is_none_condition, is_none_block, is_not_supported_block)
+
+        builder.set_insert_block(is_true_block)
+        builder.store(builder.const_int1(True), return_value)
+        builder.br(continue_block)
+
+        builder.set_insert_block(is_false_block)
+        builder.store(builder.const_int1(False), return_value)
+        builder.br(continue_block)
+
+        builder.set_insert_block(is_none_block)
+        builder.store(builder.const_int1(False), return_value)
+        builder.br(continue_block)
+
+        builder.set_insert_block(is_not_supported_block)
+        is_true_func = code_gen.get_or_create_func("PyObject_IsTrue", code_type.get_int32(), [code_type.get_py_obj_ptr(code_gen)], _gen.Linkage.EXTERNAL)
+        builder.store(builder.ne(builder.call(is_true_func, [value]), builder.const_int32(0)), return_value)
+        builder.br(continue_block)
+
+        builder.set_insert_block(continue_block)
+        return builder.load(return_value)
