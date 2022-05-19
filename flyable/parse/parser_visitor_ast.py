@@ -600,19 +600,18 @@ class ParserVisitorAst(NodeVisitor):
         
 
     def visit_JoinedStr(self, node: JoinedStr) -> Any:
-        print("HERRREWEEWWEWEWEWEWEWEWEWEEWE")
         if len(node.values) <= 0:
-            # TODO : Ask how to generate an empty string for this case ( f"" )
-
+            str_var = self.__code_gen.get_or_insert_str("")
+            str_val = self.__builder.global_var(str_var)
             self.__last_type = lang_type.get_python_obj_type()
-            self.__last_value = None
+            self.__last_value =  self.__builder.load(str_val)
         else:
             self.__last_type, self.__last_value = self.__visit_node(node.values[0])
             left_type, left_value = self.__last_type, self.__last_value
 
             if len(node.values) > 1:
-                for val in node.values[1:]:
-                    right_type, right_value = self.__visit_node(val)
+                for str_val in node.values[1:]:
+                    right_type, right_value = self.__visit_node(str_val)
 
                     bin_func_to_call = self.__code_gen.get_or_create_func("PyNumber_Add", code_type.get_py_obj_ptr(self.__code_gen),
                                                                         [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
