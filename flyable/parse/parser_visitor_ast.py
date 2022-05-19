@@ -558,6 +558,10 @@ class ParserVisitorAst(NodeVisitor):
             constant_var = self.__code_gen.get_or_insert_const(node.value)
             self.__last_value = self.__builder.load(self.__builder.global_var(constant_var))
 
+    def visit_JoinedStr(self, node: JoinedStr) -> Any:
+        for val in node.values:
+            value_type, value_value = self.__visit_node(val)
+
     def visit_IfExp(self, node: IfExp) -> Any:
         true_cond = self.__builder.create_block("If True")
         false_cond = self.__builder.create_block("If False")
