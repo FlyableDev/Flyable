@@ -1540,7 +1540,7 @@ class ParserVisitor:
     def visit_load_build_class(self, instr):
         raise unsupported.FlyableUnsupported()
 
-    def visit_build_string(self, instr):	
+    def visit_build_string(self, instr):
         first_type, first_value = self.pop()  # Callable or self
 
         py_obj = code_type.get_py_obj(self.get_code_gen())

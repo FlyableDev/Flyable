@@ -565,6 +565,8 @@ class ParserVisitorAst(NodeVisitor):
         fmt_spec_type, fmt_spec_value = lang_type.get_none_type(), None
         if node.format_spec:
             fmt_spec_type, fmt_spec_value = self.__visit_node(node.format_spec)
+        else:
+            fmt_spec_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
 
         match which_conversion:
             case -1:
@@ -585,11 +587,12 @@ class ParserVisitorAst(NodeVisitor):
                                                            _gen.Linkage.EXTERNAL)
             value_value = self.__builder.call(conv_func, [value_value])
 
-        elif fmt_spec_type != lang_type.get_none_type():
+        else:
             conv_func = self.__code_gen.get_or_create_func("PyObject_Format", code_type.get_py_obj_ptr(self.__code_gen),
                                                            [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
                                                            _gen.Linkage.EXTERNAL)
-            value_value = self.__builder.call(conv_func, [value_value, fmt_spec_value])
+            self.__last_value = self.__builder.call(conv_func, [value_value, fmt_spec_value])
+            self.__last_type = fmt_spec_type
 
         ref_counter.ref_decr(self, value_type, value_value)
         if node.format_spec:
@@ -597,24 +600,31 @@ class ParserVisitorAst(NodeVisitor):
         
 
     def visit_JoinedStr(self, node: JoinedStr) -> Any:
-        self.__last_type, self.__last_value = self.__visit_node(node.values[0])
-        left_type, left_value = self.__last_type, self.__last_value
+        print("HERRREWEEWWEWEWEWEWEWEWEWEEWE")
+        if len(node.values) <= 0:
+            # TODO : Ask how to generate an empty string for this case ( f"" )
 
-        if len(node.values) > 1:
-            for val in node.values[1:]:
-                right_type, right_value = self.__visit_node(val)
+            self.__last_type = lang_type.get_python_obj_type()
+            self.__last_value = None
+        else:
+            self.__last_type, self.__last_value = self.__visit_node(node.values[0])
+            left_type, left_value = self.__last_type, self.__last_value
 
-                bin_func_to_call = self.__code_gen.get_or_create_func("PyNumber_Add", code_type.get_py_obj_ptr(self.__code_gen),
-                                                                    [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
-                                                                    _gen.Linkage.EXTERNAL)
-                
-                old_left_type, old_left_value = left_type, left_value
-                left_type = lang_type.get_python_obj_type()
-                left_value = self.__builder.call(bin_func_to_call, [old_left_value, right_value])
-                ref_counter.ref_decr_incr(self, old_left_type, old_left_value)
-                ref_counter.ref_decr_incr(self, right_type, right_value)
+            if len(node.values) > 1:
+                for val in node.values[1:]:
+                    right_type, right_value = self.__visit_node(val)
 
-            self.__last_type, self.__last_value = left_type, left_value
+                    bin_func_to_call = self.__code_gen.get_or_create_func("PyNumber_Add", code_type.get_py_obj_ptr(self.__code_gen),
+                                                                        [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                                        _gen.Linkage.EXTERNAL)
+                    
+                    old_left_type, old_left_value = left_type, left_value
+                    left_type = lang_type.get_python_obj_type()
+                    left_value = self.__builder.call(bin_func_to_call, [old_left_value, right_value])
+                    ref_counter.ref_decr_incr(self, old_left_type, old_left_value)
+                    ref_counter.ref_decr_incr(self, right_type, right_value)
+
+                self.__last_type, self.__last_value = left_type, left_value
 
 
     def visit_IfExp(self, node: IfExp) -> Any:
