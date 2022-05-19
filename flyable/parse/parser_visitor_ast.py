@@ -148,7 +148,6 @@ class ParserVisitorAst(NodeVisitor):
         self.__builder.set_insert_block(after_kwards)
 
     def visit(self, node):
-        print(type(node))
         self.__current_node = node
         if isinstance(node, list):
             for e in node:
@@ -557,6 +556,46 @@ class ParserVisitorAst(NodeVisitor):
             self.__last_type = lang_type.get_python_obj_type()
             constant_var = self.__code_gen.get_or_insert_const(node.value)
             self.__last_value = self.__builder.load(self.__builder.global_var(constant_var))
+
+    def visit_FormattedValue(self, node: FormattedValue) -> Any:
+        value_type, value_value = self.__visit_node(node.value)
+        which_conversion = node.conversion
+
+        print(ast.dump(node))
+
+        fmt_spec_type, fmt_spec_value = lang_type.get_none_type(), None
+        if node.format_spec:
+            fmt_spec_type, fmt_spec_value = self.__visit_node(node.format_spec)
+
+        match which_conversion:
+            case -1:
+                conv_fn = None
+            case 115:
+                conv_fn = "PyObject_Str"
+            case 114:
+                conv_fn = "PyObject_Repr"
+            case 97:
+                conv_fn = "PyObject_ASCII"
+            case _:
+                conv_fn = None
+                self.__parser.throw_error("unexpected conversion flag " + str(which_conversion), None, None)
+        
+        if conv_fn != None:
+            conv_func = self.__code_gen.get_or_create_func(conv_fn, code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                           _gen.Linkage.EXTERNAL)
+            value_value = self.__builder.call(conv_func, [value_value])
+
+        elif fmt_spec_type != lang_type.get_none_type():
+            conv_func = self.__code_gen.get_or_create_func("PyObject_Format", code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                           _gen.Linkage.EXTERNAL)
+            value_value = self.__builder.call(conv_func, [value_value, fmt_spec_value])
+
+        ref_counter.ref_decr(self, value_type, value_value)
+        if node.format_spec:
+            ref_counter.ref_decr_nullable(self, lang_type.get_python_obj_type(), fmt_spec_value)
+        
 
     def visit_JoinedStr(self, node: JoinedStr) -> Any:
         for val in node.values:
