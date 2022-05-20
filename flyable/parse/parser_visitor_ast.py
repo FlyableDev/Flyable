@@ -558,6 +558,74 @@ class ParserVisitorAst(NodeVisitor):
             constant_var = self.__code_gen.get_or_insert_const(node.value)
             self.__last_value = self.__builder.load(self.__builder.global_var(constant_var))
 
+    def visit_FormattedValue(self, node: FormattedValue) -> Any:
+        value_type, value_value = self.__visit_node(node.value)
+        which_conversion = node.conversion
+
+        fmt_spec_type, fmt_spec_value = lang_type.get_none_type(), None
+        if node.format_spec:
+            fmt_spec_type, fmt_spec_value = self.__visit_node(node.format_spec)
+        else:
+            fmt_spec_value = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+
+        match which_conversion:
+            case -1:
+                conv_fn = None
+            case 115:
+                conv_fn = "PyObject_Str"
+            case 114:
+                conv_fn = "PyObject_Repr"
+            case 97:
+                conv_fn = "PyObject_ASCII"
+            case _:
+                conv_fn = None
+                self.__parser.throw_error("unexpected conversion flag " + str(which_conversion), None, None)
+        
+        if conv_fn != None:
+            conv_func = self.__code_gen.get_or_create_func(conv_fn, code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)],
+                                                           _gen.Linkage.EXTERNAL)
+            value_value = self.__builder.call(conv_func, [value_value])
+
+        else:
+            conv_func = self.__code_gen.get_or_create_func("PyObject_Format", code_type.get_py_obj_ptr(self.__code_gen),
+                                                           [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                           _gen.Linkage.EXTERNAL)
+            self.__last_value = self.__builder.call(conv_func, [value_value, fmt_spec_value])
+            self.__last_type = fmt_spec_type
+
+        ref_counter.ref_decr(self, value_type, value_value)
+        if node.format_spec:
+            ref_counter.ref_decr_nullable(self, lang_type.get_python_obj_type(), fmt_spec_value)
+        
+
+    def visit_JoinedStr(self, node: JoinedStr) -> Any:
+        if len(node.values) <= 0:
+            str_var = self.__code_gen.get_or_insert_str("")
+            str_val = self.__builder.global_var(str_var)
+            self.__last_type = lang_type.get_python_obj_type()
+            self.__last_value =  self.__builder.load(str_val)
+        else:
+            self.__last_type, self.__last_value = self.__visit_node(node.values[0])
+            left_type, left_value = self.__last_type, self.__last_value
+
+            if len(node.values) > 1:
+                for str_val in node.values[1:]:
+                    right_type, right_value = self.__visit_node(str_val)
+
+                    bin_func_to_call = self.__code_gen.get_or_create_func("PyNumber_Add", code_type.get_py_obj_ptr(self.__code_gen),
+                                                                        [code_type.get_py_obj_ptr(self.__code_gen)] * 2,
+                                                                        _gen.Linkage.EXTERNAL)
+                    
+                    old_left_type, old_left_value = left_type, left_value
+                    left_type = lang_type.get_python_obj_type()
+                    left_value = self.__builder.call(bin_func_to_call, [old_left_value, right_value])
+                    ref_counter.ref_decr_incr(self, old_left_type, old_left_value)
+                    ref_counter.ref_decr_incr(self, right_type, right_value)
+
+                self.__last_type, self.__last_value = left_type, left_value
+
+
     def visit_IfExp(self, node: IfExp) -> Any:
         true_cond = self.__builder.create_block("If True")
         false_cond = self.__builder.create_block("If False")

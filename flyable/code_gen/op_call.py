@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 
 def get_binary_op_func_to_call(op):
+    print(op)
     func_op = {ast.Add: "PyNumber_Add",
                ast.And: "PyNumber_And",
                ast.FloorDiv: "PyNumber_FloorDivide",

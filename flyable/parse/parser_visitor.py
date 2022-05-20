@@ -1442,7 +1442,39 @@ class ParserVisitor:
     """
 
     def visit_print_expr(self, instr):
-        raise unsupported.FlyableUnsupported()
+        value_type, value = self.top()
+        py_obj = code_type.get_py_obj(self.get_code_gen())
+        
+        display_hook_var = self.get_code_gen().get_or_create_global_var(
+            "_PyRuntime.global_objects.singletons.strings.identifiers._displayhook._ascii.ob_base", # TODO : Verify global var name, probably not this one
+            py_obj,
+            gen.Linkage.EXTERNAL
+        )
+        display_hook = self.get_builder().global_var(display_hook_var)
+
+        get_attr = self.get_code_gen().get_or_create_func("_PySys_GetAttr", py_obj, [py_obj, py_obj], gen.Linkage.EXTERNAL)
+        get_pythread_state = self.get_code_gen().get_or_create_func("PyThreadState_Get", py_obj, [], gen.Linkage.EXTERNAL)
+        pythread_state = self.get_builder().call(get_pythread_state, [])
+        hook = self.get_builder().call(get_attr, [pythread_state, display_hook])
+        
+        hook_null_block = self.__builder.create_block("Hook Null")
+        hook_not_null_block = self.__builder.create_block("Hook Not Null")
+        
+        null_ptr = self.__builder.const_null(code_type.get_py_obj_ptr(self.__code_gen))
+        test = self.__builder.eq(hook, null_ptr)
+        self.__builder.cond_br(test, hook_null_block, hook_not_null_block)
+
+        # Hook is null
+        self.__builder.set_insert_block(hook_null_block)
+        ref_counter.ref_decr(self, value_type, value)
+        # TODO : goto error ?
+
+        # Hook is not null
+        self.__builder.set_insert_block(hook_not_null_block)
+        func = self.get_code_gen().get_or_create_func("PyObject_CallOneArg", py_obj, [py_obj, py_obj], gen.Linkage.EXTERNAL)
+        res = self.get_builder().call(func, [hook, value])
+        ref_counter.ref_decr(self, value_type, value)
+        ref_counter.ref_decr(self, lang_type.get_python_obj_type(), res)
 
     def visit_setup_annotations(self, instr):
         raise unsupported.FlyableUnsupported()
@@ -1509,7 +1541,24 @@ class ParserVisitor:
         raise unsupported.FlyableUnsupported()
 
     def visit_build_string(self, instr):
-        raise unsupported.FlyableUnsupported()
+        first_type, first_value = self.pop()  # Callable or self
+
+        py_obj = code_type.get_py_obj(self.get_code_gen())
+        join_array = self.get_code_gen().get_or_create_func("_PyUnicode_JoinArray", py_obj, [py_obj, py_obj, code_type.get_int64()])
+        
+        # Is this the good way to get an empty string ?
+        empty_string_separator = self.get_code_gen().get_or_create_global_var(
+            "_PyRuntime.global_objects.singletons.strings.litterals._empty._ascii.ob_base", # TODO : Verify global var name, probably not this one
+            py_obj,
+            gen.Linkage.EXTERNAL
+        )
+        created_str = self.get_builder().call(join_array, [empty_string_separator, first_value - instr.arg, instr.arg])
+        
+        while --instr.arg >= 0:
+            item_type, item_value = self.pop()
+            ref_counter.ref_decr(self, item_type, item_value)
+
+        self.push(py_obj, created_str)
 
     def visit_extended_arg(self, instr):
         # the disassembler takes care of this one
