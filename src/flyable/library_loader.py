@@ -1,37 +1,28 @@
-import os
 import platform
+from pathlib import Path
+from flyable.utils import get_lib_folder_name, get_extension
+
 
 """
 Module related to the dynamic loading of the native code generation layer
 """
 
 import ctypes as ctypes
-import atexit
 import inspect
+import importlib.resources
 
 __lib = None
 
 
 def __load_lib():
-    path = os.path.dirname(os.path.realpath(__file__))
-    lib_path = ""
-    if platform.uname()[0] == "Windows":
-        path += ".\\dyn_lib\\win64"
-        lib_path = "FlyableEngine.dll"
-        os.add_dll_directory(path)
-        return ctypes.CDLL(lib_path)
-    elif platform.uname()[0] == "Linux":
-        lib_name = "FlyableEngine.so"
-        path += "./dyn_lib/linux64/"
-        lib_path = path
-        return load_lib_and_dependecies(lib_path, lib_name)
-    elif platform.system() == "Darwin" and platform.machine() == "arm64":
-        lib_name = "FlyableEngine.dylib"
-        path += "./dyn_lib/macos-arm64/"
-        lib_path = path
-        return load_lib_and_dependecies(lib_path, lib_name)
+    if (
+        platform.system() == "Windows"
+        or platform.system() == "Linux"
+        or (platform.system() == "Darwin" and platform.machine() == "arm64")
+    ):
+        return load_lib_and_dependecies(f"libflyableengine.{get_extension()}")
     else:
-        raise OSError("OS not supported")
+        raise OSError(f"OS not supported {platform.system()}--{platform.machine()}")
 
 
 def call():
@@ -42,9 +33,12 @@ def call():
     gen_func(ctypes.py_object(func_to_get_source))
 
 
-def load_lib_and_dependecies(path: str, lib: str):
+def load_lib_and_dependecies(lib_name: str):
     try:
-        return ctypes.CDLL(path + lib)
+        with importlib.resources.path(
+            f"flyable.dyn_lib.{get_lib_folder_name()}", lib_name
+        ) as lib:
+            return ctypes.CDLL(lib)
     except OSError as excp:
         # Get the name of the library not found
         error_msg: str = excp.args[0]
@@ -57,6 +51,6 @@ def load_lib_and_dependecies(path: str, lib: str):
         lib_load = error_msg.split(" ")[0]
         lib_load = lib_load[0:-1]
         # Now load it
-        load_lib_and_dependecies(path, lib_load)
+        load_lib_and_dependecies(lib, lib_load)
     # Make sure to still return a value if we handled an exception
-    return load_lib_and_dependecies(path, lib)
+    return load_lib_and_dependecies(lib, lib)
