@@ -24,11 +24,11 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.11",
     package_data={
-        "": [
-            f"dyn_lib/macos-arm64/*dylib",
-            f"dyn_lib/win64/*.dll",
-            f"dyn_lib/win64/*.dll.a",
-            f"dyn_lib/linux64/*.so",
+        "flyable.dyn_lib": [
+            f"macos-arm64/*dylib",
+            f"win64/*.dll",
+            f"win64/*.dll.a",
+            f"linux64/*.so",
         ]
     },
 )

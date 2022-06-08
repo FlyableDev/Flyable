@@ -1,15 +1,16 @@
 import platform
-from pathlib import Path
+import os
+import ctypes as ctypes
+import inspect
+import importlib.resources
 from flyable.utils import get_lib_folder_name, get_extension
+from flyable import get_package_data_path
 
 
 """
 Module related to the dynamic loading of the native code generation layer
 """
 
-import ctypes as ctypes
-import inspect
-import importlib.resources
 
 __lib = None
 
@@ -36,9 +37,13 @@ def call():
 def load_lib_and_dependecies(lib_name: str):
     try:
         with importlib.resources.path(
-            f"flyable.dyn_lib.{get_lib_folder_name()}", lib_name
+            f"flyable.dyn_lib.{get_lib_folder_name()}", f"{lib_name}"
         ) as lib:
-            return ctypes.CDLL(lib)
+            dll_path = get_package_data_path(get_lib_folder_name())
+            print('DLL PATH')
+            print(dll_path)
+            os.add_dll_directory(dll_path)
+            return ctypes.CDLL(os.path.join(dll_path, lib.name), winmode=0)
     except OSError as excp:
         # Get the name of the library not found
         error_msg: str = excp.args[0]
