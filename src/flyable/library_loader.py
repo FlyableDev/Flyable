@@ -1,3 +1,4 @@
+
 import platform
 import os
 import ctypes as ctypes
@@ -42,8 +43,10 @@ def load_lib_and_dependecies(lib_name: str):
             dll_path = get_package_data_path(get_lib_folder_name())
             print('DLL PATH')
             print(dll_path)
-            os.add_dll_directory(dll_path)
-            return ctypes.CDLL(os.path.join(dll_path, lib.name), winmode=0)
+            #os.path.append(dll_path)
+            #os.add_dll_directory(dll_path)
+            os.environ['PATH'] = dll_path + os.pathsep + os.environ['PATH']
+            return ctypes.CDLL(os.path.join(dll_path, lib.name))
     except OSError as excp:
         # Get the name of the library not found
         error_msg: str = excp.args[0]
@@ -53,9 +56,9 @@ def load_lib_and_dependecies(lib_name: str):
             # https://stackoverflow.com/questions/24752395/python-raise-from-usage
             # Helps to avoid a massive error message due to recursive calls
             raise excp from None
-        lib_load = error_msg.split(" ")[0]
-        lib_load = lib_load[0:-1]
-        # Now load it
-        load_lib_and_dependecies(lib, lib_load)
+        end_sep = error_msg.find(f".{get_extension()}")
+        lib_to_load = f"{error_msg[0:end_sep]}.{get_extension()}"
+        #Now load it
+        load_lib_and_dependecies(lib_to_load)
     # Make sure to still return a value if we handled an exception
-    return load_lib_and_dependecies(lib, lib)
+    return load_lib_and_dependecies(lib_name)
