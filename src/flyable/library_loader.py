@@ -44,8 +44,8 @@ def load_lib_and_dependecies(lib_name: str):
             print('DLL PATH')
             print(dll_path)
             #os.path.append(dll_path)
-            #os.add_dll_directory(dll_path)
-            os.environ['PATH'] = dll_path + os.pathsep + os.environ['PATH']
+            # os.add_dll_directory(dll_path)
+            # os.environ['PATH'] = dll_path + os.pathsep + os.environ['PATH']
             return ctypes.CDLL(os.path.join(dll_path, lib.name))
     except OSError as excp:
         # Get the name of the library not found
