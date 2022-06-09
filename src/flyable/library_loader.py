@@ -41,11 +41,6 @@ def load_lib_and_dependecies(lib_name: str):
             f"flyable.dyn_lib.{get_lib_folder_name()}", f"{lib_name}"
         ) as lib:
             dll_path = get_package_data_path(get_lib_folder_name())
-            print('DLL PATH')
-            print(dll_path)
-            #os.path.append(dll_path)
-            # os.add_dll_directory(dll_path)
-            # os.environ['PATH'] = dll_path + os.pathsep + os.environ['PATH']
             return ctypes.CDLL(os.path.join(dll_path, lib.name))
     except OSError as excp:
         # Get the name of the library not found
