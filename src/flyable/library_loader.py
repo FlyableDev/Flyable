@@ -1,15 +1,17 @@
+
 import platform
-from pathlib import Path
+import os
+import ctypes as ctypes
+import inspect
+import importlib.resources
 from flyable.utils import get_lib_folder_name, get_extension
+from flyable import get_package_data_path
 
 
 """
 Module related to the dynamic loading of the native code generation layer
 """
 
-import ctypes as ctypes
-import inspect
-import importlib.resources
 
 __lib = None
 
@@ -36,9 +38,10 @@ def call():
 def load_lib_and_dependecies(lib_name: str):
     try:
         with importlib.resources.path(
-            f"flyable.dyn_lib.{get_lib_folder_name()}", lib_name
+            f"flyable.dyn_lib.{get_lib_folder_name()}", f"{lib_name}"
         ) as lib:
-            return ctypes.CDLL(lib)
+            dll_path = get_package_data_path(get_lib_folder_name())
+            return ctypes.CDLL(os.path.join(dll_path, lib.name))
     except OSError as excp:
         # Get the name of the library not found
         error_msg: str = excp.args[0]
@@ -48,9 +51,9 @@ def load_lib_and_dependecies(lib_name: str):
             # https://stackoverflow.com/questions/24752395/python-raise-from-usage
             # Helps to avoid a massive error message due to recursive calls
             raise excp from None
-        lib_load = error_msg.split(" ")[0]
-        lib_load = lib_load[0:-1]
-        # Now load it
-        load_lib_and_dependecies(lib, lib_load)
+        end_sep = error_msg.find(f".{get_extension()}")
+        lib_to_load = f"{error_msg[0:end_sep]}.{get_extension()}"
+        #Now load it
+        load_lib_and_dependecies(lib_to_load)
     # Make sure to still return a value if we handled an exception
-    return load_lib_and_dependecies(lib, lib)
+    return load_lib_and_dependecies(lib_name)
