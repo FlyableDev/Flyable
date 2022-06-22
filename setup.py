@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="flyable",
-    version="0.0.1.2",
+    version="0.0.1.3",
     author="FlyableDev",
     author_email="contact@flyable.dev",
     description="Flyable is a Python compiler that generates optimized native code to improve the performance of Python workloads.",
