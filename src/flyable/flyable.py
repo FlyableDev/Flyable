@@ -1,9 +1,7 @@
-from flyable import library_loader
+from flyable import flyable_usage, library_loader
 
 
-def run():
+def run(email=None):
+    flyable_usage.send_infos(email)
     lib = library_loader.call()
     print("now running flyable engine")
-
-
-run()
