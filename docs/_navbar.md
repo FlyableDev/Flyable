@@ -1,8 +1,0 @@
-* [<font size="5">Home</font>](https://www.flyabledev.com/)
-* [<font size="5">Docs</font>](/)
-* [<font size="5">Benchmarks</font>](https://www.flyabledev.com/benchmarks.html)
-* [<font size="5">About</font>](https://www.flyabledev.com/about.html)
-* [![Github](https://icongr.am/devicon/github-original.svg?size=25&color=currentColor)](https://github.com/FlyableDev/Flyable)
-* [![Discord](discord_logo.png ':size=30')](https://discord.gg/tquHUe9Q89)
-* [![Twitter](https://icongr.am/devicon/twitter-original.svg?size=25&color=currentColor)](http://twitter.com/FlyableDev)
-* [![LinkedIn](https://icongr.am/devicon/linkedin-original.svg?size=25&color=currentColor)](https://www.linkedin.com/company/flyable/)
