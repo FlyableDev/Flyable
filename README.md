@@ -52,7 +52,7 @@ Flyable currently supports the following OS and architectures:
 
 ## Getting Started
 All you will need is a working CPython installation (do not run Flyable inside a venv) and some Python code to compile. 
-Simply install Flyable on your computer using the pip command <kbd>pip install flyable</kbd> and you will be ready to start using Flyable! 
+Simply install Flyable on your computer using the pip command: <br/> <kbd>pip install flyable</kbd> <br/>and you will be ready to start using Flyable! 
 Once this is done add these two lines in your python code:
 <pre><code>import flyable
 flyable.run(email="your.email@domain")</code></pre>
